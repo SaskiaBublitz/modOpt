@@ -1,0 +1,10 @@
+README.rst
+setup.py
+modOpt/__init__.py
+modOpt/model.py
+modOpt.egg-info/PKG-INFO
+modOpt.egg-info/SOURCES.txt
+modOpt.egg-info/dependency_links.txt
+modOpt.egg-info/not-zip-safe
+modOpt.egg-info/requires.txt
+modOpt.egg-info/top_level.txt

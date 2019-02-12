@@ -1,0 +1,24 @@
+from setuptools import setup
+
+def readme():
+    with open('README.rst') as f:
+        return f.read()
+
+
+setup(name='modOpt',
+      version='0.1',
+      description='restructure NLE in order to find its solution(s)',
+      long_description = readme(),
+      classifiers = ['Programming Language :: Python :: 2.7'],
+      url='https://gitlab.tubit.tu-berlin.de/sassibub/modOpt.git',
+      author='Saskia Bublitz',
+      author_email='saskia.bublitz@tu-berlin.de',
+      license='TU Berlin',
+      packages=['modOpt'],
+      install_requires=['numpy',
+                        'sympy',
+                        'mpmath',
+                        'casadi'],
+                        #TODO: dependency_links=['hereGoesTheGitHubLink'],
+                        #for: copy, itertools, time
+      zip_safe=False)
