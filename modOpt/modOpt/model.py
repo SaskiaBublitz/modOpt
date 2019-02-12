@@ -1,5 +1,13 @@
 """
 ***************************************************
+Imported packages
+***************************************************
+"""
+
+import numpy
+
+"""
+***************************************************
 Model implementation
 ***************************************************
 """
@@ -35,7 +43,7 @@ class Model:
                             
     """
     
-    def __init__(self, X, BOUNDS, XSYMBOLIC, FSYMBOLIC, PARAMS):
+    def __init__(self, X, BOUNDS, XSYMBOLIC, FSYMBOLIC, PARAMS, JACOBIAN):
         """ Initialization method for class model
         
         Args:
@@ -47,6 +55,7 @@ class Model:
             XSYMBOLIC:     sympy array of dimension m with symbolic expression
                            of state variables. (in global order)
             PARAMS:        array with values of model parameter 
+            JACOBIAN:      if used, array with symbolic jacobian 
             
         """
         
@@ -54,6 +63,7 @@ class Model:
         self.xBounds = [BOUNDS]
         self.xSymbolic = XSYMBOLIC
         self.fSymbolic = FSYMBOLIC
+        self.jacobian =  JACOBIAN
         self.parameter = PARAMS
         self.rowPerm = range(0,len(X))
         self.colPerm = range(0,len(X))
@@ -88,7 +98,12 @@ class Model:
         return FsymPerm, xSymbolicPerm, xBoundsPerm
   
         return FsymPerm, xSymbolicPerm, xBoundsPerm
-
+    
+    
+    def getJacobian(self, X):
+        """ returns jacobian evaluated at X"""
+        return self.jacobian(*numpy.append(X, X))
+    
          
     def getParameter(self):
         """ returns paramter values """
@@ -118,6 +133,36 @@ class Model:
         
         self.xBounds = xBounds
         
+
+    def updateToPermutation(self, rowPerm, colPerm, blocks):
+        """ updates the row and column order of the Jacobian to the indices 
+        given by the lists rowPerm and colPerm.
+        
+        """        
+        
+        self.colPerm = colPerm
+        self.rowPerm = rowPerm
+        self.blocks =  createBlocks(blocks)
+        
+
+def createBlocks(blocks):
+    """ Creates blocks for permutation order 1 to n based on block border list
+    from preordering algorithm
+    
+    Args:
+        blocks:         list with block border indices as integers
+    
+    Return:             list with block elements in sublist
+    
+    """
+    
+    nestedBlocks = []
+    for i in range(1, len(blocks)):
+        curBlock = range(blocks[i-1], blocks[i])
+        nestedBlocks.append(curBlock)
+        
+    return nestedBlocks
+
         
 def reorderList(myList, newOrder):
     """ reorders given list myList

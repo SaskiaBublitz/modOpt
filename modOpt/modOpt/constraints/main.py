@@ -8,7 +8,8 @@ Import packages
 
 import iNcomplete
 import time
-#TODO: import iNpartial
+import iNpartial
+import modOpt.decomposition.dM  as mod
 
 """
 ***************************************************
@@ -45,14 +46,21 @@ def reduceVariableBounds(model, options):
             reducedModel, iterNo = iNcomplete.doIntervalNesting(model, options)
             return reducedModel, iterNo, []
     
-#    TODO: if options['method'] == 'partial':
-#        if options['timer'] == True: 
-#            tic = time.clock()
-#            reducedModel, iterNo = iNcomplete.doIntervalNesting(model, options)
-#            toc = time.clock()
-#            t = tic - toc
-#            return reducedModel, iterNo, t
-#        
-#        else:
-#            reducedModel, iterNo = iNcomplete.doIntervalNesting(model, options)
-#            return reducedModel, iterNo, []
+    if options['method'] == 'partial':
+        # Decomposition:
+        jacobian = model.getJacobian(model.stateVarValues[0])
+        dict_permutation = mod.doDulmageMendelsohn(jacobian)
+        model.updateToPermutation(dict_permutation["Row Permutation"],
+                                     dict_permutation["Column Permutation"],
+                                     dict_permutation["Number of Row Blocks"])
+        
+        if options['timer'] == True: 
+            tic = time.clock()
+            reducedModel, iterNo = iNpartial.doIntervalNesting(model, options)
+            toc = time.clock()
+            t = toc - tic
+            return reducedModel, iterNo, t
+        
+        else:
+            reducedModel, iterNo = iNpartial.doIntervalNesting(model, options)
+            return reducedModel, iterNo, []
