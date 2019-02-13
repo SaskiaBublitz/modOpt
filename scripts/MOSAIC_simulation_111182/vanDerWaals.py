@@ -60,6 +60,8 @@ def main():
 
  # Result export:    
     moc.writeResults(dict_options["fileName"], dict_variables, t, iterNo)
+    moc.analyseResults(dict_options["fileName"], initialModel.xSymbolic, 
+                       initialModel.xBounds[0], modelWithReducedBounds.xBounds)
 
 
 """
