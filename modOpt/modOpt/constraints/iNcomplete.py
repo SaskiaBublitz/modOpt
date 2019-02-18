@@ -41,6 +41,7 @@ def doIntervalNesting(model, dict_options):
     dimVar = len(xBounds[0])
     boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
 
+
     for l in range(0, dict_options["iterMaxNewton"]): 
         
         iterNo = l + 1
@@ -52,7 +53,8 @@ def doIntervalNesting(model, dict_options):
             FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
                                                                                   xSymbolic, 
                                                                                   parameter)
-            
+            dict_options["precision"] = getPrecision(xBoundsPerm)
+
             intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
                                                              blocks, dict_options, boundsAlmostEqual)
             
@@ -82,6 +84,27 @@ def doIntervalNesting(model, dict_options):
     newModel.setXBounds(xBounds)
     
     return newModel, iterNo
+
+
+def getPrecision(xBounds):
+    """
+    calculates precision for intervalnesting procedure (when intervals are
+    joined to one interval)
+    Args:
+        xBounds         list with iteration variable bounds in mpmath.mpi formate
+    
+    Return:
+        precision as float value
+        
+    """
+    
+    allValuesOfx = []
+    for x in xBounds:
+        allValuesOfx.append(numpy.abs(float(mpmath.mpf(x.a))))
+        allValuesOfx.append(numpy.abs(float(mpmath.mpf(x.b))))
+    
+    minValue = min(filter(None, allValuesOfx))
+    return 5*10**(numpy.floor(numpy.log10(minValue))-2)
 
 
 def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual):
@@ -498,7 +521,8 @@ def complexOperator(complexA, complexMid, complexB, xInterval):
     if not complexA and not complexMid and complexB:
         return [mpmath.mpi(xInterval.mid, xInterval.b)], [mpmath.mpi(xInterval.a, xInterval.mid)]
     if not complexA and complexMid and complexB:
-        return [mpmath.mpi(xInterval.a, xInterval.mid)], []  
+        return [mpmath.mpi(xInterval.a, xInterval.mid)], []
+    else: return [], []
 
 
 def getReducedIntervalOfLinearFunction(a, xSymbolic, i, xBounds, bi):
@@ -1210,6 +1234,7 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i, l, relEpsdFdX, absEpsdFdX
     if dfdxUp == mpmath.mpi('-inf', '+inf'): l = l+1
     if dfdxLow == mpmath.mpi('-inf', '+inf'): l = l+1
     if mpmath.almosteq(dfdxUp.a, dfdxLow.a, relEpsdFdX, absEpsdFdX): l = l+1
+    if mpmath.almosteq(dfdxUp.b, dfdxLow.b, relEpsdFdX, absEpsdFdX): l = l+1
     return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone, l
 
 

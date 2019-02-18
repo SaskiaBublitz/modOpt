@@ -53,6 +53,7 @@ def doIntervalNesting(model, dict_options):
                                                                                   xSymbolic, 
                                                                                   parameter)
             
+            dict_options["precision"] = getPrecision(xBoundsPerm)
             intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
                                                              blocks, dict_options, boundsAlmostEqual)
             
@@ -82,6 +83,27 @@ def doIntervalNesting(model, dict_options):
     newModel.setXBounds(xBounds)
     
     return newModel, iterNo
+
+
+def getPrecision(xBounds):
+    """
+    calculates precision for intervalnesting procedure (when intervals are
+    joined to one interval)
+    Args:
+        xBounds         list with iteration variable bounds in mpmath.mpi formate
+    
+    Return:
+        precision as float value
+        
+    """
+    
+    allValuesOfx = []
+    for x in xBounds:
+        allValuesOfx.append(numpy.abs(float(mpmath.mpf(x.a))))
+        allValuesOfx.append(numpy.abs(float(mpmath.mpf(x.b))))
+    
+    minValue = min(filter(None, allValuesOfx))
+    return 5*10**(numpy.floor(numpy.log10(minValue))-2)
 
 
 def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual):

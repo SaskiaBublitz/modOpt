@@ -1,0 +1,37 @@
+***** Results of Analysis *****
+
+Variables	VarBounds_0	VarBoundFraction
+e0_K_LV_i1	1.0 	1.0
+e0_h_V	1.0 	1.0
+e0_p	solved 	solved
+e0_x_i1	0.9921875 	0.9921875
+e0_x_i2	1.0 	1.0
+e0_K_LV_i2	0.631618195672 	0.631618195672
+e0_x_F_i2	1.11022302463e-16 	1.11022302463e-16
+e0_y_i1	1.0 	1.0
+e0_y_i2	1.0 	1.0
+e0_greek_alpha_L_i1	2.77555756156e-17 	2.77555756156e-17
+e0_greek_alpha_L_i2	1.11022302463e-16 	1.11022302463e-16
+e0_greek_gamma_L_i1	0.703125 	0.703125
+e0_greek_gamma_L_i2	1.0 	1.0
+e0_h_F	1.94025536378e-15 	1.94025536378e-15
+e0_L	1.0 	1.0
+e0_Q	1.0 	1.0
+e0_V	1.0 	1.0
+e0_HU_i1	1.0 	1.0
+e0_HU_i2	1.0 	1.0
+e0_HU_L	0.000478506088257 	0.000478506088257
+e0_HU_V	1.0 	1.0
+e0_U	0.141981495633 	0.141981495633
+e0_V_L	0.00015352 	0.00015352
+e0_V_V	0.117443564 	0.117443564
+e0_V_total	1.73472347598e-17 	1.73472347598e-17
+e0_A	3.46944695195e-17 	3.46944695195e-17
+e0_r_DH	5.55111512313e-17 	5.55111512313e-17
+e0_h_L	1.0 	1.0
+
+VarboundSetFraction	 1.19700138926e-122	1.19700138926e-122
+HypercubicLengthFraction	4.42228000878e-05 
+
+Following Variables have been solved:
+e0_p (VarBound_0)
