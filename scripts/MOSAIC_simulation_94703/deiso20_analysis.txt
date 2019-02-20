@@ -1,0 +1,671 @@
+***** Results of Analysis *****
+
+Variables	VarBounds_0	VarBounds_1	VarBoundFraction
+e0e1_x_tr1_i1	1.0 	1.0 	2.0
+e0e1_x_tr2_i1	1.0 	1.0 	2.0
+e0e1_x_tr3_i1	1.0 	1.0 	2.0
+e0e1_x_tr4_i1	1.0 	1.0 	2.0
+e0e1_x_tr5_i1	1.0 	1.0 	2.0
+e0e1_x_tr6_i1	1.0 	1.0 	2.0
+e0e1_x_tr7_i1	1.0 	1.0 	2.0
+e0e1_x_tr8_i1	1.0 	1.0 	2.0
+e0e1_x_tr9_i1	1.0 	1.0 	2.0
+e0e1_x_tr10_i1	1.0 	1.0 	2.0
+e0e1_x_tr11_i1	1.0 	1.0 	2.0
+e0e1_x_tr12_i1	1.0 	1.0 	2.0
+e0e1_x_tr13_i1	1.0 	1.0 	2.0
+e0e1_x_tr14_i1	1.0 	1.0 	2.0
+e0e1_x_tr15_i1	1.0 	1.0 	2.0
+e0e1_x_tr16_i1	1.0 	1.0 	2.0
+e0e1_x_tr17_i1	1.0 	1.0 	2.0
+e0e1_x_tr18_i1	1.0 	1.0 	2.0
+e0e1_x_tr19_i1	1.0 	1.0 	2.0
+e0_x_Reboilerin_i1	1.0 	1.0 	2.0
+e0_x_D_i2	6.93889390391e-18 	6.93889390391e-18 	1.38777878078e-17
+e0e1_x_tr1_i2	1.0 	1.0 	2.0
+e0e1_x_tr2_i2	1.0 	1.0 	2.0
+e0e1_x_tr3_i2	1.0 	1.0 	2.0
+e0e1_x_tr4_i2	1.0 	1.0 	2.0
+e0e1_x_tr5_i2	1.0 	1.0 	2.0
+e0e1_x_tr6_i2	1.0 	1.0 	2.0
+e0e1_x_tr7_i2	1.0 	1.0 	2.0
+e0e1_x_tr8_i2	1.0 	1.0 	2.0
+e0e1_x_tr9_i2	1.0 	1.0 	2.0
+e0e1_x_tr10_i2	1.0 	1.0 	2.0
+e0e1_x_tr11_i2	1.0 	1.0 	2.0
+e0e1_x_tr12_i2	1.0 	1.0 	2.0
+e0e1_x_tr13_i2	1.0 	1.0 	2.0
+e0e1_x_tr14_i2	1.0 	1.0 	2.0
+e0e1_x_tr15_i2	1.0 	1.0 	2.0
+e0e1_x_tr16_i2	1.0 	1.0 	2.0
+e0e1_x_tr17_i2	1.0 	1.0 	2.0
+e0e1_x_tr18_i2	1.0 	1.0 	2.0
+e0e1_x_tr19_i2	1.0 	1.0 	2.0
+e0_x_Reboilerin_i2	1.0 	1.0 	2.0
+e0e1_x_B_i2	1.11022302463e-16 	1.11022302463e-16 	2.22044604925e-16
+e0_x_Reboiler_i1	1.0 	1.0 	2.0
+e0_x_Reboiler_i2	1.0 	1.0 	2.0
+e0_y_D_i1	1.0 	1.0 	2.0
+e0e1_y_tr2_i1	1.0 	1.0 	2.0
+e0e1_y_tr3_i1	1.0 	1.0 	2.0
+e0e1_y_tr4_i1	1.0 	1.0 	2.0
+e0e1_y_tr5_i1	1.0 	1.0 	2.0
+e0e1_y_tr6_i1	1.0 	1.0 	2.0
+e0e1_y_tr7_i1	1.0 	1.0 	2.0
+e0e1_y_tr8_i1	1.0 	1.0 	2.0
+e0e1_y_tr9_i1	1.0 	1.0 	2.0
+e0e1_y_tr10_i1	1.0 	1.0 	2.0
+e0e1_y_tr11_i1	1.0 	1.0 	2.0
+e0e1_y_tr12_i1	1.0 	1.0 	2.0
+e0e1_y_tr13_i1	1.0 	1.0 	2.0
+e0e1_y_tr14_i1	1.0 	1.0 	2.0
+e0e1_y_tr15_i1	1.0 	1.0 	2.0
+e0e1_y_tr16_i1	1.0 	1.0 	2.0
+e0e1_y_tr17_i1	1.0 	1.0 	2.0
+e0e1_y_tr18_i1	1.0 	1.0 	2.0
+e0e1_y_tr19_i1	1.0 	1.0 	2.0
+e0e1_y_tr20_i1	1.0 	1.0 	2.0
+e0_y_Reboiler_i1	1.0 	1.0 	2.0
+e0_y_D_i2	1.0 	1.0 	2.0
+e0e1_y_tr2_i2	1.0 	1.0 	2.0
+e0e1_y_tr3_i2	1.0 	1.0 	2.0
+e0e1_y_tr4_i2	1.0 	1.0 	2.0
+e0e1_y_tr5_i2	1.0 	1.0 	2.0
+e0e1_y_tr6_i2	1.0 	1.0 	2.0
+e0e1_y_tr7_i2	1.0 	1.0 	2.0
+e0e1_y_tr8_i2	1.0 	1.0 	2.0
+e0e1_y_tr9_i2	1.0 	1.0 	2.0
+e0e1_y_tr10_i2	1.0 	1.0 	2.0
+e0e1_y_tr11_i2	1.0 	1.0 	2.0
+e0e1_y_tr12_i2	1.0 	1.0 	2.0
+e0e1_y_tr13_i2	1.0 	1.0 	2.0
+e0e1_y_tr14_i2	1.0 	1.0 	2.0
+e0e1_y_tr15_i2	1.0 	1.0 	2.0
+e0e1_y_tr16_i2	1.0 	1.0 	2.0
+e0e1_y_tr17_i2	1.0 	1.0 	2.0
+e0e1_y_tr18_i2	1.0 	1.0 	2.0
+e0e1_y_tr19_i2	1.0 	1.0 	2.0
+e0e1_y_tr20_i2	1.0 	1.0 	2.0
+e0_y_Reboiler_i2	1.0 	1.0 	2.0
+e0_F_DLn	1.0 	1.0 	2.0
+e0_K_D_i1	0.026125999284 	0.0535583496094 	0.0796843488934
+e0_K_D_i2	0.474989783785 	1.0 	1.47498978379
+e0_Q_D	1.0 	1.0 	2.0
+e0_R_Reflux	1.0 	1.0 	2.0
+e0_T_D	0.123486190796 	1.85445969691e-13 	0.123486190796
+e0_p_DL	solved 	solved 	solved
+e0_y_DV_i1	0.243902205957 	0.5 	0.743902205957
+e0_y_DV_i2	0.238219960058 	0.5 	0.738219960058
+e0e1_greek_eta_L_tr1	1.0 	1.0 	2.0
+e0_K_Reboiler_i1	1.0 	1.0 	2.0
+e0_K_Reboiler_i2	1.0 	1.0 	2.0
+e0_Q_Reboiler	1.0 	1.0 	2.0
+e0_T_Reboiler	4.077997961e-07 	4.077997961e-07 	8.155995922e-07
+e0e1_greek_eta_L_tr2	1.0 	1.0 	2.0
+e0_p_ReboilerV	0.00019916 	0.00019916 	0.00039832
+e0e1_greek_eta_L_tr3	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr4	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr5	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr6	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr7	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr8	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr9	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr10	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr11	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr12	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr13	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr14	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr15	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr16	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr17	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr18	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr19	1.0 	1.0 	2.0
+e0e1_greek_eta_L_tr20	1.0 	1.0 	2.0
+e0_x_F_i2	solved 	solved 	solved
+e0e1_greek_eta_V_tr1	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr2	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr3	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr4	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr5	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr6	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr7	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr8	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr9	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr10	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr11	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr12	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr13	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr14	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr15	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr16	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr17	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr18	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr19	1.0 	1.0 	2.0
+e0e1_greek_eta_V_tr20	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr1	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr2	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr3	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr4	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr5	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr6	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr7	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr8	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr9	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr10	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr11	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr12	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr13	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr14	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr15	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr16	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr17	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr18	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr19	1.0 	1.0 	2.0
+e0e1_greek_rho_Lm_tr20	1.0 	1.0 	2.0
+e0e1_greek_rho_Vm_tr1	0.978949903777 	0.978949903777 	1.95789980755
+e0e1_greek_rho_Vm_tr2	0.978948640847 	0.978948640847 	1.95789728169
+e0e1_greek_rho_Vm_tr3	0.978947377917 	0.978947377917 	1.95789475583
+e0e1_greek_rho_Vm_tr4	0.978946114987 	0.978946114987 	1.95789222997
+e0e1_greek_rho_Vm_tr5	0.979076275475 	0.979076275475 	1.95815255095
+e0e1_greek_rho_Vm_tr6	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr7	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr8	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr9	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr10	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr11	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr12	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr13	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr14	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr15	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr16	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr17	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr18	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr19	0.979076275475 	0.981953091172 	1.96102936665
+e0e1_greek_rho_Vm_tr20	0.981953091172 	0.981953091172 	1.96390618234
+e0e1_greek_sigma_tr1	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr2	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr3	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr4	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr5	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr6	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr7	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr8	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr9	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr10	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr11	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr12	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr13	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr14	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr15	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr16	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr17	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr18	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr19	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_sigma_tr20	0.999978915035 	0.999978915035 	1.99995783007
+e0e1_greek_theta_i1_j1_tr1	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr2	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr3	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr4	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr5	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr6	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr7	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr8	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr9	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr10	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr11	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr12	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr13	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr14	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr15	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr16	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr17	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr18	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr19	solved 	solved 	solved
+e0e1_greek_theta_i1_j1_tr20	solved 	solved 	solved
+e0e1_greek_theta_i1_j2_tr1	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr2	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr3	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr4	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr5	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr6	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr7	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr8	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr9	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr10	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr11	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr12	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr13	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr14	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr15	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr16	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr17	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr18	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr19	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i1_j2_tr20	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr1	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr2	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr3	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr4	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr5	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr6	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr7	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr8	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr9	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr10	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr11	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr12	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr13	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr14	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr15	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr16	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr17	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr18	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr19	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j1_tr20	0.916666666667 	0.916666666667 	1.83333333333
+e0e1_greek_theta_i2_j2_tr1	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr2	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr3	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr4	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr5	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr6	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr7	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr8	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr9	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr10	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr11	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr12	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr13	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr14	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr15	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr16	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr17	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr18	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr19	solved 	solved 	solved
+e0e1_greek_theta_i2_j2_tr20	solved 	solved 	solved
+e0e1_A	7.40148683083e-17 	7.40148683083e-17 	1.48029736617e-16
+e0e1_F_BLn	1.0 	1.0 	2.0
+e0_F_LReboilerinn	0.5 	0.5 	1.0
+e0_F_DLRefluxn	1.0 	1.0 	2.0
+e0e1_F_Ln_tr1	1.0 	1.0 	2.0
+e0e1_F_Ln_tr2	1.0 	1.0 	2.0
+e0e1_F_Ln_tr3	1.0 	1.0 	2.0
+e0e1_F_Ln_tr4	1.0 	1.0 	2.0
+e0e1_F_Ln_tr5	1.0 	1.0 	2.0
+e0e1_F_Ln_tr6	1.0 	1.0 	2.0
+e0e1_F_Ln_tr7	1.0 	1.0 	2.0
+e0e1_F_Ln_tr8	1.0 	1.0 	2.0
+e0e1_F_Ln_tr9	1.0 	1.0 	2.0
+e0e1_F_Ln_tr10	1.0 	1.0 	2.0
+e0e1_F_Ln_tr11	1.0 	1.0 	2.0
+e0e1_F_Ln_tr12	1.0 	1.0 	2.0
+e0e1_F_Ln_tr13	1.0 	1.0 	2.0
+e0e1_F_Ln_tr14	1.0 	1.0 	2.0
+e0e1_F_Ln_tr15	1.0 	1.0 	2.0
+e0e1_F_Ln_tr16	1.0 	1.0 	2.0
+e0e1_F_Ln_tr17	1.0 	1.0 	2.0
+e0e1_F_Ln_tr18	1.0 	1.0 	2.0
+e0e1_F_Ln_tr19	1.0 	1.0 	2.0
+e0e1_F_Ln_tr20	1.0 	1.0 	2.0
+e0e1_F_Ln_tr21	1.0 	1.0 	2.0
+e0_F_DVn	1.0 	1.0 	2.0
+e0e1_F_Vn_tr2	1.0 	1.0 	2.0
+e0e1_F_Vn_tr3	1.0 	1.0 	2.0
+e0e1_F_Vn_tr4	1.0 	1.0 	2.0
+e0e1_F_Vn_tr5	1.0 	1.0 	2.0
+e0e1_F_Vn_tr6	1.0 	1.0 	2.0
+e0e1_F_Vn_tr7	1.0 	1.0 	2.0
+e0e1_F_Vn_tr8	1.0 	1.0 	2.0
+e0e1_F_Vn_tr9	1.0 	1.0 	2.0
+e0e1_F_Vn_tr10	1.0 	1.0 	2.0
+e0e1_F_Vn_tr11	1.0 	1.0 	2.0
+e0e1_F_Vn_tr12	1.0 	1.0 	2.0
+e0e1_F_Vn_tr13	1.0 	1.0 	2.0
+e0e1_F_Vn_tr14	1.0 	1.0 	2.0
+e0e1_F_Vn_tr15	1.0 	1.0 	2.0
+e0e1_F_Vn_tr16	1.0 	1.0 	2.0
+e0e1_F_Vn_tr17	1.0 	1.0 	2.0
+e0e1_F_Vn_tr18	1.0 	1.0 	2.0
+e0e1_F_Vn_tr19	1.0 	1.0 	2.0
+e0e1_F_Vn_tr20	1.0 	1.0 	2.0
+e0_F_ReboilerVn	1.0 	1.0 	2.0
+e0e1_K_tr1_i1	1.0 	1.0 	2.0
+e0e1_K_tr2_i1	1.0 	1.0 	2.0
+e0e1_K_tr3_i1	1.0 	1.0 	2.0
+e0e1_K_tr4_i1	1.0 	1.0 	2.0
+e0e1_K_tr5_i1	1.0 	1.0 	2.0
+e0e1_K_tr6_i1	1.0 	1.0 	2.0
+e0e1_K_tr7_i1	1.0 	1.0 	2.0
+e0e1_K_tr8_i1	1.0 	1.0 	2.0
+e0e1_K_tr9_i1	1.0 	1.0 	2.0
+e0e1_K_tr10_i1	1.0 	1.0 	2.0
+e0e1_K_tr11_i1	1.0 	1.0 	2.0
+e0e1_K_tr12_i1	1.0 	1.0 	2.0
+e0e1_K_tr13_i1	1.0 	1.0 	2.0
+e0e1_K_tr14_i1	1.0 	1.0 	2.0
+e0e1_K_tr15_i1	1.0 	1.0 	2.0
+e0e1_K_tr16_i1	1.0 	1.0 	2.0
+e0e1_K_tr17_i1	1.0 	1.0 	2.0
+e0e1_K_tr18_i1	1.0 	1.0 	2.0
+e0e1_K_tr19_i1	1.0 	1.0 	2.0
+e0e1_K_tr20_i1	1.0 	1.0 	2.0
+e0e1_K_tr1_i2	1.0 	1.0 	2.0
+e0e1_K_tr2_i2	1.0 	1.0 	2.0
+e0e1_K_tr3_i2	1.0 	1.0 	2.0
+e0e1_K_tr4_i2	1.0 	1.0 	2.0
+e0e1_K_tr5_i2	1.0 	1.0 	2.0
+e0e1_K_tr6_i2	1.0 	1.0 	2.0
+e0e1_K_tr7_i2	1.0 	1.0 	2.0
+e0e1_K_tr8_i2	1.0 	1.0 	2.0
+e0e1_K_tr9_i2	1.0 	1.0 	2.0
+e0e1_K_tr10_i2	1.0 	1.0 	2.0
+e0e1_K_tr11_i2	1.0 	1.0 	2.0
+e0e1_K_tr12_i2	1.0 	1.0 	2.0
+e0e1_K_tr13_i2	1.0 	1.0 	2.0
+e0e1_K_tr14_i2	1.0 	1.0 	2.0
+e0e1_K_tr15_i2	1.0 	1.0 	2.0
+e0e1_K_tr16_i2	1.0 	1.0 	2.0
+e0e1_K_tr17_i2	1.0 	1.0 	2.0
+e0e1_K_tr18_i2	1.0 	1.0 	2.0
+e0e1_K_tr19_i2	1.0 	1.0 	2.0
+e0e1_K_tr20_i2	1.0 	1.0 	2.0
+e0e1_M_L_tr1	1.0 	1.0 	2.0
+e0e1_M_L_tr2	1.0 	1.0 	2.0
+e0e1_M_L_tr3	1.0 	1.0 	2.0
+e0e1_M_L_tr4	1.0 	1.0 	2.0
+e0e1_M_L_tr5	1.0 	1.0 	2.0
+e0e1_M_L_tr6	1.0 	1.0 	2.0
+e0e1_M_L_tr7	1.0 	1.0 	2.0
+e0e1_M_L_tr8	1.0 	1.0 	2.0
+e0e1_M_L_tr9	1.0 	1.0 	2.0
+e0e1_M_L_tr10	1.0 	1.0 	2.0
+e0e1_M_L_tr11	1.0 	1.0 	2.0
+e0e1_M_L_tr12	1.0 	1.0 	2.0
+e0e1_M_L_tr13	1.0 	1.0 	2.0
+e0e1_M_L_tr14	1.0 	1.0 	2.0
+e0e1_M_L_tr15	1.0 	1.0 	2.0
+e0e1_M_L_tr16	1.0 	1.0 	2.0
+e0e1_M_L_tr17	1.0 	1.0 	2.0
+e0e1_M_L_tr18	1.0 	1.0 	2.0
+e0e1_M_L_tr19	1.0 	1.0 	2.0
+e0e1_M_L_tr20	1.0 	1.0 	2.0
+e0e1_M_V_tr1	1.0 	1.0 	2.0
+e0e1_M_V_tr2	1.0 	1.0 	2.0
+e0e1_M_V_tr3	1.0 	1.0 	2.0
+e0e1_M_V_tr4	1.0 	1.0 	2.0
+e0e1_M_V_tr5	1.0 	1.0 	2.0
+e0e1_M_V_tr6	1.0 	1.0 	2.0
+e0e1_M_V_tr7	1.0 	1.0 	2.0
+e0e1_M_V_tr8	1.0 	1.0 	2.0
+e0e1_M_V_tr9	1.0 	1.0 	2.0
+e0e1_M_V_tr10	1.0 	1.0 	2.0
+e0e1_M_V_tr11	1.0 	1.0 	2.0
+e0e1_M_V_tr12	1.0 	1.0 	2.0
+e0e1_M_V_tr13	1.0 	1.0 	2.0
+e0e1_M_V_tr14	1.0 	1.0 	2.0
+e0e1_M_V_tr15	1.0 	1.0 	2.0
+e0e1_M_V_tr16	1.0 	1.0 	2.0
+e0e1_M_V_tr17	1.0 	1.0 	2.0
+e0e1_M_V_tr18	1.0 	1.0 	2.0
+e0e1_M_V_tr19	1.0 	1.0 	2.0
+e0e1_M_V_tr20	1.0 	1.0 	2.0
+e0e1_P_i1_tr1	1.0 	1.0 	2.0
+e0e1_P_i1_tr2	1.0 	1.0 	2.0
+e0e1_P_i1_tr3	1.0 	1.0 	2.0
+e0e1_P_i1_tr4	1.0 	1.0 	2.0
+e0e1_P_i1_tr5	1.0 	1.0 	2.0
+e0e1_P_i1_tr6	1.0 	1.0 	2.0
+e0e1_P_i1_tr7	1.0 	1.0 	2.0
+e0e1_P_i1_tr8	1.0 	1.0 	2.0
+e0e1_P_i1_tr9	1.0 	1.0 	2.0
+e0e1_P_i1_tr10	1.0 	1.0 	2.0
+e0e1_P_i1_tr11	1.0 	1.0 	2.0
+e0e1_P_i1_tr12	1.0 	1.0 	2.0
+e0e1_P_i1_tr13	1.0 	1.0 	2.0
+e0e1_P_i1_tr14	1.0 	1.0 	2.0
+e0e1_P_i1_tr15	1.0 	1.0 	2.0
+e0e1_P_i1_tr16	1.0 	1.0 	2.0
+e0e1_P_i1_tr17	1.0 	1.0 	2.0
+e0e1_P_i1_tr18	1.0 	1.0 	2.0
+e0e1_P_i1_tr19	1.0 	1.0 	2.0
+e0e1_P_i1_tr20	1.0 	1.0 	2.0
+e0e1_P_i2_tr1	1.0 	1.0 	2.0
+e0e1_P_i2_tr2	1.0 	1.0 	2.0
+e0e1_P_i2_tr3	1.0 	1.0 	2.0
+e0e1_P_i2_tr4	1.0 	1.0 	2.0
+e0e1_P_i2_tr5	1.0 	1.0 	2.0
+e0e1_P_i2_tr6	1.0 	1.0 	2.0
+e0e1_P_i2_tr7	1.0 	1.0 	2.0
+e0e1_P_i2_tr8	1.0 	1.0 	2.0
+e0e1_P_i2_tr9	1.0 	1.0 	2.0
+e0e1_P_i2_tr10	1.0 	1.0 	2.0
+e0e1_P_i2_tr11	1.0 	1.0 	2.0
+e0e1_P_i2_tr12	1.0 	1.0 	2.0
+e0e1_P_i2_tr13	1.0 	1.0 	2.0
+e0e1_P_i2_tr14	1.0 	1.0 	2.0
+e0e1_P_i2_tr15	1.0 	1.0 	2.0
+e0e1_P_i2_tr16	1.0 	1.0 	2.0
+e0e1_P_i2_tr17	1.0 	1.0 	2.0
+e0e1_P_i2_tr18	1.0 	1.0 	2.0
+e0e1_P_i2_tr19	1.0 	1.0 	2.0
+e0e1_P_i2_tr20	1.0 	1.0 	2.0
+e0e1_P_tr1	1.0 	1.0 	2.0
+e0e1_P_tr2	1.0 	1.0 	2.0
+e0e1_P_tr3	1.0 	1.0 	2.0
+e0e1_P_tr4	1.0 	1.0 	2.0
+e0e1_P_tr5	1.0 	1.0 	2.0
+e0e1_P_tr6	1.0 	1.0 	2.0
+e0e1_P_tr7	1.0 	1.0 	2.0
+e0e1_P_tr8	1.0 	1.0 	2.0
+e0e1_P_tr9	1.0 	1.0 	2.0
+e0e1_P_tr10	1.0 	1.0 	2.0
+e0e1_P_tr11	1.0 	1.0 	2.0
+e0e1_P_tr12	1.0 	1.0 	2.0
+e0e1_P_tr13	1.0 	1.0 	2.0
+e0e1_P_tr14	1.0 	1.0 	2.0
+e0e1_P_tr15	1.0 	1.0 	2.0
+e0e1_P_tr16	1.0 	1.0 	2.0
+e0e1_P_tr17	1.0 	1.0 	2.0
+e0e1_P_tr18	1.0 	1.0 	2.0
+e0e1_P_tr19	1.0 	1.0 	2.0
+e0e1_P_tr20	1.0 	1.0 	2.0
+e0e1_T_tr1	1.0 	1.0 	2.0
+e0e1_T_tr2	1.0 	1.0 	2.0
+e0e1_T_tr3	1.0 	1.0 	2.0
+e0e1_T_tr4	1.0 	1.0 	2.0
+e0e1_T_tr5	1.0 	1.0 	2.0
+e0e1_T_tr6	1.0 	1.0 	2.0
+e0e1_T_tr7	1.0 	1.0 	2.0
+e0e1_T_tr8	1.0 	1.0 	2.0
+e0e1_T_tr9	1.0 	1.0 	2.0
+e0e1_T_tr10	1.0 	1.0 	2.0
+e0e1_T_tr11	1.0 	1.0 	2.0
+e0e1_T_tr12	1.0 	1.0 	2.0
+e0e1_T_tr13	1.0 	1.0 	2.0
+e0e1_T_tr14	1.0 	1.0 	2.0
+e0e1_T_tr15	1.0 	1.0 	2.0
+e0e1_T_tr16	1.0 	1.0 	2.0
+e0e1_T_tr17	1.0 	1.0 	2.0
+e0e1_T_tr18	1.0 	1.0 	2.0
+e0e1_T_tr19	1.0 	1.0 	2.0
+e0e1_T_tr20	1.0 	1.0 	2.0
+e0e1_T_B	1.0 	1.0 	2.0
+e0e1_h_BLn	0.875833506145 	0.875833506145 	1.75166701229
+e0_h_LReboilern	1.0 	1.0 	2.0
+e0_h_Fn	2.98023223877e-17 	2.98023223877e-17 	5.96046447754e-17
+e0_h_DLn	0.0196708302239 	0.816136783205 	0.835807613429
+e0e1_h_Ln_tr1	1.0 	1.0 	2.0
+e0e1_h_Ln_tr2	1.0 	1.0 	2.0
+e0e1_h_Ln_tr3	1.0 	1.0 	2.0
+e0e1_h_Ln_tr4	1.0 	1.0 	2.0
+e0e1_h_Ln_tr5	1.0 	1.0 	2.0
+e0e1_h_Ln_tr6	1.0 	1.0 	2.0
+e0e1_h_Ln_tr7	1.0 	1.0 	2.0
+e0e1_h_Ln_tr8	1.0 	1.0 	2.0
+e0e1_h_Ln_tr9	1.0 	1.0 	2.0
+e0e1_h_Ln_tr10	1.0 	1.0 	2.0
+e0e1_h_Ln_tr11	1.0 	1.0 	2.0
+e0e1_h_Ln_tr12	1.0 	1.0 	2.0
+e0e1_h_Ln_tr13	1.0 	1.0 	2.0
+e0e1_h_Ln_tr14	1.0 	1.0 	2.0
+e0e1_h_Ln_tr15	1.0 	1.0 	2.0
+e0e1_h_Ln_tr16	1.0 	1.0 	2.0
+e0e1_h_Ln_tr17	1.0 	1.0 	2.0
+e0e1_h_Ln_tr18	1.0 	1.0 	2.0
+e0e1_h_Ln_tr19	1.0 	1.0 	2.0
+e0_h_LReboilerinn	1.0 	1.0 	2.0
+e0_h_DVn	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr2	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr3	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr4	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr5	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr6	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr7	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr8	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr9	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr10	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr11	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr12	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr13	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr14	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr15	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr16	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr17	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr18	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr19	0.280638712991 	0.280638712991 	0.561277425981
+e0e1_h_Vn_tr20	0.280638712991 	0.280638712991 	0.561277425981
+e0_h_ReboilerVn	0.28064070418 	0.28064070418 	0.56128140836
+e0e1_p_tr1	solved 	solved 	solved
+e0e1_p_tr2	solved 	solved 	solved
+e0e1_p_tr3	solved 	solved 	solved
+e0e1_p_tr4	solved 	solved 	solved
+e0e1_p_tr5	solved 	solved 	solved
+e0e1_p_tr6	solved 	0.9979 	0.9979
+e0e1_p_tr7	solved 	0.99748 	0.99748
+e0e1_p_tr8	solved 	0.99706 	0.99706
+e0e1_p_tr9	solved 	0.99664 	0.99664
+e0e1_p_tr10	solved 	0.99622 	0.99622
+e0e1_p_tr11	solved 	0.9958 	0.9958
+e0e1_p_tr12	solved 	0.9958 	0.9958
+e0e1_p_tr13	solved 	0.9958 	0.9958
+e0e1_p_tr14	solved 	0.9958 	0.9958
+e0e1_p_tr15	solved 	0.9958 	0.9958
+e0e1_p_tr16	solved 	0.9958 	0.9958
+e0e1_p_tr17	solved 	0.9958 	0.9958
+e0e1_p_tr18	solved 	0.9958 	0.9958
+e0e1_p_tr19	solved 	0.9958 	0.9958
+e0_p_LReboiler	solved 	0.00019916 	0.00019916
+e0e1_p_tr21	0.9958 	0.9958 	1.9916
+
+VarboundSetFraction	 5.4907078958e-96	1.25077746431e-108	5.4907078958e-96
+HypercubicLengthFraction	0.610846020739 
+
+Following Variables have been solved:
+e0_p_DL (VarBound_0)
+e0_p_DL (VarBound_1)
+e0_x_F_i2 (VarBound_0)
+e0_x_F_i2 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr1 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr1 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr2 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr2 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr3 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr3 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr4 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr4 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr5 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr5 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr6 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr6 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr7 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr7 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr8 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr8 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr9 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr9 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr10 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr10 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr11 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr11 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr12 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr12 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr13 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr13 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr14 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr14 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr15 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr15 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr16 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr16 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr17 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr17 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr18 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr18 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr19 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr19 (VarBound_1)
+e0e1_greek_theta_i1_j1_tr20 (VarBound_0)
+e0e1_greek_theta_i1_j1_tr20 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr1 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr1 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr2 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr2 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr3 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr3 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr4 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr4 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr5 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr5 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr6 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr6 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr7 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr7 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr8 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr8 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr9 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr9 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr10 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr10 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr11 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr11 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr12 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr12 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr13 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr13 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr14 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr14 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr15 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr15 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr16 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr16 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr17 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr17 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr18 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr18 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr19 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr19 (VarBound_1)
+e0e1_greek_theta_i2_j2_tr20 (VarBound_0)
+e0e1_greek_theta_i2_j2_tr20 (VarBound_1)
+e0e1_p_tr1 (VarBound_0)
+e0e1_p_tr1 (VarBound_1)
+e0e1_p_tr2 (VarBound_0)
+e0e1_p_tr2 (VarBound_1)
+e0e1_p_tr3 (VarBound_0)
+e0e1_p_tr3 (VarBound_1)
+e0e1_p_tr4 (VarBound_0)
+e0e1_p_tr4 (VarBound_1)
+e0e1_p_tr5 (VarBound_0)
+e0e1_p_tr5 (VarBound_1)
+e0e1_p_tr6 (VarBound_0)
+e0e1_p_tr7 (VarBound_0)
+e0e1_p_tr8 (VarBound_0)
+e0e1_p_tr9 (VarBound_0)
+e0e1_p_tr10 (VarBound_0)
+e0e1_p_tr11 (VarBound_0)
+e0e1_p_tr12 (VarBound_0)
+e0e1_p_tr13 (VarBound_0)
+e0e1_p_tr14 (VarBound_0)
+e0e1_p_tr15 (VarBound_0)
+e0e1_p_tr16 (VarBound_0)
+e0e1_p_tr17 (VarBound_0)
+e0e1_p_tr18 (VarBound_0)
+e0e1_p_tr19 (VarBound_0)
+e0_p_LReboiler (VarBound_0)

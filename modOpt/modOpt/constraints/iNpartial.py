@@ -520,7 +520,8 @@ def complexOperator(complexA, complexMid, complexB, xInterval):
     if not complexA and not complexMid and complexB:
         return [mpmath.mpi(xInterval.mid, xInterval.b)], [mpmath.mpi(xInterval.a, xInterval.mid)]
     if not complexA and complexMid and complexB:
-        return [mpmath.mpi(xInterval.a, xInterval.mid)], []  
+        return [mpmath.mpi(xInterval.a, xInterval.mid)], []
+    else: return [], []  
 
 
 def getReducedIntervalOfLinearFunction(a, xSymbolic, i, xBounds, bi):
@@ -1232,6 +1233,7 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i, l, relEpsdFdX, absEpsdFdX
     if dfdxUp == mpmath.mpi('-inf', '+inf'): l = l+1
     if dfdxLow == mpmath.mpi('-inf', '+inf'): l = l+1
     if mpmath.almosteq(dfdxUp.a, dfdxLow.a, relEpsdFdX, absEpsdFdX): l = l+1
+    if mpmath.almosteq(dfdxUp.b, dfdxLow.b, relEpsdFdX, absEpsdFdX): l = l+1
     return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone, l
 
 
