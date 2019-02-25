@@ -1494,7 +1494,10 @@ def compareIntervalToIntervalSet(iv, ivSet):
     """
     
     for i in range(0, len(ivSet)):
-        newIV = ivIntersection(iv, ivSet[i])
+        try:
+            newIV = ivIntersection(iv, ivSet[i])
+        except: return []
+        
         if newIV != []: return newIV
     return []
 

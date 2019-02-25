@@ -27,7 +27,7 @@ User specifications
 def main():
     
 # Solver settings:
-    dict_options = {"fileName": "Reactor_r3",
+    dict_options = {"fileName": "Reactor_r100",
                     "iterMaxNewton": 15,
                     "machEpsRelNewton": 2.22e-14,
                     "machEpsAbsNewton": 2.22e-14,
@@ -35,7 +35,7 @@ def main():
                     "relTolX": 2.22e-14,
                     "absTolF": 2.22e-14,
                     "relTolF": 2.22e-2,
-                    "resolution": 3,
+                    "resolution": 100,
                     "Debug-Modus": True,
                     "NoOfNonChangingValues": 3,
                     'timer': True,

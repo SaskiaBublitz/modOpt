@@ -28,19 +28,20 @@ def main():
     
 # Solver settings:
     dict_options = {"fileName": "Deiso20_r500",
-                    "iterMaxNewton": 15,
-                    "machEpsRelNewton": 2.22e-14,
-                    "machEpsAbsNewton": 2.22e-14,
-                    "absTolX": 2.22e-14, #numpy.finfo(numpy.float).eps
-                    "relTolX": 2.22e-14,
-                    "absTolF": 2.22e-14,
+                    "iterMaxNewton": 20,
+                    "machEpsRelNewton": 2.22e-16,
+                    "machEpsAbsNewton": 2.22e-16,
+                    "absTolX": 2.22e-10, #numpy.finfo(numpy.float).eps
+                    "relTolX": 2.22e-16,
+                    "absTolF": 2.22e-10,
                     "relTolF": 2.22e-2,
                     "resolution": 500,
-                    "Debug-Modus": False,
+                    "Debug-Modus": True,
                     "NoOfNonChangingValues": 3,
                     'timer': True,
                     'method': 'complete',#'complete', 'partial'
                     'analysis': True}
+
 
 # Model initialization:
     initialModel, dict_variables = getEquationsVariablesAndParameters(dict_options)
