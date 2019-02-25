@@ -27,21 +27,20 @@ User specifications
 def main():
     
 # Solver settings:
-    dict_options = {"fileName": "vanDerWaals",
-                    "iterMaxNewton": 20,
-                    "machEpsRelNewton": 2.22e-16,
-                    "machEpsAbsNewton": 2.22e-16,
+    dict_options = {"fileName": "MBofFlash_r100",
+                    "iterMaxNewton": 15,
+                    "machEpsRelNewton": 2.22e-14,
+                    "machEpsAbsNewton": 2.22e-14,
                     "absTolX": 2.22e-14, #numpy.finfo(numpy.float).eps
                     "relTolX": 2.22e-14,
                     "absTolF": 2.22e-14,
                     "relTolF": 2.22e-2,
-                    "resolution": 50,
-                    "precision": 0.0005,
+                    "resolution": 100,
                     "Debug-Modus": False,
                     "NoOfNonChangingValues": 3,
                     'timer': True,
-                    'method': 'partial' #'complete', 'partial'
-                    }
+                    'method': 'complete',#'complete', 'partial'
+                    'analysis': True}
 
 # Model initialization:
     initialModel, dict_variables = getEquationsVariablesAndParameters(dict_options)
@@ -52,15 +51,17 @@ def main():
                                                              dict_options)
   
 # Start value generation:    
-    moi.setStateVarValuesToMidPointOfIntervals(modelWithReducedBounds, 
-                                               dict_options["absTolX"])
+    moi.arithmeticMean.setStateVarValuesToMidPointOfIntervals(modelWithReducedBounds,
+                                                              dict_options["absTolX"])
     
     dict_variables = moc.updateDictToModel(dict_variables, 
                                                   modelWithReducedBounds)
 
  # Result export:    
     moc.writeResults(dict_options["fileName"], dict_variables, t, iterNo)
-    moc.analyseResults(dict_options["fileName"], initialModel.xSymbolic, 
+    
+    if dict_options['analysis'] == True:
+        moc.analyseResults(dict_options["fileName"], initialModel.xSymbolic, 
                        initialModel.xBounds[0], modelWithReducedBounds.xBounds)
 
 
@@ -82,20 +83,19 @@ def getSymbolicFunctions(x, p):
         
     """
 # Getting variable values:
-    e0_v = x[0]
-    e0_dPdv_crit = x[1]
-    e0_v_ph = x[2]
+    e0_x_F_i2 = x[0]
+    e0_x_i2 = x[1]
+    e0_y_i2 = x[2]
+    e0_L = x[3]
+    e0_V = x[4]
 
 
 
 # Getting parameter values:
-    e0_P = p[0]
-    e0_R = p[1]
-    e0_T = p[2]
-    e0_a = p[3]
-    e0_b = p[4]
-    e0_P_crit = p[5]
-    e0_v_crit = p[6]
+    e0_x_F_i1 = p[0]
+    e0_x_i1 = p[1]
+    e0_y_i1 = p[2]
+    e0_F = p[3]
 
 
 
@@ -105,9 +105,11 @@ def getSymbolicFunctions(x, p):
 
 # Solve equation system for given x:
     f= [
-    e0_P-(((e0_R) *(e0_T))/((e0_v-e0_b))-(e0_a)/(((e0_v))**(2.0))) ,
-    e0_dPdv_crit-(-((e0_R) *(e0_T))/((e0_P_crit) *(((e0_v-e0_b))**(2.0)))+((2.0) *(e0_a))/((e0_P_crit) *(((e0_v))**(3.0)))) ,
-    e0_v_ph-(e0_v-e0_v_crit) 
+    (e0_x_F_i1+e0_x_F_i2)-(1.0) ,
+    (e0_x_i1+e0_x_i2)-(1.0) ,
+    (e0_y_i1+e0_y_i2)-(1.0) ,
+    0.0-((e0_F) *(e0_x_F_i1)-(e0_V) *(e0_y_i1)-(e0_L) *(e0_x_i1)) ,
+    0.0-((e0_F) *(e0_x_F_i2)-(e0_V) *(e0_y_i2)-(e0_L) *(e0_x_i2)) 
 
 ]
     return f
@@ -126,35 +128,36 @@ def getEquationsVariablesAndParameters(dict_options):
 
     """
 
-    x = numpy.empty(3)
-    xInitial = numpy.empty((3), dtype = object) 
-    parameter = numpy.empty(7)
+    x = numpy.empty(5)
+    xInitial = numpy.empty((5), dtype = object) 
+    parameter = numpy.empty(4)
     dict_variables = {}
 
     # Iteration variable initializatio
-    x[0] = 10.0 	# e0_v
-    x[1] = 0.0 	# e0_dPdv_crit
-    x[2] = 0.0 	# e0_v_ph
+    x[0] = 0.5 	# e0_x_F_i2
+    x[1] = 0.5 	# e0_x_i2
+    x[2] = 0.5 	# e0_y_i2
+    x[3] = 75.0 	# e0_L
+    x[4] = 75.0 	# e0_V
 
 
     # Constant parameter setting:
-    parameter[0] = 215000.0 	# e0_P
-    parameter[1] = 8.314 	# e0_R
-    parameter[2] = 427.85 	# e0_T
-    parameter[3] = 3.789 	# e0_a
-    parameter[4] = 2.37E-4 	# e0_b
-    parameter[5] = 1.9987E7 	# e0_P_crit
-    parameter[6] = 7.11E-4 	# e0_v_crit
+    parameter[0] = 0.4 	# e0_x_F_i1
+    parameter[1] = 0.1 	# e0_x_i1
+    parameter[2] = 0.9 	# e0_y_i1
+    parameter[3] = 150.0 	# e0_F
 
 
     # Get symbolic quantities:
-    xSymbolic = sympy.symbols('e0_v e0_dPdv_crit e0_v_ph ')
+    xSymbolic = sympy.symbols('e0_x_F_i2 e0_x_i2 e0_y_i2 e0_L e0_V ')
     fSymbolic = getSymbolicFunctions(xSymbolic, parameter)
 
     # Intial variable bounds:
-    xInitial[0] = mpmath.mpi(2.37E-4, 1.0E9)  	# e0_v
-    xInitial[1] = mpmath.mpi(-1.0E9, 0.0)  	# e0_dPdv_crit
-    xInitial[2] = mpmath.mpi(1.0E-9, 1.0E9)  	# e0_v_ph
+    xInitial[0] = mpmath.mpi(0.0, 1.0)  	# e0_x_F_i2
+    xInitial[1] = mpmath.mpi(0.0, 1.0)  	# e0_x_i2
+    xInitial[2] = mpmath.mpi(0.0, 1.0)  	# e0_y_i2
+    xInitial[3] = mpmath.mpi(0.0, 200.0)  	# e0_L
+    xInitial[4] = mpmath.mpi(0.0, 200.0)  	# e0_V
 
 
     for i in range(0,len(x)):
@@ -181,4 +184,3 @@ Call of main method
 """
 # Invoke main method:
 if __name__ == "__main__": main()   
-
