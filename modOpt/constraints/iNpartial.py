@@ -153,7 +153,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                         y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
                                                     xSymbolic, f[i], j, dict_options))
                         #if y == []: return [], boundsAlmostEqual
-            if y != []: xNewBounds[j] = y
+            if y != [] and y != [[]]: xNewBounds[j] = y
             else: return [], boundsAlmostEqual
             #else: xNewBounds[j] =[xBounds[j]], boundsAlmostEqual
 
@@ -521,7 +521,7 @@ def complexOperator(complexA, complexMid, complexB, xInterval):
         return [mpmath.mpi(xInterval.mid, xInterval.b)], [mpmath.mpi(xInterval.a, xInterval.mid)]
     if not complexA and complexMid and complexB:
         return [mpmath.mpi(xInterval.a, xInterval.mid)], []
-    else: return [], []  
+    else: return [], []
 
 
 def getReducedIntervalOfLinearFunction(a, xSymbolic, i, xBounds, bi):
@@ -678,7 +678,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
 
     
     if (dfdXInterval <= 0):
-        
+
         if bool(df2dxInterval >= 0) == False and bool(df2dxInterval <= 0) == False:
             
             incrZoneIndf2dX, decrZoneIndf2dX = getContinuousFunctionSections(df2dX, xSymbolic, i, xBounds, dict_options)
@@ -696,7 +696,10 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
         reducedIntervals = []
         increasingZone, decreasingZone, nonMonotoneZone = getMonotoneFunctionSections(dfdX, xSymbolic, i, xBounds, 
                                                                                       dict_options)
+
         if increasingZone == [] and decreasingZone == [] and nonMonotoneZone == []: return [orgXiBounds]
+        
+        # TODO: non-continuous functions  
         
         reducedIntervals = reduceMonotoneIntervals(increasingZone, reducedIntervals, fx, xSymbolic, 
                                  xBounds, i, bi, dict_options, increasing = True)
@@ -709,7 +712,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
                                                           dict_options)
         return reducedIntervals
 
-
+    
 def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
     """seperate variable interval into variable interval sets where a function
     with derivative dfdx is monontoneous
@@ -793,6 +796,7 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
         xBounds[i] = monotoneZone[j] 
         
         if increasing: curReducedInterval = monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
+                # TODO: add noncontinuous block for several monotone intervals
         else: curReducedInterval = monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
         
         if curReducedInterval !=[] and reducedIntervals != []:
@@ -844,7 +848,7 @@ def monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options
                          curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = True, 
                                                 lowerXBound = True)
-    
+                         if curInterval == [] or fxInterval == []: return []
         
     lowerBound = curInterval.a
     curInterval  = xBounds[i]    
@@ -859,7 +863,8 @@ def monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options
             curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = True, 
                                                 lowerXBound = False)
-                
+            if curInterval == [] or fxInterval == []: return []
+            
     upperBound = curInterval.b                 
     return mpmath.mpi(lowerBound, upperBound)
 
@@ -895,6 +900,7 @@ def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
     
     # Otherwise, iterate each bound of bi:
     fIntervalxLow, fIntervalxUp = getFIntervalsFromXBounds(fx, curInterval, xBounds, i)
+    
     #if fIntervalxLow.a < bi.a: return []
     
     if fIntervalxLow.a > bi.b:   
@@ -904,9 +910,8 @@ def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
                          curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = False, 
                                                 lowerXBound = True)
-    
+                         if curInterval == [] or fxInterval == []: return []
         
-    
     lowerBound = curInterval.a  
     curInterval  = xBounds[i]        
     #if fIntervalxUp.b > bi.b: return []
@@ -919,6 +924,7 @@ def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
             curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = False, 
                                                 lowerXBound = False)
+            if curInterval == [] or fxInterval == []: return []
                 
     upperBound = curInterval.b               
     return mpmath.mpi(lowerBound, upperBound)
@@ -961,7 +967,9 @@ def iteratefBound(fx, curInterval, xBounds, i, bi, increasing, lowerXBound):
                                                                xBounds, i)
         
         fxInterval = fBoundsOperator(fIntervalxLow, fIntervalxUp, increasing, lowerXBound)
-        return curUpperXInterval, fxInterval
+        
+        if biBound in fxInterval: return curUpperXInterval, fxInterval
+        else: return [], []
 
 
 def getFIntervalsFromXBounds(fx, curInterval, xBounds, i):
@@ -1493,7 +1501,10 @@ def compareIntervalToIntervalSet(iv, ivSet):
     """
     
     for i in range(0, len(ivSet)):
-        newIV = ivIntersection(iv, ivSet[i])
+        try:
+            newIV = ivIntersection(iv, ivSet[i])
+        except: return []
+        
         if newIV != []: return newIV
     return []
 

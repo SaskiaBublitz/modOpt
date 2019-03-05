@@ -96,10 +96,8 @@ class Model:
         xBoundsPerm = reorderList(xBounds, self.colPerm)
   
         return FsymPerm, xSymbolicPerm, xBoundsPerm
-  
-        return FsymPerm, xSymbolicPerm, xBoundsPerm
-    
-    
+
+      
     def getJacobian(self, X):
         """ returns jacobian evaluated at X"""
         return self.jacobian(*numpy.append(X, X))
