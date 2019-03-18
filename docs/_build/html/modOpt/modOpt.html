@@ -1,0 +1,328 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>modOpt package &#8212; modOpt 18.03.2019 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '18.03.2019',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="modopt-package">
+<h1>modOpt package<a class="headerlink" href="#modopt-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modOpt.constraints.html">modOpt.constraints package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#module-modOpt.constraints.analysis">modOpt.constraints.analysis module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modOpt.constraints.html#import-packages">Import packages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#module-modOpt.constraints.iNcomplete">modOpt.constraints.iNcomplete module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modOpt.constraints.html#id1">Import packages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#module-modOpt.constraints.iNpartial">modOpt.constraints.iNpartial module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modOpt.constraints.html#id2">Import packages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#module-modOpt.constraints.main">modOpt.constraints.main module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#module-modOpt.constraints.results">modOpt.constraints.results module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modOpt.constraints.html#output">Output</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#module-modOpt.constraints.update">modOpt.constraints.update module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modOpt.constraints.html#id3">Import packages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.constraints.html#module-modOpt.constraints">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modOpt.decomposition.html">modOpt.decomposition package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.decomposition.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.decomposition.html#module-modOpt.decomposition.dM">modOpt.decomposition.dM module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modOpt.decomposition.html#imported-packages">Imported Packages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.decomposition.html#module-modOpt.decomposition">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modOpt.initialization.html">modOpt.initialization package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.initialization.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.initialization.html#module-modOpt.initialization.arithmeticMean">modOpt.initialization.arithmeticMean module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modOpt.initialization.html#import-packages">Import packages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modOpt.initialization.html#module-modOpt.initialization">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-modOpt.model">
+<span id="modopt-model-module"></span><h2>modOpt.model module<a class="headerlink" href="#module-modOpt.model" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="imported-packages">
+<h3>Imported packages<a class="headerlink" href="#imported-packages" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="modOpt.model.Model">
+<em class="property">class </em><code class="descclassname">modOpt.model.</code><code class="descname">Model</code><span class="sig-paren">(</span><em>X</em>, <em>BOUNDS</em>, <em>XSYMBOLIC</em>, <em>FSYMBOLIC</em>, <em>PARAMS</em>, <em>JACOBIAN</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mathematical Model</p>
+<p>This module stores all information about state variable bounds, parameters, 
+and the permutation arrays referring to decomposition methods like 
+Dulmage-Mendelsohn.</p>
+<p>Attributes:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">StateVarValues:</th><td class="field-body">list with arrays of dimension m with current values 
+of state variables. (in global order)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">XBounds:</th><td class="field-body">list with arrays of dimension m with current sets of
+state variable bounds. 
+(in global order)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">XSymbolic:</th><td class="field-body">sympy array of dimension m with symbolic expression 
+of state variables. (in global order)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameter:</th><td class="field-body">array with values for model parameter</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">RowPerm:</th><td class="field-body">array of dimension m with permutation order of 
+equations regarding their global index (1…m)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">ColPerm:</th><td class="field-body">array of dimension n with permutation order of 
+variables regarding their global index (1…n)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Blocks:</th><td class="field-body">List with blocks referring to permuted index (not 
+global index) Example: 
+For a 5x5 system a structure could be:
+[[0], [1, 2], [3], [4]] with one 2-dimensional block 
+consisting of the permuted equations and variables 
+2 and 3.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="modOpt.model.Model.getBoundsOfPermutedModel">
+<code class="descname">getBoundsOfPermutedModel</code><span class="sig-paren">(</span><em>xBounds</em>, <em>xSymbolic</em>, <em>parameter</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.getBoundsOfPermutedModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.getBoundsOfPermutedModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates bounds of the Function residuals based on 
+current state variable bounds.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><table class="first last docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">xBounds:</th><td class="field-body">numpy array with state variables bounds</td>
+</tr>
+<tr class="field-even field"><th class="field-name">xSymbolic:</th><td class="field-body">sympy array with symbolic state variables</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">parameter:</th><td class="field-body">numpy array with parameter values</td>
+</tr>
+</tbody>
+</table>
+</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return:</th><td class="field-body">numpy array with residual bounds</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.getJacobian">
+<code class="descname">getJacobian</code><span class="sig-paren">(</span><em>X</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.getJacobian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.getJacobian" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return:</th><td class="field-body">jacobian evaluated at X</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.getParameter">
+<code class="descname">getParameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.getParameter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.getParameter" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return:</th><td class="field-body">paramter values</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.getSymbolicFunctions">
+<code class="descname">getSymbolicFunctions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.getSymbolicFunctions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.getSymbolicFunctions" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return:</th><td class="field-body">symbolic equations of equation system</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.getXBounds">
+<code class="descname">getXBounds</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.getXBounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.getXBounds" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return:</th><td class="field-body">current state variable bounds</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.getXSymbolic">
+<code class="descname">getXSymbolic</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.getXSymbolic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.getXSymbolic" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return:</th><td class="field-body">symbolic variables</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.getXValues">
+<code class="descname">getXValues</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.getXValues"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.getXValues" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return:</th><td class="field-body">current state variable values</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.setXBounds">
+<code class="descname">setXBounds</code><span class="sig-paren">(</span><em>xBounds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.setXBounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.setXBounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>sets the state variable bounds to the intervals given by the array
+xBounds</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="modOpt.model.Model.updateToPermutation">
+<code class="descname">updateToPermutation</code><span class="sig-paren">(</span><em>rowPerm</em>, <em>colPerm</em>, <em>blocks</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/model.html#Model.updateToPermutation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.model.Model.updateToPermutation" title="Permalink to this definition">¶</a></dt>
+<dd><p>updates the row and column order of the Jacobian to the indices 
+given by the lists rowPerm and colPerm.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-modOpt">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-modOpt" title="Permalink to this headline">¶</a></h2>
+<p>public functions and classes</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">modOpt</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Saskia Bublitz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/modOpt/modOpt.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

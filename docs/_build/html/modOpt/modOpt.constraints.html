@@ -1,0 +1,240 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>modOpt.constraints package &#8212; modOpt 18.03.2019 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '18.03.2019',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="modopt-constraints-package">
+<h1>modOpt.constraints package<a class="headerlink" href="#modopt-constraints-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-modOpt.constraints.analysis">
+<span id="modopt-constraints-analysis-module"></span><h2>modOpt.constraints.analysis module<a class="headerlink" href="#module-modOpt.constraints.analysis" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="import-packages">
+<h3>Import packages<a class="headerlink" href="#import-packages" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="modOpt.constraints.analysis.analyseResults">
+<code class="descclassname">modOpt.constraints.analysis.</code><code class="descname">analyseResults</code><span class="sig-paren">(</span><em>fileName</em>, <em>varSymbolic</em>, <em>initVarBounds</em>, <em>reducedVarBounds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/constraints/analysis.html#analyseResults"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.constraints.analysis.analyseResults" title="Permalink to this definition">¶</a></dt>
+<dd><p>volume fractions of resulting soltuion area(s) to initial volume are
+calculated and stored in a textfile &lt;fileName&gt;_analysis.txt</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>fileName            string with file name
+varSymbolic         list with symbolic variables in sympy logic
+initVarBounds       list with initial variable bounds
+reducedVarBounds    list with reduced variable bound sets</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-modOpt.constraints.iNcomplete">
+<span id="modopt-constraints-incomplete-module"></span><h2>modOpt.constraints.iNcomplete module<a class="headerlink" href="#module-modOpt.constraints.iNcomplete" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>Import packages<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="modOpt.constraints.iNcomplete.doIntervalNesting">
+<code class="descclassname">modOpt.constraints.iNcomplete.</code><code class="descname">doIntervalNesting</code><span class="sig-paren">(</span><em>model</em>, <em>dict_options</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/constraints/iNcomplete.html#doIntervalNesting"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.constraints.iNcomplete.doIntervalNesting" title="Permalink to this definition">¶</a></dt>
+<dd><p>iterates the state variable intervals related to model using the
+Gauss-Seidel Operator combined with an interval nesting strategy</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>model           object of class model
+dict_options    dictionary with solver options</dd>
+<dt>Return:</dt>
+<dd>model           model object with reduced state variable bounds
+iterNo          number of iteration steps in Newton algorithm</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-modOpt.constraints.iNpartial">
+<span id="modopt-constraints-inpartial-module"></span><h2>modOpt.constraints.iNpartial module<a class="headerlink" href="#module-modOpt.constraints.iNpartial" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id2">
+<h3>Import packages<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="modOpt.constraints.iNpartial.doIntervalNesting">
+<code class="descclassname">modOpt.constraints.iNpartial.</code><code class="descname">doIntervalNesting</code><span class="sig-paren">(</span><em>model</em>, <em>dict_options</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/constraints/iNpartial.html#doIntervalNesting"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.constraints.iNpartial.doIntervalNesting" title="Permalink to this definition">¶</a></dt>
+<dd><p>iterates the state variable intervals related to model using the
+Gauss-Seidel Operator combined with an interval nesting strategy</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>model           object of class model
+dict_options    dictionary with solver options</dd>
+<dt>Return:</dt>
+<dd>model           model object with reduced state variable bounds
+iterNo          number of iteration steps in Newton algorithm</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-modOpt.constraints.main">
+<span id="modopt-constraints-main-module"></span><h2>modOpt.constraints.main module<a class="headerlink" href="#module-modOpt.constraints.main" title="Permalink to this headline">¶</a></h2>
+<p>Interval union Newton method</p>
+<dl class="function">
+<dt id="modOpt.constraints.main.reduceVariableBounds">
+<code class="descclassname">modOpt.constraints.main.</code><code class="descname">reduceVariableBounds</code><span class="sig-paren">(</span><em>model</em>, <em>options</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/constraints/main.html#reduceVariableBounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.constraints.main.reduceVariableBounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>variable bounds are reduced based on user-defined input</p>
+<dl class="docutils">
+<dt>Args: </dt>
+<dd><dl class="first docutils">
+<dt>model:       object of class model in modOpt.model that contains all</dt>
+<dd>information of the NLE-evaluation from MOSAICm.</dd>
+</dl>
+<p class="last">options:     dictionary with user-specified information</p>
+</dd>
+<dt>Returns:</dt>
+<dd><p class="first">model:       model with reduced XBounds
+iterNo:      number of outter iteration Steps
+t or []:     if timer-option has been selected the time the algorith takes</p>
+<blockquote class="last">
+<div>is returned, otherwise an empty list is returned</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-modOpt.constraints.results">
+<span id="modopt-constraints-results-module"></span><h2>modOpt.constraints.results module<a class="headerlink" href="#module-modOpt.constraints.results" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="output">
+<h3>Output<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="modOpt.constraints.results.writeResults">
+<code class="descclassname">modOpt.constraints.results.</code><code class="descname">writeResults</code><span class="sig-paren">(</span><em>fileName</em>, <em>dict_variables</em>, <em>t</em>, <em>iterNo</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/constraints/results.html#writeResults"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.constraints.results.writeResults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates File(s) with  final start values and lower and upper bounds. 
+For the ith set of start values, lower and upper bounds a new text file is 
+generated using the label “_i”.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><p class="first">fileName                String with name of text file(s)
+dict_variables          Dictionary with sets of state variable values,</p>
+<blockquote class="last">
+<div>lower and upper bounds</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-modOpt.constraints.update">
+<span id="modopt-constraints-update-module"></span><h2>modOpt.constraints.update module<a class="headerlink" href="#module-modOpt.constraints.update" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id3">
+<h3>Import packages<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="modOpt.constraints.update.updateDictToModel">
+<code class="descclassname">modOpt.constraints.update.</code><code class="descname">updateDictToModel</code><span class="sig-paren">(</span><em>dict_variables</em>, <em>model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/modOpt/constraints/update.html#updateDictToModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#modOpt.constraints.update.updateDictToModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>updates variable dictionary to current model values</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><dl class="first docutils">
+<dt>dict_variables      dictionary with set of state variable values, lower </dt>
+<dd>and upper bounds</dd>
+</dl>
+<p class="last">model               object of class model</p>
+</dd>
+<dt>Return:</dt>
+<dd>dict_variables      updated state variable dictionary</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-modOpt.constraints">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-modOpt.constraints" title="Permalink to this headline">¶</a></h2>
+<p>public functions and classes</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">modOpt</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Saskia Bublitz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/modOpt/modOpt.constraints.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

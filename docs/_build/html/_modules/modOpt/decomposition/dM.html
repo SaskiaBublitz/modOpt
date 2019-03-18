@@ -1,0 +1,231 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>modOpt.decomposition.dM &#8212; modOpt 18.03.2019 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '18.03.2019',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for modOpt.decomposition.dM</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">***************************************************</span>
+<span class="sd">Imported Packages</span>
+<span class="sd">***************************************************</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">casadi</span>
+<span class="kn">import</span> <span class="nn">sympy</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">***************************************************</span>
+<span class="sd">Dulmage-Mendelsohn-Decomposition based on casadi package (python)</span>
+<span class="sd">***************************************************</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span><span class="p">[</span><span class="s1">&#39;getCasadiJandF&#39;</span><span class="p">,</span><span class="s1">&#39;doDulmageMendelsohn&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="doDulmageMendelsohn"><a class="viewcode-back" href="../../../modOpt/modOpt.decomposition.html#modOpt.decomposition.dM.doDulmageMendelsohn">[docs]</a><span class="k">def</span> <span class="nf">doDulmageMendelsohn</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;invokes Dulmage-Mendelsohn-Decomposition from Casadi&#39;s Package</span>
+<span class="sd">    Args:</span>
+<span class="sd">        A (m,n):          mxn matrix</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:     </span>
+<span class="sd">        output (dict):    Results from Dulmage-Mendelsohn Decomposition </span>
+<span class="sd">                          with items as seen from the Code below.</span>
+<span class="sd">                        </span>
+<span class="sd">    &quot;&quot;&quot;</span>  
+    
+    <span class="n">output</span> <span class="o">=</span> <span class="n">createDict</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">sparsity</span><span class="p">()</span><span class="o">.</span><span class="n">btf</span><span class="p">(),</span> <span class="p">[</span>
+            <span class="s1">&#39;Block Borders&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Row Permutation&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Column Permutation&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Number of Row Blocks&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Number of Column Blocks&#39;</span><span class="p">,</span> 
+            <span class="s1">&#39;Number Coarse Row Blocks&#39;</span><span class="p">,</span> 
+            <span class="s1">&#39;Number Coarse Column Blocks&#39;</span><span class="p">,</span>
+            <span class="p">])</span>
+    
+    <span class="n">output</span><span class="p">[</span><span class="s2">&quot;Matrix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="n">output</span><span class="p">[</span><span class="s1">&#39;Row Permutation&#39;</span><span class="p">],</span> 
+           <span class="n">output</span><span class="p">[</span><span class="s1">&#39;Column Permutation&#39;</span><span class="p">]]</span>
+    
+    <span class="k">return</span> <span class="n">output</span></div>
+
+
+<span class="c1"># Methods to order and transfer results:</span>
+
+<span class="k">def</span> <span class="nf">createDict</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">LABEL</span><span class="p">):</span>
+    <span class="n">X_DICT</span> <span class="o">=</span> <span class="p">{}</span>
+      
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)):</span>
+        <span class="n">X_DICT</span><span class="p">[</span><span class="n">LABEL</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        
+    <span class="k">return</span> <span class="n">X_DICT</span>
+
+
+<span class="k">def</span> <span class="nf">writeResults</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span> <span class="n">dict_variables</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates File(s) with  final start values and lower and upper bounds. </span>
+<span class="sd">    For the ith set of start values, lower and upper bounds a new text file is </span>
+<span class="sd">    generated using the label &quot;_i&quot;. </span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        fileName                String with name of text file(s)</span>
+<span class="sd">        dict_variables          Dictionary with sets of state variable values,</span>
+<span class="sd">                                lower and upper bounds</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">dict_variables</span><span class="p">[</span><span class="n">dict_variables</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="p">[]:</span>
+        <span class="n">initKey</span> <span class="o">=</span> <span class="n">dict_variables</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    
+    
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dict_variables</span><span class="p">[</span><span class="n">initKey</span><span class="p">][</span><span class="mi">0</span><span class="p">])):</span>
+            <span class="n">res_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">fileName</span><span class="p">,</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span><span class="s2">&quot;.txt&quot;</span><span class="p">]),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> 
+            
+            <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;***** </span><span class="si">%s</span><span class="s2"> th Set of Initial Values and Bounds*****</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+    
+            <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">dict_variables</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">var</span><span class="p">,</span>
+                                                <span class="n">dict_variables</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> 
+                                                <span class="n">dict_variables</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">],</span>
+                                                <span class="n">dict_variables</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="n">i</span><span class="p">]))</span>
+            <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">res_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="getCasadiJandF"><a class="viewcode-back" href="../../../modOpt/modOpt.decomposition.html#modOpt.decomposition.dM.getCasadiJandF">[docs]</a><span class="k">def</span> <span class="nf">getCasadiJandF</span><span class="p">(</span><span class="n">xSymbolic</span><span class="p">,</span> <span class="n">fSymbolic</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Symbolic Jacoobian and Functions are prepared from sympy variables</span>
+<span class="sd">    and function which are converted to casadi objects.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        xSymbolic:        n variables in sympy formate</span>
+<span class="sd">        fSymbolic:        m functions in sympy formate</span>
+<span class="sd">    Returns:</span>
+<span class="sd">            casadi.SX.array(m,n):     symbolic jacobian matrix</span>
+<span class="sd">            casadi.SX.array(m,1):     symbolic equation system</span>
+<span class="sd">            </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+  
+    <span class="c1"># Symbolic Variables:</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">convertSympyVariablesToCasadi</span><span class="p">(</span><span class="n">xSymbolic</span><span class="p">)</span>
+    <span class="n">fcasadi</span> <span class="o">=</span> <span class="n">lambdifyToCasadi</span><span class="p">(</span><span class="n">xSymbolic</span><span class="p">,</span> <span class="n">fSymbolic</span><span class="p">)</span>
+
+
+    <span class="c1"># Symbolic Equation System:</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">casadi</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fcasadi</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">jacobian</span><span class="p">(),</span> <span class="n">f</span></div>
+
+
+<span class="k">def</span> <span class="nf">convertSympyVariablesToCasadi</span><span class="p">(</span><span class="n">xSymbolic</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converting sympy symbols to variables in casaid.SX.sym formate. The</span>
+<span class="sd">    variables are returned in a list.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">xSymbolicInCasadi</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xSymbolic</span><span class="p">:</span>
+        <span class="n">exec</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> = casadi.SX.sym(&#39;</span><span class="si">%s</span><span class="s2">&#39;)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">repr</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+        <span class="n">exec</span><span class="p">(</span><span class="s2">&quot;xSymbolicInCasadi.append(</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">xSymbolicInCasadi</span>
+
+
+<span class="k">def</span> <span class="nf">lambdifyToCasadi</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converting operations of symoblic equation system f (simpy) to </span>
+<span class="sd">    arithmetic interval functions (mpmath.iv)</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">toCasadi</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;exp&quot;</span> <span class="p">:</span> <span class="n">casadi</span><span class="o">.</span><span class="n">SX</span><span class="o">.</span><span class="n">exp</span><span class="p">,</span>
+            <span class="s2">&quot;sin&quot;</span> <span class="p">:</span> <span class="n">casadi</span><span class="o">.</span><span class="n">SX</span><span class="o">.</span><span class="n">sin</span><span class="p">,</span>
+            <span class="s2">&quot;cos&quot;</span> <span class="p">:</span> <span class="n">casadi</span><span class="o">.</span><span class="n">SX</span><span class="o">.</span><span class="n">cos</span><span class="p">,</span>
+            <span class="s2">&quot;log&quot;</span> <span class="p">:</span> <span class="n">casadi</span><span class="o">.</span><span class="n">SX</span><span class="o">.</span><span class="n">log</span><span class="p">}</span>
+    
+    <span class="k">return</span> <span class="n">sympy</span><span class="o">.</span><span class="n">lambdify</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">f</span><span class="p">,</span> <span class="n">toCasadi</span><span class="p">)</span> 
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">modOpt</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../background/background.html">Background</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Saskia Bublitz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
