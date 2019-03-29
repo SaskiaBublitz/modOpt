@@ -1,0 +1,280 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>modOpt.model &#8212; modOpt 18.03.2019 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '18.03.2019',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for modOpt.model</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">***************************************************</span>
+<span class="sd">Imported packages</span>
+<span class="sd">***************************************************</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">***************************************************</span>
+<span class="sd">Model implementation</span>
+<span class="sd">***************************************************</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span><span class="p">[</span><span class="s1">&#39;Model&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Model"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model">[docs]</a><span class="k">class</span> <span class="nc">Model</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Mathematical Model</span>
+<span class="sd">    </span>
+<span class="sd">    This module stores all information about state variable bounds, parameters, </span>
+<span class="sd">    and the permutation arrays referring to decomposition methods like </span>
+<span class="sd">    Dulmage-Mendelsohn.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        </span>
+<span class="sd">    :stateVarValues:         list with arrays of dimension m with current values </span>
+<span class="sd">                            of state variables. (in global order)</span>
+<span class="sd">    :xBounds:                list with arrays of dimension m with current sets of</span>
+<span class="sd">                            state variable bounds. </span>
+<span class="sd">                            (in global order)                            </span>
+<span class="sd">    :xSymbolic:              sympy array of dimension m with symbolic expression </span>
+<span class="sd">                            of state variables. (in global order)</span>
+<span class="sd">    :parameter:              array with values for model parameter                                                    </span>
+<span class="sd">    :rowPerm:                array of dimension m with permutation order of </span>
+<span class="sd">                            equations regarding their global index (1...m)</span>
+<span class="sd">    :colPerm:                array of dimension n with permutation order of </span>
+<span class="sd">                            variables regarding their global index (1...n)</span>
+<span class="sd">    :blocks:                  List with blocks referring to permuted index (not </span>
+<span class="sd">                            global index) Example: </span>
+<span class="sd">                            For a 5x5 system a structure could be:</span>
+<span class="sd">                            [[0], [1, 2], [3], [4]] with one 2-dimensional block </span>
+<span class="sd">                            consisting of the permuted equations and variables </span>
+<span class="sd">                            2 and 3.</span>
+<span class="sd">                            </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">BOUNDS</span><span class="p">,</span> <span class="n">XSYMBOLIC</span><span class="p">,</span> <span class="n">FSYMBOLIC</span><span class="p">,</span> <span class="n">PARAMS</span><span class="p">,</span> <span class="n">JACOBIAN</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Initialization method for class model</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            :X:             array with m initial values for the state variables. </span>
+<span class="sd">                           (in global order)</span>
+<span class="sd">            :BOUNDS:        array of dimension m with current values of the</span>
+<span class="sd">                           interval bounds of the state variables. </span>
+<span class="sd">                           (in global order)                            </span>
+<span class="sd">            :XSYMBOLIC:     sympy array of dimension m with symbolic expression</span>
+<span class="sd">                           of state variables. (in global order)</span>
+<span class="sd">            :PARAMS:        array with values of model parameter </span>
+<span class="sd">            :JACOBIAN:      if used, array with symbolic jacobian </span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">stateVarValues</span> <span class="o">=</span> <span class="p">[</span><span class="n">X</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xBounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">BOUNDS</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xSymbolic</span> <span class="o">=</span> <span class="n">XSYMBOLIC</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fSymbolic</span> <span class="o">=</span> <span class="n">FSYMBOLIC</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jacobian</span> <span class="o">=</span>  <span class="n">JACOBIAN</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span> <span class="o">=</span> <span class="n">PARAMS</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rowPerm</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colPerm</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">rowPerm</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Model.getSymbolicFunctions"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.getSymbolicFunctions">[docs]</a>    <span class="k">def</span> <span class="nf">getSymbolicFunctions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; :Return: symbolic equations of equation system&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fSymbolic</span></div>
+
+
+<div class="viewcode-block" id="Model.getBoundsOfPermutedModel"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.getBoundsOfPermutedModel">[docs]</a>    <span class="k">def</span> <span class="nf">getBoundsOfPermutedModel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xBounds</span><span class="p">,</span> <span class="n">xSymbolic</span><span class="p">,</span> <span class="n">parameter</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Calculates bounds of the Function residuals based on </span>
+<span class="sd">        current state variable bounds.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            :xBounds:          numpy array with state variables bounds</span>
+<span class="sd">            :xSymbolic:        sympy array with symbolic state variables</span>
+<span class="sd">            :parameter:        numpy array with parameter values</span>
+<span class="sd">        </span>
+<span class="sd">        :Return:              numpy array with residual bounds</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">Fsym</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getSymbolicFunctions</span><span class="p">()</span>
+        
+        <span class="n">FsymPerm</span> <span class="o">=</span> <span class="n">reorderList</span><span class="p">(</span><span class="n">Fsym</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowPerm</span><span class="p">)</span>
+        <span class="n">xSymbolicPerm</span> <span class="o">=</span> <span class="n">reorderList</span><span class="p">(</span><span class="n">xSymbolic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colPerm</span><span class="p">)</span>
+        <span class="n">xBoundsPerm</span> <span class="o">=</span> <span class="n">reorderList</span><span class="p">(</span><span class="n">xBounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colPerm</span><span class="p">)</span>
+  
+        <span class="k">return</span> <span class="n">FsymPerm</span><span class="p">,</span> <span class="n">xSymbolicPerm</span><span class="p">,</span> <span class="n">xBoundsPerm</span></div>
+
+      
+<div class="viewcode-block" id="Model.getJacobian"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.getJacobian">[docs]</a>    <span class="k">def</span> <span class="nf">getJacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; :Return: jacobian evaluated at X&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">jacobian</span><span class="p">(</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">X</span><span class="p">))</span></div>
+    
+         
+<div class="viewcode-block" id="Model.getParameter"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.getParameter">[docs]</a>    <span class="k">def</span> <span class="nf">getParameter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; :Return: paramter values &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span></div>
+
+
+<div class="viewcode-block" id="Model.getXBounds"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.getXBounds">[docs]</a>    <span class="k">def</span> <span class="nf">getXBounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; :Return: current state variable bounds&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">xBounds</span></div>
+
+
+<div class="viewcode-block" id="Model.getXSymbolic"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.getXSymbolic">[docs]</a>    <span class="k">def</span> <span class="nf">getXSymbolic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; :Return: symbolic variables&quot;&quot;&quot;</span>        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">xSymbolic</span></div>
+
+
+<div class="viewcode-block" id="Model.getXValues"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.getXValues">[docs]</a>    <span class="k">def</span> <span class="nf">getXValues</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; :Return: current state variable values&quot;&quot;&quot;</span>        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateVarValues</span></div>
+
+
+<div class="viewcode-block" id="Model.setXBounds"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.setXBounds">[docs]</a>    <span class="k">def</span> <span class="nf">setXBounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xBounds</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; sets the state variable bounds to the intervals given by the array</span>
+<span class="sd">        xBounds</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">xBounds</span> <span class="o">=</span> <span class="n">xBounds</span></div>
+        
+
+<div class="viewcode-block" id="Model.updateToPermutation"><a class="viewcode-back" href="../../modOpt/modOpt.html#modOpt.model.Model.updateToPermutation">[docs]</a>    <span class="k">def</span> <span class="nf">updateToPermutation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rowPerm</span><span class="p">,</span> <span class="n">colPerm</span><span class="p">,</span> <span class="n">blocks</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; updates the row and column order of the Jacobian to the indices </span>
+<span class="sd">        given by the lists rowPerm and colPerm.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>        
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">colPerm</span> <span class="o">=</span> <span class="n">colPerm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rowPerm</span> <span class="o">=</span> <span class="n">rowPerm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span> <span class="o">=</span>  <span class="n">createBlocks</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span></div></div>
+        
+
+<span class="k">def</span> <span class="nf">createBlocks</span><span class="p">(</span><span class="n">blocks</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates blocks for permutation order 1 to n based on block border list</span>
+<span class="sd">    from preordering algorithm</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        :blocks:         list with block border indices as integers</span>
+<span class="sd">    </span>
+<span class="sd">    :Return:             list with block elements in sublist</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">nestedBlocks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)):</span>
+        <span class="n">curBlock</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">blocks</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">blocks</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">nestedBlocks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curBlock</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">nestedBlocks</span>
+
+        
+<span class="k">def</span> <span class="nf">reorderList</span><span class="p">(</span><span class="n">myList</span><span class="p">,</span> <span class="n">newOrder</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; reorders given list myList</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        :myList:      list with objects</span>
+<span class="sd">        :newOrder:    list with new order indices</span>
+<span class="sd">        </span>
+<span class="sd">    :Return:          sorted list</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">newList</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">newOrder</span><span class="p">:</span>
+        <span class="n">newList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">myList</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">newList</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">modOpt</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../background/background.html">Background</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Saskia Bublitz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

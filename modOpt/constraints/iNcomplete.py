@@ -67,8 +67,8 @@ def doIntervalNesting(model, dict_options):
                 x[newModel.colPerm]  = numpy.array(intervalsPerm[m])           
                 newXBounds.append(x)
                 
-                if checkWidths(xBounds[k], x, dict_options["machEpsRelNewton"], 
-                               dict_options["machEpsAbsNewton"]): 
+                if checkWidths(xBounds[k], x, dict_options["relTolX"], 
+                               dict_options["absTolX"]): 
                     xAlmostEqual[k] = True
                     break
     
@@ -154,7 +154,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                         y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
                                                     xSymbolic, f[i], j, dict_options))
                         #if y == []: return [], boundsAlmostEqual
-            if y != []: xNewBounds[j] = y
+            if y != [] and y != [[]]: xNewBounds[j] = y
             else: return [], boundsAlmostEqual
             #else: xNewBounds[j] =[xBounds[j]], boundsAlmostEqual
 
@@ -679,7 +679,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
 
     
     if (dfdXInterval <= 0):
-        
+
         if bool(df2dxInterval >= 0) == False and bool(df2dxInterval <= 0) == False:
             
             incrZoneIndf2dX, decrZoneIndf2dX = getContinuousFunctionSections(df2dX, xSymbolic, i, xBounds, dict_options)
@@ -697,7 +697,10 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
         reducedIntervals = []
         increasingZone, decreasingZone, nonMonotoneZone = getMonotoneFunctionSections(dfdX, xSymbolic, i, xBounds, 
                                                                                       dict_options)
+
         if increasingZone == [] and decreasingZone == [] and nonMonotoneZone == []: return [orgXiBounds]
+        
+        # TODO: non-continuous functions  
         
         reducedIntervals = reduceMonotoneIntervals(increasingZone, reducedIntervals, fx, xSymbolic, 
                                  xBounds, i, bi, dict_options, increasing = True)
@@ -710,7 +713,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
                                                           dict_options)
         return reducedIntervals
 
-
+    
 def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
     """seperate variable interval into variable interval sets where a function
     with derivative dfdx is monontoneous
@@ -755,7 +758,37 @@ def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
                
         interval = checkTolerance(removeListInList(curIntervals), relEpsX)
     
+    manipulateLowerUpperBounds(monIncreasingZone, df2dx, i, xBounds)
+    manipulateLowerUpperBounds(monDecreasingZone, df2dx, i, xBounds)
+    
     return monIncreasingZone, monDecreasingZone
+
+
+def manipulateLowerUpperBounds(interval, fx, i, xBounds):
+    """shift interval bounds that create +inf/-inf-function value bounds
+    minimally to the side to remove this singular bound.
+    
+    Args:
+        :interval:      interval in mpmath.mpi logic
+        :fx:            function that is evaluated in mpmath.mpi logic
+        :i:             iteration variable index as integer
+        :xBounds:       set of variable bounds
+    
+    """
+    xBounds = copy.deepcopy(xBounds)    
+    for j in range(0, len(interval)):
+        xBounds[i] = interval[j].a
+        
+        curdf2dx = fx(*xBounds) 
+        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
+            interval[j] = mpmath.mpi(interval[j].a + numpy.finfo(numpy.float).eps,
+            interval[j].b)
+            
+        xBounds[i] = interval[j].b
+        curdf2dx = fx(*xBounds) 
+        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
+            b = interval[j].b - numpy.finfo(numpy.float).eps
+            interval[j] = mpmath.mpi(interval[j].a, b.a)
 
 
 def removeListInList(listInList):
@@ -794,6 +827,7 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
         xBounds[i] = monotoneZone[j] 
         
         if increasing: curReducedInterval = monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
+                # TODO: add noncontinuous block for several monotone intervals
         else: curReducedInterval = monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
         
         if curReducedInterval !=[] and reducedIntervals != []:
@@ -845,7 +879,7 @@ def monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options
                          curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = True, 
                                                 lowerXBound = True)
-    
+                         if curInterval == [] or fxInterval == []: return []
         
     lowerBound = curInterval.a
     curInterval  = xBounds[i]    
@@ -860,7 +894,8 @@ def monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options
             curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = True, 
                                                 lowerXBound = False)
-                
+            if curInterval == [] or fxInterval == []: return []
+            
     upperBound = curInterval.b                 
     return mpmath.mpi(lowerBound, upperBound)
 
@@ -896,6 +931,7 @@ def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
     
     # Otherwise, iterate each bound of bi:
     fIntervalxLow, fIntervalxUp = getFIntervalsFromXBounds(fx, curInterval, xBounds, i)
+    
     #if fIntervalxLow.a < bi.a: return []
     
     if fIntervalxLow.a > bi.b:   
@@ -905,9 +941,8 @@ def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
                          curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = False, 
                                                 lowerXBound = True)
-    
+                         if curInterval == [] or fxInterval == []: return []
         
-    
     lowerBound = curInterval.a  
     curInterval  = xBounds[i]        
     #if fIntervalxUp.b > bi.b: return []
@@ -920,6 +955,7 @@ def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
             curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = False, 
                                                 lowerXBound = False)
+            if curInterval == [] or fxInterval == []: return []
                 
     upperBound = curInterval.b               
     return mpmath.mpi(lowerBound, upperBound)
@@ -962,7 +998,9 @@ def iteratefBound(fx, curInterval, xBounds, i, bi, increasing, lowerXBound):
                                                                xBounds, i)
         
         fxInterval = fBoundsOperator(fIntervalxLow, fIntervalxUp, increasing, lowerXBound)
-        return curUpperXInterval, fxInterval
+        
+        if biBound in fxInterval: return curUpperXInterval, fxInterval
+        else: return [], []
 
 
 def getFIntervalsFromXBounds(fx, curInterval, xBounds, i):
@@ -1088,6 +1126,9 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
             addIntervalToNonMonotoneZone(newIntervals, curIntervals)
             
         interval = checkTolerance(removeListInList(curIntervals), relEpsX)
+        
+    manipulateLowerUpperBounds(monIncreasingZone, dfdx, i, xBounds)
+    manipulateLowerUpperBounds(monDecreasingZone, dfdx, i, xBounds)
     
     return monIncreasingZone, monDecreasingZone, interval
 

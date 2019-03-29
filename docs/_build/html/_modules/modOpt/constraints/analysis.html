@@ -1,0 +1,287 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>modOpt.constraints.analysis &#8212; modOpt 18.03.2019 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '18.03.2019',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for modOpt.constraints.analysis</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">***************************************************</span>
+<span class="sd">Import packages</span>
+<span class="sd">***************************************************</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">mpmath</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">***************************************************</span>
+<span class="sd">analysis tools</span>
+<span class="sd">***************************************************</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;analyseResults&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="analyseResults"><a class="viewcode-back" href="../../../modOpt/modOpt.constraints.html#modOpt.constraints.analysis.analyseResults">[docs]</a><span class="k">def</span> <span class="nf">analyseResults</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span> <span class="n">varSymbolic</span><span class="p">,</span> <span class="n">initVarBounds</span><span class="p">,</span> <span class="n">reducedVarBounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; volume fractions of resulting soltuion area(s) to initial volume are</span>
+<span class="sd">    calculated and stored in a textfile &lt;fileName&gt;_analysis.txt</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        fileName            string with file name</span>
+<span class="sd">        varSymbolic         list with symbolic variables in sympy logic</span>
+<span class="sd">        initVarBounds       list with initial variable bounds</span>
+<span class="sd">        reducedVarBounds    list with reduced variable bound sets</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">boundRatios</span> <span class="o">=</span><span class="n">getBoundRatios</span><span class="p">(</span><span class="n">initVarBounds</span><span class="p">,</span> <span class="n">reducedVarBounds</span><span class="p">)</span>
+    <span class="n">boundRatioOfVars</span><span class="p">,</span> <span class="n">solvedVars</span> <span class="o">=</span> <span class="n">getBoundRatioOfVars</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">)</span>
+    <span class="n">boundRatioOfVarBoundSet</span> <span class="o">=</span> <span class="n">getBoundRatioOfVarBoundSet</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">)</span>
+    <span class="n">volumeFraction</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">boundRatioOfVarBoundSet</span><span class="p">)</span>
+    <span class="n">hypercubicLFraction</span> <span class="o">=</span> <span class="p">(</span><span class="n">volumeFraction</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">varSymbolic</span><span class="p">)</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">solvedVars</span><span class="p">)))</span>
+    <span class="n">writeAnalysisResults</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span> <span class="n">varSymbolic</span><span class="p">,</span> <span class="n">boundRatios</span><span class="p">,</span> <span class="n">boundRatioOfVars</span><span class="p">,</span>
+                         <span class="n">boundRatioOfVarBoundSet</span><span class="p">,</span><span class="n">volumeFraction</span><span class="p">,</span> 
+                         <span class="n">hypercubicLFraction</span><span class="p">,</span> <span class="n">solvedVars</span><span class="p">)</span></div>
+ 
+    
+<span class="k">def</span> <span class="nf">writeAnalysisResults</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span> <span class="n">varSymbolic</span><span class="p">,</span> <span class="n">boundRatios</span><span class="p">,</span> <span class="n">boundRatioOfVars</span><span class="p">,</span>
+                         <span class="n">boundRatioOfVarBoundSet</span><span class="p">,</span> <span class="n">volumeFraction</span><span class="p">,</span> 
+                         <span class="n">hypercubicLFraction</span><span class="p">,</span> <span class="n">solvedVars</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; writes anaylsis results to a textfile  &lt;fileName&gt;_analysis.txt</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        fileName                    string with file name</span>
+<span class="sd">        varSymbolic                 list with symbolic variables in sympy logic</span>
+<span class="sd">        boundRatios                 list with reduced variable bound tp initial </span>
+<span class="sd">                                    variable bound ratio (has only one entry if </span>
+<span class="sd">                                    one set of variable bounds remains)</span>
+<span class="sd">        boundRatioOfVars            sum of the bound ratios of one variable</span>
+<span class="sd">        boundRatioOfVarBoundSet     product of all variable bounds of one variable</span>
+<span class="sd">                                    bound set</span>
+<span class="sd">        volumeFraction              float number of reduced volume to inital volume</span>
+<span class="sd">                                    fraction</span>
+<span class="sd">        hypercubicLFraction         If the volumes were hypercubic, the hypercubicLFraction</span>
+<span class="sd">                                    equals their edge length reduction</span>
+<span class="sd">                                    </span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">res_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">fileName</span><span class="p">,</span><span class="s2">&quot;_analysis.txt&quot;</span><span class="p">]),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> 
+    <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;***** Results of Analysis *****</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span> 
+    
+    <span class="n">noOfVarSets</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">)</span>
+    <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Variables</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">)</span> 
+    
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">noOfVarSets</span><span class="p">):</span>
+          <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;VarBounds_</span><span class="si">%s</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">j</span><span class="p">))</span> 
+    <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;VarBoundFraction</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+        <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">varSymbolic</span><span class="p">[</span><span class="n">i</span><span class="p">])))</span>        
+        
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">noOfVarSets</span><span class="p">):</span>
+            <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">]))</span>  
+        <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">boundRatioOfVars</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+
+    <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">VarboundSetFraction</span><span class="se">\t</span><span class="s2"> &quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">noOfVarSets</span><span class="p">):</span>
+        <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">boundRatioOfVarBoundSet</span><span class="p">[</span><span class="n">j</span><span class="p">]))</span>
+    <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">volumeFraction</span><span class="p">))</span> 
+
+    <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">HypercubicLengthFraction</span><span class="se">\t</span><span class="si">%s</span><span class="s2"> &quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">hypercubicLFraction</span><span class="p">))</span>
+    
+    <span class="k">if</span> <span class="n">solvedVars</span> <span class="o">!=</span> <span class="p">[]:</span>
+        <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Following Variables have been solved:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">solvedVar</span> <span class="ow">in</span> <span class="n">solvedVars</span><span class="p">:</span>
+            <span class="n">res_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> (VarBound_</span><span class="si">%s</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">varSymbolic</span><span class="p">[</span><span class="n">solvedVar</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> 
+                                                               <span class="n">solvedVar</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+
+<span class="k">def</span> <span class="nf">getBoundRatioOfVarBoundSet</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; multiplies all variable bounds of one variable bound set for all variable</span>
+<span class="sd">    bound sets in order to calculate their volume specific volume frations.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        boundRatios       list with bound ratios</span>
+<span class="sd">    </span>
+<span class="sd">    Return:               list with volume fractions all variable bound sets</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">boundRatioOfVarBoundSet</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">)):</span>
+        
+        <span class="n">productOfBoundRatios</span> <span class="o">=</span> <span class="mi">1</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+            
+            <span class="k">if</span> <span class="n">boundRatios</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;solved&#39;</span><span class="p">:</span>
+                <span class="n">productOfBoundRatios</span> <span class="o">=</span> <span class="n">productOfBoundRatios</span> <span class="o">*</span> <span class="n">boundRatios</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="n">boundRatioOfVarBoundSet</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">productOfBoundRatios</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">boundRatioOfVarBoundSet</span>
+    
+
+<span class="k">def</span> <span class="nf">getBoundRatioOfVars</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; sums of variable bounds of different reduced variable bound sets</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        boundRatios       list with bound ratios</span>
+<span class="sd">    </span>
+<span class="sd">    Return:               list bound ratios of all iteration variables</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">boundRatioOfVars</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">solvedVars</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+        
+        <span class="n">sumOfBoundRatios</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">)):</span>
+            
+            <span class="k">if</span> <span class="n">boundRatios</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;solved&#39;</span><span class="p">:</span>
+                <span class="n">sumOfBoundRatios</span> <span class="o">=</span> <span class="n">sumOfBoundRatios</span> <span class="o">+</span> <span class="n">boundRatios</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>    
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">solvedVars</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">])</span>   
+                
+        <span class="k">if</span> <span class="n">sumOfBoundRatios</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">boundRatioOfVars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sumOfBoundRatios</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span> <span class="n">boundRatioOfVars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;solved&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">boundRatioOfVars</span><span class="p">,</span> <span class="n">solvedVars</span>
+            
+    
+<span class="k">def</span> <span class="nf">getBoundRatios</span><span class="p">(</span><span class="n">initVarBounds</span><span class="p">,</span> <span class="n">reducedVarBounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; calculates ratios of reduced variable bounds to initial variable bounds</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        initVarBounds       list with initial variable bounds</span>
+<span class="sd">        reducedVarBounds    list with reduced variable bound sets</span>
+<span class="sd">    </span>
+<span class="sd">    Return:                 list with bound ratios</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">boundRatios</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">reducedVarBounds</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundRatios</span><span class="p">)):</span>
+        <span class="n">calcBoundRatios</span><span class="p">(</span><span class="n">initVarBounds</span><span class="p">,</span> <span class="n">boundRatios</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">boundRatios</span>
+
+        
+<span class="k">def</span> <span class="nf">calcBoundRatios</span><span class="p">(</span><span class="n">initVarBounds</span><span class="p">,</span> <span class="n">curBoundRatio</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; calculates current variable set bound ratio</span>
+<span class="sd">  </span>
+<span class="sd">    Args:</span>
+<span class="sd">        initVarBounds       list with initial variable bounds</span>
+<span class="sd">        curBoundRatio       current variable bound set as a list with mpmath.mpi</span>
+<span class="sd">                            values</span>
+<span class="sd">    &quot;&quot;&quot;</span>  
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">initVarBounds</span><span class="p">)):</span>
+        <span class="n">curBoundRatio</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">calcBoundFraction</span><span class="p">(</span><span class="n">initVarBounds</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">curBoundRatio</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">calcBoundFraction</span><span class="p">(</span><span class="n">initVarBound</span><span class="p">,</span> <span class="n">curVarBound</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; calculates current variable bound ratio</span>
+<span class="sd">  </span>
+<span class="sd">    Args:</span>
+<span class="sd">        initVarBounds       list with initial variable bounds</span>
+<span class="sd">        curVarBound         current variable bound in mpmath.mpi formate</span>
+<span class="sd">        </span>
+<span class="sd">    Return:                 current variable bound ratio as float value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">bratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mpmath</span><span class="o">.</span><span class="n">mpf</span><span class="p">(</span><span class="n">curVarBound</span><span class="o">.</span><span class="n">delta</span><span class="p">))</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">mpmath</span><span class="o">.</span><span class="n">mpf</span><span class="p">(</span><span class="n">initVarBound</span><span class="o">.</span><span class="n">delta</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">bratio</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="k">return</span> <span class="s1">&#39;solved&#39;</span>
+    <span class="k">return</span> <span class="n">bratio</span>
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">modOpt</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../background/background.html">Background</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Saskia Bublitz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

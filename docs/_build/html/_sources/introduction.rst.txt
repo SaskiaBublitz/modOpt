@@ -1,0 +1,12 @@
+   
+Introduction
+============
+The package ``modOpt`` intends to restructure large nonlinear algebraic systems in order to make them more robust in simultaneous solving procedures.
+
+Motivation
+**********
+
+Is following soon
+
+Limitations
+***********

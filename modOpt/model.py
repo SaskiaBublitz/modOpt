@@ -21,20 +21,21 @@ class Model:
     and the permutation arrays referring to decomposition methods like 
     Dulmage-Mendelsohn.
     
-    Atributes:     
-    stateVarValues:         list with arrays of dimension m with current values 
+    Attributes:
+        
+    :stateVarValues:         list with arrays of dimension m with current values 
                             of state variables. (in global order)
-    xBounds:                list with arrays of dimension m with current sets of
+    :xBounds:                list with arrays of dimension m with current sets of
                             state variable bounds. 
                             (in global order)                            
-    xSymbolic:              sympy array of dimension m with symbolic expression 
+    :xSymbolic:              sympy array of dimension m with symbolic expression 
                             of state variables. (in global order)
-    parameter:              array with values for model parameter                                                    
-    rowPerm:                array of dimension m with permutation order of 
+    :parameter:              array with values for model parameter                                                    
+    :rowPerm:                array of dimension m with permutation order of 
                             equations regarding their global index (1...m)
-    colPerm:                array of dimension n with permutation order of 
+    :colPerm:                array of dimension n with permutation order of 
                             variables regarding their global index (1...n)
-    blocks:                  List with blocks referring to permuted index (not 
+    :blocks:                  List with blocks referring to permuted index (not 
                             global index) Example: 
                             For a 5x5 system a structure could be:
                             [[0], [1, 2], [3], [4]] with one 2-dimensional block 
@@ -47,15 +48,15 @@ class Model:
         """ Initialization method for class model
         
         Args:
-            X:             array with m initial values for the state variables. 
+            :X:             array with m initial values for the state variables. 
                            (in global order)
-            BOUNDS:        array of dimension m with current values of the
+            :BOUNDS:        array of dimension m with current values of the
                            interval bounds of the state variables. 
                            (in global order)                            
-            XSYMBOLIC:     sympy array of dimension m with symbolic expression
+            :XSYMBOLIC:     sympy array of dimension m with symbolic expression
                            of state variables. (in global order)
-            PARAMS:        array with values of model parameter 
-            JACOBIAN:      if used, array with symbolic jacobian 
+            :PARAMS:        array with values of model parameter 
+            :JACOBIAN:      if used, array with symbolic jacobian 
             
         """
         
@@ -71,7 +72,7 @@ class Model:
 
 
     def getSymbolicFunctions(self):
-        """ returns symbolic equations of equation system"""
+        """ :Return: symbolic equations of equation system"""
         return self.fSymbolic
 
 
@@ -80,12 +81,11 @@ class Model:
         current state variable bounds.
         
         Args:
-            xBounds:          numpy array with state variables bounds
-            xSymbolic:        sympy array with symbolic state variables
-            parameter:        numpy array with parameter values
+            :xBounds:          numpy array with state variables bounds
+            :xSymbolic:        sympy array with symbolic state variables
+            :parameter:        numpy array with parameter values
         
-        Returns:
-            numpy array with residual bounds
+        :Return:              numpy array with residual bounds
             
         """
         
@@ -96,32 +96,30 @@ class Model:
         xBoundsPerm = reorderList(xBounds, self.colPerm)
   
         return FsymPerm, xSymbolicPerm, xBoundsPerm
-  
-        return FsymPerm, xSymbolicPerm, xBoundsPerm
-    
-    
+
+      
     def getJacobian(self, X):
-        """ returns jacobian evaluated at X"""
+        """ :Return: jacobian evaluated at X"""
         return self.jacobian(*numpy.append(X, X))
     
          
     def getParameter(self):
-        """ returns paramter values """
+        """ :Return: paramter values """
         return self.parameter
 
 
     def getXBounds(self):
-        """ returns current state variable bounds"""
+        """ :Return: current state variable bounds"""
         return self.xBounds
 
 
     def getXSymbolic(self):
-        """ returns symbolic variables"""        
+        """ :Return: symbolic variables"""        
         return self.xSymbolic
 
 
     def getXValues(self):
-        """ returns current state variable values"""        
+        """ :Return: current state variable values"""        
         return self.stateVarValues
 
 
@@ -150,9 +148,9 @@ def createBlocks(blocks):
     from preordering algorithm
     
     Args:
-        blocks:         list with block border indices as integers
+        :blocks:         list with block border indices as integers
     
-    Return:             list with block elements in sublist
+    :Return:             list with block elements in sublist
     
     """
     
@@ -168,11 +166,10 @@ def reorderList(myList, newOrder):
     """ reorders given list myList
     
     Args:
-        myList      list with objects
-        newOrder    list with new order indices
+        :myList:      list with objects
+        :newOrder:    list with new order indices
         
-    Return:
-        newList     sorted list
+    :Return:          sorted list
         
     """
     
