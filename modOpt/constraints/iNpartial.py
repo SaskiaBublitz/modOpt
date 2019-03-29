@@ -66,8 +66,8 @@ def doIntervalNesting(model, dict_options):
                 x[newModel.colPerm]  = numpy.array(intervalsPerm[m])           
                 newXBounds.append(x)
                 
-                if checkWidths(xBounds[k], x, dict_options["machEpsRelNewton"], 
-                               dict_options["machEpsAbsNewton"]): 
+                if checkWidths(xBounds[k], x, dict_options["relTolX"], 
+                               dict_options["absTolX"]): 
                     xAlmostEqual[k] = True
                     break
     
@@ -757,7 +757,37 @@ def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
                
         interval = checkTolerance(removeListInList(curIntervals), relEpsX)
     
+    manipulateLowerUpperBounds(monIncreasingZone, df2dx, i, xBounds)
+    manipulateLowerUpperBounds(monDecreasingZone, df2dx, i, xBounds)
+    
     return monIncreasingZone, monDecreasingZone
+
+
+def manipulateLowerUpperBounds(interval, fx, i, xBounds):
+    """shift interval bounds that create +inf/-inf-function value bounds
+    minimally to the side to remove this singular bound.
+    
+    Args:
+        :interval:      interval in mpmath.mpi logic
+        :fx:            function that is evaluated in mpmath.mpi logic
+        :i:             iteration variable index as integer
+        :xBounds:       set of variable bounds
+    
+    """
+    xBounds = copy.deepcopy(xBounds)    
+    for j in range(0, len(interval)):
+        xBounds[i] = interval[j].a
+        
+        curdf2dx = fx(*xBounds) 
+        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
+            interval[j] = mpmath.mpi(interval[j].a + numpy.finfo(numpy.float).eps,
+            interval[j].b)
+            
+        xBounds[i] = interval[j].b
+        curdf2dx = fx(*xBounds) 
+        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
+            b = interval[j].b - numpy.finfo(numpy.float).eps
+            interval[j] = mpmath.mpi(interval[j].a, b.a)
 
 
 def removeListInList(listInList):
@@ -1095,6 +1125,9 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
             addIntervalToNonMonotoneZone(newIntervals, curIntervals)
             
         interval = checkTolerance(removeListInList(curIntervals), relEpsX)
+
+    manipulateLowerUpperBounds(monIncreasingZone, dfdx, i, xBounds)
+    manipulateLowerUpperBounds(monDecreasingZone, dfdx, i, xBounds)        
     
     return monIncreasingZone, monDecreasingZone, interval
 
