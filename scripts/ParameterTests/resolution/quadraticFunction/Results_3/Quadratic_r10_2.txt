@@ -1,4 +1,0 @@
-***** 2 th Set of Initial Values and Bounds*****
-
-e0_x 1.00006103516 0.9921875 1.00793457031
-e0_y_i1 0.6 0.6 0.6

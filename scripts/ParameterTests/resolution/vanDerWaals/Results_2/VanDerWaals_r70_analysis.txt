@@ -1,9 +1,0 @@
-***** Results of Analysis *****
-
-Variables	VarBounds_0	VarBounds_1	VarBoundFraction
-e0_v	3.46950154943e-16 	2.54506002774e-14 	2.57975504324e-14
-e0_dPdv_crit	1.26209036703e-13 	9.01833440856e-06 	9.01833453476e-06
-e0_v_ph	1.73475077473e-16 	1.6606166296e-14 	1.67796413734e-14
-
-VarboundSetFraction	 7.5961691659e-45	3.81148090246e-33	3.81148090246e-33
-HypercubicLengthFraction	1.56206073574e-11 
