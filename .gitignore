@@ -58,6 +58,7 @@ spyder_crash.log
 .idea/
 .cache
 .coverage*
+Results_*/
 
 # git .orig files
 *.orig
