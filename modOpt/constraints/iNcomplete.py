@@ -8,6 +8,7 @@ import numpy
 import sympy
 import mpmath
 import itertools
+from multiprocessing import Manager, Process, cpu_count
 
 
 __all__ = ['doIntervalNesting'
@@ -127,42 +128,121 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
         Returns:                list with new set of variable bounds
                         
     """    
-    
+    #print raw_input("Here it begins!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     xNewBounds = copy.deepcopy(xBounds)
-    relEpsX = dict_options["relTolX"]
-    absEpsX = dict_options["absTolX"]
-    
-    
+
+    # Block loop
     for b in range(0, len(blocks)):
         blockDim = len(blocks[b])
+        # Variables Loop
+        jobs = []
+        manager = Manager()
+        results = manager.dict()
+        done = numpy.zeros (blockDim)
+        started = numpy.zeros (blockDim)
+        actNum = 0
+        for n in range(0, blockDim): #TODO: Parallelizing
+            p = Process(target=reduceXBounds_Worker, args=(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim, results))
+            jobs.append(p)
+            # inputs: xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim
+            #xNewBounds, boundsAlmostEqual = reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim)           
+            # outputs: boundsAlmostEqual[j - varIndex], xNewBounds[j - varIndex]
+        
+        while numpy.sum(done) < blockDim:
+            for n in range(0, blockDim):
+                # add not started jobs:
+                if jobs[n].is_alive() == False and (started[n] == 0) and (actNum < cpu_count()):
+                    jobs[n].start()
+                    started[n] = 1
+                    actNum += 1
+                # delete finished jobs:   
+                if ((started[n] == 1) & (done[n] == 0)):
+                    jobs[n].join(1e-4)
+                    if (jobs[n].is_alive() == False):
+                        done[n] = 1
+                        actNum -= 1
+        
         for n in range(0, blockDim):
-            y = [] 
-            j = blocks[b][n]
-            
-            if boundsAlmostEqual[j] == True: 
-                xNewBounds[j] = [xNewBounds[j]]
-                continue           
-            if dict_options["Debug-Modus"]: print j
-            
-            for m in range(0, blockDim): #TODO: Parallelizing
-                i = blocks[b][m]
-                if xSymbolic[j] in f[i].free_symbols:
-                    
-                    if y == []: y = reduceXIntervalByFunction(xBounds, xSymbolic, 
-                           f[i], j, dict_options)
-                    else: 
-                        y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
-                                                    xSymbolic, f[i], j, dict_options))
-                        #if y == []: return [], boundsAlmostEqual
-            if y != [] and y != [[]]: xNewBounds[j] = y
-            else: return [], boundsAlmostEqual
-            #else: xNewBounds[j] =[xBounds[j]], boundsAlmostEqual
-
-            if len(xNewBounds[j]) == 1: 
-                boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
-            
+            xNewBounds[n] = convertListToMpi(results['%d' % n][0])
+            boundsAlmostEqual[n] = results['%d' % n][1]
+        
     return list(itertools.product(*xNewBounds)), boundsAlmostEqual
 
+
+def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim, results):
+    y = [] 
+    j = blocks[b][n]
+    
+    if boundsAlmostEqual[j] == True: 
+        xNewBounds[j] = [xNewBounds[j]]
+        results['%d' % n] = (convertMpiToList(xNewBounds[j]), boundsAlmostEqual[j])
+        return True
+    if dict_options["Debug-Modus"]: print j
+    
+    # Equations Loop
+    for m in range(0, blockDim): #TODO: possilby Parallelizing
+        i = blocks[b][m]
+        if xSymbolic[j] in f[i].free_symbols:
+            
+            if y == []: y = reduceXIntervalByFunction(xBounds, xSymbolic, 
+                   f[i], j, dict_options)
+            else: 
+                y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
+                                            xSymbolic, f[i], j, dict_options))
+                #if y == []: return [], boundsAlmostEqual
+    if y != [] and y != [[]]: xNewBounds[j] = y
+    else:
+        results['%d' % n] = ([], boundsAlmostEqual[j])
+        return True
+    #else: xNewBounds[j] =[xBounds[j]], boundsAlmostEqual
+
+    if len(xNewBounds[j]) == 1: 
+        relEpsX = dict_options["relTolX"]
+        absEpsX = dict_options["absTolX"]
+        boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
+
+    results['%d' % n] = (convertMpiToList(xNewBounds[j]), boundsAlmostEqual[j])
+    return True
+
+
+def convertMpiToList(listWitMpiIntervals):
+    """ converts list with intervals in mpmath.mpi formate to list in list with
+    interval bounds.
+    
+    Args:
+        :listWitMpiIntervals:       list with mpmath.mpi interval(s)
+        
+    Returns:
+        :listWithIntervalBounds:    list with list(s) [a, b] whereas a is the lower
+                                    bound and b the upper bound of the interval
+                                    
+    """
+    
+    listWithIntervalBounds = []
+    for curInterval in listWitMpiIntervals:
+        listWithIntervalBounds.append([float(mpmath.mpf(curInterval.a)), float(mpmath.mpf(curInterval.b))])
+    return listWithIntervalBounds
+    
+
+def convertListToMpi(listWithIntervalBounds):
+    """ converts list with intervals lists into lists with intervals in the
+        mpmath.mpi formate.
+    
+    Args:
+        :listWithIntervalBounds:    list with list(s) [a, b] whereas a is the lower
+                                    bound and b the upper bound of the interval 
+        
+    Returns:
+        :listWitMpiIntervals:       list with mpmath.mpi interval(s)
+        
+    """
+    
+    listWithMpiIntervals = []
+    
+    for curInterval in listWithIntervalBounds:
+        listWithMpiIntervals.append(mpmath.mpi(curInterval[0], curInterval[1]))       
+    return listWithMpiIntervals
+    
 
 def checkVariableBound(newXInterval, relEpsX, absEpsX):
     """ if lower and upper bound of a variable are almost equal the boolean 

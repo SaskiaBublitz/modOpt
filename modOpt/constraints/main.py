@@ -7,6 +7,7 @@ Import packages
 """
 
 import iNcomplete
+import iNcomplete_seq
 import time
 import iNpartial
 import modOpt.decomposition.dM  as mod
@@ -42,8 +43,15 @@ def reduceVariableBounds(model, options):
             t = toc - tic
             return reducedModel, iterNo, t
         
+    if options['method'] == 'complete_seq':
+        if options['timer'] == True: 
+            tic = time.clock()
+            reducedModel, iterNo = iNcomplete_seq.doIntervalNesting(model, options)
+            toc = time.clock()
+            t = toc - tic
+            return reducedModel, iterNo, t        
         else:
-            reducedModel, iterNo = iNcomplete.doIntervalNesting(model, options)
+            reducedModel, iterNo = iNcomplete_seq.doIntervalNesting(model, options)
             return reducedModel, iterNo, []
     
     if options['method'] == 'partial':
