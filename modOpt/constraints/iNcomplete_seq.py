@@ -237,8 +237,11 @@ def splitFunctionByVariableDependency(f, x):
     #if allArguments == ():
     #    if x in f.free_symbols: return f, 0
     #    else: return 0, f
+    if f.func.class_key()[2] == 'Mul':   
+        f = sympy.Add(sympy.Mul(*allArguments), 1e-100)
+        allArguments = f.args
         
-    if f.func.class_key()[2]=='Add':
+    if f.func.class_key()[2] == 'Add':
             
         for i in range(0, len(allArguments)):
             if x in allArguments[i].free_symbols:
@@ -249,7 +252,7 @@ def splitFunctionByVariableDependency(f, x):
         fWithoutVar = sympy.Add(*allArgumentsWithoutVariable)
         return fvar, fWithoutVar
     
-    #if f.func.class_key()[2]=='Mul':
+
     #    if x in f.free_symbols: return f, 0
     #    else: return 0, f
 

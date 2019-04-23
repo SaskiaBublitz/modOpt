@@ -46,37 +46,61 @@ def doIntervalNesting(model, dict_options):
     for l in range(0, dict_options["iterMaxNewton"]): 
         
         iterNo = l + 1
+
+        jobs = []
+        manager = Manager()
+        results = manager.dict()
+        noOfX = len(xBounds)
+        done = numpy.zeros(noOfX)
+        started = numpy.zeros(len(xBounds))
+        actNum = 0
+        #resutls[k] = [xBounds, xAlsmostEqual]
         newXBounds = []
-        
+        xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)    
         for k in range(0,len(xBounds)): #TODO: Parallelizing
-            
-            xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)
-            FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
-                                                                                  xSymbolic, 
-                                                                                  parameter)
-            dict_options["precision"] = getPrecision(xBoundsPerm)
+        
+            p = Process(target=reduceMultipleXBounds_Worker, args=(xBounds, k, 
+                                                                   boundsAlmostEqual,
+                                                                   model,
+                                                                   blocks, dimVar,
+                                                                   xSymbolic, 
+                                                                   parameter,
+                                                                   dict_options,
+                                                                   results))
+            jobs.append(p)
 
-            intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                             blocks, dict_options, boundsAlmostEqual)
+        while numpy.sum(done) < len(xBounds):
+            for k in range(0, len(xBounds)):
+                # add not started jobs:
+                if jobs[k].is_alive() == False and (started[k] == 0) and (actNum < cpu_count()):
+                    jobs[k].start()
+                    started[k] = 1
+                    actNum += 1
+                # delete finished jobs:   
+                if ((started[k] == 1) & (done[k] == 0)):
+                    jobs[k].join(1e-4)
+                    if (jobs[k].is_alive() == False):
+                        done[k] = 1
+                        actNum -= 1
+        
             
-            if intervalsPerm == []:
-                break
-            
-            for m in range(0, len(intervalsPerm)): #TODO: Parallelizing and in new Function
-                
-                x = numpy.empty(dimVar, dtype=object)     
-                x[newModel.colPerm]  = numpy.array(intervalsPerm[m])           
-                newXBounds.append(x)
-                
-                if checkWidths(xBounds[k], x, dict_options["relTolX"], 
-                               dict_options["absTolX"]): 
-                    xAlmostEqual[k] = True
-                    break
-    
-            if xAlmostEqual.all():
-                newModel.setXBounds(xBounds)
+        for k in range(0,len(xBounds)):
+            if results['%d' %k][0] != []: 
 
-                return newModel, iterNo
+                curNewXBounds = results['%d' %k][0] # [[[a1], [b1], [c1]], [[a2], [b2], [c2]]]
+
+                for curNewXBound in curNewXBounds:
+                    newXBounds.append(convertListToMpi(curNewXBound))
+                    
+            xAlmostEqual[k] = results['%d' %k][1]      
+            boundsAlmostEqual = results['%d' %k][2]
+        
+        
+        
+        if xAlmostEqual.all():
+            newModel.setXBounds(xBounds)
+
+            return newModel, iterNo
           
         if newXBounds != []: xBounds = newXBounds
         else: 
@@ -87,6 +111,35 @@ def doIntervalNesting(model, dict_options):
     return newModel, iterNo
 
 
+def reduceMultipleXBounds_Worker(xBounds, k, boundsAlmostEqual, model, blocks, dimVar, xSymbolic, parameter, dict_options, results):
+    newXBounds = []
+    FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
+                                                                              xSymbolic, 
+                                                                              parameter)
+    dict_options["precision"] = getPrecision(xBoundsPerm)
+
+    intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                                     blocks, dict_options, boundsAlmostEqual)
+    
+    if intervalsPerm == []:
+        boundsAlmostEqual = False
+        results['%d' %k] = ([], False, boundsAlmostEqual)
+        return
+    
+    for m in range(0, len(intervalsPerm)): #TODO: Parallelizing and in new Function
+        
+        x = numpy.empty(dimVar, dtype=object)     
+        x[model.colPerm]  = numpy.array(intervalsPerm[m])           
+        newXBounds.append(convertMpiToList(x))
+        
+        if checkWidths(xBounds[k], x, dict_options["relTolX"], 
+                       dict_options["absTolX"]): 
+            #xAlmostEqual[k] = True
+            results['%d' %k] = ([convertMpiToList(x)], True, boundsAlmostEqual)
+            return
+    
+    results['%d' %k] = (newXBounds, False, boundsAlmostEqual)
+     
 def getPrecision(xBounds):
     """
     calculates precision for intervalnesting procedure (when intervals are
