@@ -37,9 +37,10 @@ def main():
                     "relTolF": 2.22e-2,
                     "resolution": 50,
                     "Debug-Modus": False,
+                    "Parallelization": True,
                     "NoOfNonChangingValues": 3,
                     'timer': True,
-                    'method': 'complete_seq',#'complete', 'partial', 'complete_seq'
+                    'method': 'complete',#'complete', 'partial'
                     'analysis': True}
 
 # Model initialization:
