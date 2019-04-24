@@ -45,7 +45,6 @@ def reduceMultipleXBounds(xBounds, boundsAlmostEqual, model, blocks, dimVar,
     done = numpy.zeros(len(xBounds))
     started = numpy.zeros(len(xBounds))
     actNum = 0
-    newXBounds = []
     xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)   
 
     for k in range(0,len(xBounds)):  
@@ -60,8 +59,8 @@ def reduceMultipleXBounds(xBounds, boundsAlmostEqual, model, blocks, dimVar,
         jobs.append(p)
         
     startAndDeleteJobs(actNum, jobs, started, done, len(xBounds), CPU_count)
-    boundsAlmostEqual = getReducedXBoundsResults(results, len(xBounds), newXBounds, xAlmostEqual)
-
+    boundsAlmostEqual, newXBounds = getReducedXBoundsResults(results, len(xBounds), xAlmostEqual)
+    
     return newXBounds, xAlmostEqual, boundsAlmostEqual
 
 
@@ -143,33 +142,32 @@ def startAndDeleteJobs(actNum, jobs, started, done, jobNo, CPU_count):
             deleteFinishedJobs(actNum, jobs, started, done, jobId)
 
 
-def getReducedXBoundsResults(results, noOfxBounds, newXBounds, xAlmostEqual):
+def getReducedXBoundsResults(results, noOfxBounds, xAlmostEqual):
     """ extracts quantities from multiprocessing results
     
     Args:
         :results:       dictionary from multiprocessing, where results are stored
                         after a job is done
         :noOfxBounds:   number of solution interval sets in xBounds
-        :newXBounds:    list with reduced solution interval sets
         :xAlmostEqual:  list with noOfxBounds boolean entries
         
     Return:
         :boundsAlmostEqual: list with as many boolean entries as iteration variables
                             that is true if variable bounds can not be further reduced
                             in the given tolerances.
+        :newXBounds:        list with reduced solution interval sets
                                  
     """
-  
+    newXBounds = []
     for k in range(0, noOfxBounds):
         if results['%d' %k][0] != []: 
             curNewXBounds = results['%d' %k][0] # [[[a1], [b1], [c1]], [[a2], [b2], [c2]]]
-
             for curNewXBound in curNewXBounds:
                 newXBounds.append(convertListToMpi(curNewXBound))
                 
         xAlmostEqual[k] = results['%d' %k][1]      
         boundsAlmostEqual = results['%d' %k][2]
-        return boundsAlmostEqual
+    return boundsAlmostEqual, newXBounds
     
 
 def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual):
