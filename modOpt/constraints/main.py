@@ -87,11 +87,11 @@ def doIntervalNesting(model, dict_options):
          
         iterNo = l + 1
         
-        if dict_options["Parallelization"] == True:
+        if dict_options["Parallel Branches"]:
             newXBounds, xAlmostEqual, boundsAlmostEqual = parallelization.reduceMultipleXBounds(xBounds, 
                                         boundsAlmostEqual, model, blocks, dimVar,
                                         xSymbolic, parameter, dict_options)
-            
+                    
         else:
             newXBounds, xAlmostEqual, boundsAlmostEqual = iNes_procedure.reduceMultipleXBounds(xBounds, 
                                                         xSymbolic, parameter, model, dimVar, blocks, 

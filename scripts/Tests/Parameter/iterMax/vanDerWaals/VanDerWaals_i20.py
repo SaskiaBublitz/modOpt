@@ -37,8 +37,10 @@ def main():
                     "relTolF": 2.22e-2,
                     "resolution": 50,
                     "Debug-Modus": False,
-                    "Parallelization": True,
+                    "Parallel Branches": False,
+                    "Parallel Variables": False,
                     "NoOfNonChangingValues": 3,
+                    "CPU count": 8,
                     'timer': True,
                     'method': 'complete',#'complete', 'partial'
                     'analysis': True}

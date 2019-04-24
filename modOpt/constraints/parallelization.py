@@ -8,9 +8,9 @@ import numpy
 import mpmath
 import iNes_procedure
 import itertools
-from multiprocessing import Manager, Process, cpu_count
+from multiprocessing import Manager, Process #cpu_count
 
-__all__ = ['reduceMultipleXBounds', ]
+__all__ = ['reduceMultipleXBounds', 'reduceXBounds']
 
 """
 ***************************************************
@@ -38,7 +38,7 @@ def reduceMultipleXBounds(xBounds, boundsAlmostEqual, model, blocks, dimVar,
         :boundsAlmostEqual:     list with as many boolean values as iteration variables 
             
     """
-
+    CPU_count = dict_options["CPU count"]
     jobs = []
     manager = Manager()
     results = manager.dict()
@@ -46,9 +46,9 @@ def reduceMultipleXBounds(xBounds, boundsAlmostEqual, model, blocks, dimVar,
     started = numpy.zeros(len(xBounds))
     actNum = 0
     newXBounds = []
-    xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)    
-    for k in range(0,len(xBounds)):
-    
+    xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)   
+
+    for k in range(0,len(xBounds)):  
         p = Process(target=reduceMultipleXBounds_Worker, args=(xBounds, k, 
                                                                boundsAlmostEqual,
                                                                model,
@@ -59,7 +59,7 @@ def reduceMultipleXBounds(xBounds, boundsAlmostEqual, model, blocks, dimVar,
                                                                results))
         jobs.append(p)
         
-    startAndDeleteJobs(actNum, jobs, started, done, len(xBounds))
+    startAndDeleteJobs(actNum, jobs, started, done, len(xBounds), CPU_count)
     boundsAlmostEqual = getReducedXBoundsResults(results, len(xBounds), newXBounds, xAlmostEqual)
 
     return newXBounds, xAlmostEqual, boundsAlmostEqual
@@ -94,9 +94,14 @@ def reduceMultipleXBounds_Worker(xBounds, k, boundsAlmostEqual, model, blocks, d
                                                                               parameter)
     dict_options["precision"] = iNes_procedure.getPrecision(xBoundsPerm)
 
-    intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                     blocks, dict_options, boundsAlmostEqual)
+    if dict_options["Parallel Variables"]: #TODO: Nested processes possible?
+        intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                                         blocks, dict_options, boundsAlmostEqual)
     
+    else:
+        intervalsPerm, boundsAlmostEqual = iNes_procedure.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                                         blocks, dict_options, boundsAlmostEqual)        
+        
     if intervalsPerm == []:
         boundsAlmostEqual = False
         results['%d' %k] = ([], False, boundsAlmostEqual)
@@ -117,7 +122,7 @@ def reduceMultipleXBounds_Worker(xBounds, k, boundsAlmostEqual, model, blocks, d
     results['%d' %k] = (newXBounds, False, boundsAlmostEqual)
 
 
-def startAndDeleteJobs(actNum, jobs, started, done, jobNo):
+def startAndDeleteJobs(actNum, jobs, started, done, jobNo, CPU_count):
     """ starts jobs using multiprocessing and deletes finished ones
     
     Args:
@@ -128,12 +133,13 @@ def startAndDeleteJobs(actNum, jobs, started, done, jobNo):
         :done:          jobNo dimensional numpy array. The entries are binaries 
                         (1 = job done, 0 = job not done)
         :jobNo:         integer with total number of jobs
-                                   
+        :CPU_count:     number of cores
+                           
     """  
     
     while numpy.sum(done) < jobNo:
         for jobId in range(0, jobNo):
-            addNotStartedJobs(actNum, jobs, started, done, jobId) 
+            addNotStartedJobs(actNum, jobs, started, done, jobId, CPU_count) 
             deleteFinishedJobs(actNum, jobs, started, done, jobId)
 
 
@@ -187,7 +193,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                         
     """    
     xNewBounds = copy.deepcopy(xBounds)
-
+    CPU_count = dict_options["CPU count"] 
     # Block loop
     for b in range(0, len(blocks)):
         blockDim = len(blocks[b])
@@ -202,7 +208,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
             p = Process(target=reduceXBounds_Worker, args=(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim, results))
             jobs.append(p)
 
-        startAndDeleteJobs(actNum, jobs, started, done, blockDim)
+        startAndDeleteJobs(actNum, jobs, started, done, blockDim, CPU_count)
         
         for n in range(0, blockDim):
             xNewBounds[n] = convertListToMpi(results['%d' % n][0])
@@ -287,7 +293,7 @@ def checkVariableBound(newXInterval, relEpsX, absEpsX):
         return True
     
     
-def addNotStartedJobs(actNum, jobs, started, done, jobId):
+def addNotStartedJobs(actNum, jobs, started, done, jobId, CPU_count):
     """ starts jobs using multiprocessing
     
     Args:
@@ -298,10 +304,11 @@ def addNotStartedJobs(actNum, jobs, started, done, jobId):
         :done:          jobNo dimensional numpy array. The entries are binaries 
                         (1 = job done, 0 = job not done)
         :jobId:         integer with index of current job
+        :CPU_count:     number of processors
                                    
     """   
     
-    if jobs[jobId].is_alive() == False and (started[jobId] == 0) and (actNum < cpu_count()):
+    if jobs[jobId].is_alive() == False and (started[jobId] == 0) and (actNum < CPU_count):
         jobs[jobId].start()
         started[jobId] = 1
         actNum += 1

@@ -8,6 +8,7 @@ import numpy
 import sympy
 import mpmath
 import itertools
+import parallelization
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
            'checkWidths', 'getPrecision']
@@ -48,10 +49,14 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
                                                                               xSymbolic, 
                                                                               parameter)
         dict_options["precision"] = getPrecision(xBoundsPerm)
-
-        intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                         blocks, dict_options, boundsAlmostEqual)
         
+        if not dict_options["Parallel Variables"]:
+            intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                                             blocks, dict_options, boundsAlmostEqual)
+        else:
+            intervalsPerm, boundsAlmostEqual = parallelization.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                                             blocks, dict_options, boundsAlmostEqual)
+            
         if intervalsPerm == []:
             break
         
@@ -214,10 +219,8 @@ def splitFunctionByVariableDependency(f, x):
     allArgumentsWithVariable = []
     allArgumentsWithoutVariable = []
     
-    #if allArguments == ():
-    #    if x in f.free_symbols: return f, 0
-    #    else: return 0, f
-        
+    if f.func.class_key()[2]=='Mul':f = f + numpy.finfo(numpy.float).eps/2
+
     if f.func.class_key()[2]=='Add':
             
         for i in range(0, len(allArguments)):
