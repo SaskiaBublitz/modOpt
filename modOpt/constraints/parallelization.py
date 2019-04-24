@@ -102,7 +102,7 @@ def reduceMultipleXBounds_Worker(xBounds, k, boundsAlmostEqual, model, blocks, d
                                                          blocks, dict_options, boundsAlmostEqual)        
         
     if intervalsPerm == []:
-        boundsAlmostEqual = False
+        #boundsAlmostEqual[k] = False
         results['%d' %k] = ([], False, boundsAlmostEqual)
         return
     
@@ -166,7 +166,9 @@ def getReducedXBoundsResults(results, noOfxBounds, xAlmostEqual):
                 newXBounds.append(convertListToMpi(curNewXBound))
                 
         xAlmostEqual[k] = results['%d' %k][1]      
-        boundsAlmostEqual = results['%d' %k][2]
+    
+    boundsAlmostEqual = results['%d' %k][2]
+    
     return boundsAlmostEqual, newXBounds
     
 
@@ -209,8 +211,10 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
         startAndDeleteJobs(actNum, jobs, started, done, blockDim, CPU_count)
         
         for n in range(0, blockDim):
-            xNewBounds[n] = convertListToMpi(results['%d' % n][0])
-            boundsAlmostEqual[n] = results['%d' % n][1]
+            if results['%d' % n][0] != []:
+                xNewBounds[n] = convertListToMpi(results['%d' % n][0])
+                boundsAlmostEqual[n] = results['%d' % n][1]
+            else: return [], boundsAlmostEqual
         
     return list(itertools.product(*xNewBounds)), boundsAlmostEqual
 
@@ -242,9 +246,9 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
     y = [] 
     j = blocks[b][n]
     
-    if boundsAlmostEqual[j] == True: 
+    if boundsAlmostEqual[j]: 
         xNewBounds[j] = [xNewBounds[j]]
-        results['%d' % n] = (convertMpiToList(xNewBounds[j]), boundsAlmostEqual[j])
+        results['%d' % n] = (convertMpiToList(xNewBounds[j]), True)
         return True
     if dict_options["Debug-Modus"]: print j
     
