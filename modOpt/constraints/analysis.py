@@ -27,17 +27,16 @@ def analyseResults(fileName, varSymbolic, initVarBounds, reducedVarBounds):
     
     boundRatios =getBoundRatios(initVarBounds, reducedVarBounds)
     boundRatioOfVars, solvedVars = getBoundRatioOfVars(boundRatios)
-    boundRatioOfVarBoundSet = getBoundRatioOfVarBoundSet(boundRatios)
-    volumeFraction = sum(boundRatioOfVarBoundSet)
-    hypercubicLFraction = (volumeFraction)**(1.0/(len(varSymbolic)-len(solvedVars)))
+    hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
+                                                                         (len(varSymbolic)-len(solvedVars)))
+
+    hypercubicLFraction = sum(hypercubicLFractions)
     writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
-                         boundRatioOfVarBoundSet,volumeFraction, 
-                         hypercubicLFraction, solvedVars)
+                         hypercubicLFractions, hypercubicLFraction, solvedVars)
  
     
 def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
-                         boundRatioOfVarBoundSet, volumeFraction, 
-                         hypercubicLFraction, solvedVars):
+                         hypercubicLFractions, hypercubicLFraction, solvedVars):
     """ writes anaylsis results to a textfile  <fileName>_analysis.txt
     
     Args:
@@ -47,10 +46,7 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
                                       variable bound ratio (has only one entry if 
                                       one set of variable bounds remains)
         :boundRatioOfVars:            sum of the bound ratios of one variable
-        :boundRatioOfVarBoundSet:     product of all variable bounds of one variable
-                                      bound set
-        :volumeFraction:              float number of reduced volume to inital volume
-                                      fraction
+        :hypercubicLFractions:        list with fractional length of each sub-hypercube
         :hypercubicLFraction:         If the volumes were hypercubic, the hypercubicLFraction
                                       equals their edge length reduction
                                     
@@ -73,12 +69,10 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
             res_file.write("%s \t"%(boundRatios[j][i]))  
         res_file.write("%s\n"%(boundRatioOfVars[i]))
 
-    res_file.write("\nVarboundSetFraction\t ")
+    res_file.write("\nHypercubicLengthFractions\t ")
     for j in range(0, noOfVarSets):
-        res_file.write("%s\t"%(boundRatioOfVarBoundSet[j]))
-    res_file.write("%s"%(volumeFraction)) 
-
-    res_file.write("\nHypercubicLengthFraction\t%s " %(hypercubicLFraction))
+        res_file.write("%s\t"%(hypercubicLFractions[j]))
+    res_file.write("%s"%(hypercubicLFraction)) 
     
     if solvedVars != []:
         res_file.write("\n\nFollowing Variables have been solved:\n")
@@ -86,6 +80,37 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
             res_file.write("%s (VarBound_%s)\n" %(varSymbolic[solvedVar[1]], 
                                                                solvedVar[0]))
 
+def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, dim):
+    """ calculates edge fraction of each sub-hypercube that result from multiple
+    solution interval sets
+    
+    Args:
+        :boundRatios:      list with reduced variable bound tp initial variable 
+                           bound ratio (has only one entry if one set of variable 
+                           bounds remains) 
+        :dim:              number of remaining iteration variable intervals
+        
+    Return:
+        :hypercubeLengthFractions: list with sub-hypercubic length fractions
+        
+    """
+    
+    hypercubeLengthFractions = []
+    n = 1.0 / dim
+    
+    for j in range(0, len(boundRatios)):
+        
+        curFraction = 1
+        
+        for i in range(0, len(boundRatios[0])):
+            
+            if boundRatios[j][i] != 'solved':
+                curFraction = curFraction * (boundRatios[j][i])**n
+
+        hypercubeLengthFractions.append(curFraction)
+    
+    return hypercubeLengthFractions
+    
 
 def getBoundRatioOfVarBoundSet(boundRatios):
     """ multiplies all variable bounds of one variable bound set for all variable
