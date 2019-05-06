@@ -16,16 +16,17 @@ def createDict(X, LABEL):
 
 
 def writeResults(fileName, dict_variables, t, iterNo):
-    """ Creates File(s) with  final start values and lower and upper bounds. 
+    """ creates File(s) with  final start values and lower and upper bounds. 
     For the ith set of start values, lower and upper bounds a new text file is 
     generated using the label "_i". 
     
     Args:
-        fileName                String with name of text file(s)
-        dict_variables          Dictionary with sets of state variable values,
-                                lower and upper bounds
+        :fileName:                String with name of text file(s)
+        :dict_variables:          Dictionary with sets of state variable values,
+                                 lower and upper bounds
         
     """
+    
     if dict_variables[dict_variables.keys()[0]][0] != []:
         initKey = dict_variables.keys()[0]
     

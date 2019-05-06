@@ -8,94 +8,79 @@ import numpy
 import sympy
 import mpmath
 import itertools
-from multiprocessing import Manager, Process, cpu_count
+import parallelization
 
-
-__all__ = ['doIntervalNesting'
-        ]
+__all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
+           'checkWidths', 'getPrecision']
 
 """
 ***************************************************
-Algorithm for complete interval nesting procedure
+Algorithm for interval Nesting procedure
 ***************************************************
 """
 
-def doIntervalNesting(model, dict_options):
-    """ iterates the state variable intervals related to model using the
-    Gauss-Seidel Operator combined with an interval nesting strategy
+def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, boundsAlmostEqual,
+                          dict_options):
+    """ reduction of multiple solution interval sets
     
     Args:
-        model           object of class model
-        dict_options    dictionary with solver options
+        :xBounds:               list with list of interval sets in mpmath.mpi logic
+        :xSymbolic:             list with symbolic iteration variables in sympy logic
+        :parameter:             list with parameter values of equation system        
+        :model:                 object of type model
+        :dimVar:                integer that equals iteration variable dimension        
+        :blocks:                list with block indices of equation system
+        :boundsAlmostEqual:     list with as many boolean values as iteration variables         
+        :dict_options:          dictionary with user specified algorithm settings
     
     Return:
-        model           model object with reduced state variable bounds
-        iterNo          number of iteration steps in Newton algorithm
+        :newXBounds:            list with list of reduced interval sets in mpmath.mpi logic
+        :xAlmostEqual:          list with as many boolean values as interval sets in xBounds 
+        :boundsAlmostEqual:     list with as many boolean values as iteration variables 
+            
     """
     
-    iterNo = 0
-    xBounds = model.getXBounds()
-    xSymbolic = model.getXSymbolic()
-    parameter = model.getParameter()
-    blocks = [range(0, len(xSymbolic))] # block decompostion is not used here
-    newModel = copy.deepcopy(model)
-    dimVar = len(xBounds[0])
-    boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
-
-
-    for l in range(0, dict_options["iterMaxNewton"]): 
+    newXBounds = []
+    xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)
+    
+    for k in range(0,len(xBounds)):
         
-        iterNo = l + 1
-        newXBounds = []
+        FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
+                                                                              xSymbolic, 
+                                                                              parameter)
+        dict_options["precision"] = getPrecision(xBoundsPerm)
         
-        for k in range(0,len(xBounds)): #TODO: Parallelizing
-            
-            xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)
-            FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
-                                                                                  xSymbolic, 
-                                                                                  parameter)
-            dict_options["precision"] = getPrecision(xBoundsPerm)
-
+        if not dict_options["Parallel Variables"]:
             intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
                                                              blocks, dict_options, boundsAlmostEqual)
+        else:
+            intervalsPerm, boundsAlmostEqual = parallelization.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                                             blocks, dict_options, boundsAlmostEqual)
             
-            if intervalsPerm == []:
+        if intervalsPerm == []:
+            break
+        
+        for m in range(0, len(intervalsPerm)): 
+            
+            x = numpy.empty(dimVar, dtype=object)     
+            x[model.colPerm]  = numpy.array(intervalsPerm[m])           
+            newXBounds.append(x)
+            
+            if checkWidths(xBounds[k], x, dict_options["relTolX"], 
+                           dict_options["absTolX"]): 
+                xAlmostEqual[k] = True
                 break
-            
-            for m in range(0, len(intervalsPerm)): #TODO: Parallelizing and in new Function
-                
-                x = numpy.empty(dimVar, dtype=object)     
-                x[newModel.colPerm]  = numpy.array(intervalsPerm[m])           
-                newXBounds.append(x)
-                
-                if checkWidths(xBounds[k], x, dict_options["relTolX"], 
-                               dict_options["absTolX"]): 
-                    xAlmostEqual[k] = True
-                    break
-    
-            if xAlmostEqual.all():
-                newModel.setXBounds(xBounds)
-
-                return newModel, iterNo
-          
-        if newXBounds != []: xBounds = newXBounds
-        else: 
-            print "NoSolutionError: No valid solution space was found. Please check consistency of initial constraints"
-            
-    newModel.setXBounds(xBounds)
-    
-    return newModel, iterNo
+    return newXBounds, xAlmostEqual, boundsAlmostEqual
 
 
 def getPrecision(xBounds):
-    """
-    calculates precision for intervalnesting procedure (when intervals are
+    """ calculates precision for intervalnesting procedure (when intervals are
     joined to one interval)
     Args:
-        xBounds         list with iteration variable bounds in mpmath.mpi formate
+        :xBounds:         list with iteration variable bounds in mpmath.mpi formate
     
     Return:
-        precision as float value
+        :precision:       as float value
         
     """
     
@@ -109,7 +94,7 @@ def getPrecision(xBounds):
 
 
 def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual):
-    """ Solves an equation system blockwise. For block dimensions > 1 each 
+    """ solves an equation system blockwise. For block dimensions > 1 each 
     iteration variable interval of the block is reduced sequentially by all 
     equations of the block. The narrowest bounds from this procedure are taken
     over.
@@ -128,121 +113,41 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
         Returns:                list with new set of variable bounds
                         
     """    
-    #print raw_input("Here it begins!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    
     xNewBounds = copy.deepcopy(xBounds)
-
-    # Block loop
+    relEpsX = dict_options["relTolX"]
+    absEpsX = dict_options["absTolX"]
+    
+    
     for b in range(0, len(blocks)):
         blockDim = len(blocks[b])
-        # Variables Loop
-        jobs = []
-        manager = Manager()
-        results = manager.dict()
-        done = numpy.zeros (blockDim)
-        started = numpy.zeros (blockDim)
-        actNum = 0
-        for n in range(0, blockDim): #TODO: Parallelizing
-            p = Process(target=reduceXBounds_Worker, args=(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim, results))
-            jobs.append(p)
-            # inputs: xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim
-            #xNewBounds, boundsAlmostEqual = reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim)           
-            # outputs: boundsAlmostEqual[j - varIndex], xNewBounds[j - varIndex]
-        
-        while numpy.sum(done) < blockDim:
-            for n in range(0, blockDim):
-                # add not started jobs:
-                if jobs[n].is_alive() == False and (started[n] == 0) and (actNum < cpu_count()):
-                    jobs[n].start()
-                    started[n] = 1
-                    actNum += 1
-                # delete finished jobs:   
-                if ((started[n] == 1) & (done[n] == 0)):
-                    jobs[n].join(1e-4)
-                    if (jobs[n].is_alive() == False):
-                        done[n] = 1
-                        actNum -= 1
-        
         for n in range(0, blockDim):
-            xNewBounds[n] = convertListToMpi(results['%d' % n][0])
-            boundsAlmostEqual[n] = results['%d' % n][1]
-        
+            y = [] 
+            j = blocks[b][n]
+            
+            if boundsAlmostEqual[j] == True: 
+                xNewBounds[j] = [xNewBounds[j]]
+                continue           
+            if dict_options["Debug-Modus"]: print j
+            
+            for m in range(0, blockDim):
+                i = blocks[b][m]
+                if xSymbolic[j] in f[i].free_symbols:
+                    
+                    if y == []: y = reduceXIntervalByFunction(xBounds, xSymbolic, 
+                           f[i], j, dict_options)
+                    else: 
+                        y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
+                                                    xSymbolic, f[i], j, dict_options))
+
+            if y != [] and y != [[]]: xNewBounds[j] = y
+            else: return [], boundsAlmostEqual
+
+            if len(xNewBounds[j]) == 1: 
+                boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
+            
     return list(itertools.product(*xNewBounds)), boundsAlmostEqual
 
-
-def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim, results):
-    y = [] 
-    j = blocks[b][n]
-    
-    if boundsAlmostEqual[j] == True: 
-        xNewBounds[j] = [xNewBounds[j]]
-        results['%d' % n] = (convertMpiToList(xNewBounds[j]), boundsAlmostEqual[j])
-        return True
-    if dict_options["Debug-Modus"]: print j
-    
-    # Equations Loop
-    for m in range(0, blockDim): #TODO: possilby Parallelizing
-        i = blocks[b][m]
-        if xSymbolic[j] in f[i].free_symbols:
-            
-            if y == []: y = reduceXIntervalByFunction(xBounds, xSymbolic, 
-                   f[i], j, dict_options)
-            else: 
-                y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
-                                            xSymbolic, f[i], j, dict_options))
-                #if y == []: return [], boundsAlmostEqual
-    if y != [] and y != [[]]: xNewBounds[j] = y
-    else:
-        results['%d' % n] = ([], boundsAlmostEqual[j])
-        return True
-    #else: xNewBounds[j] =[xBounds[j]], boundsAlmostEqual
-
-    if len(xNewBounds[j]) == 1: 
-        relEpsX = dict_options["relTolX"]
-        absEpsX = dict_options["absTolX"]
-        boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
-
-    results['%d' % n] = (convertMpiToList(xNewBounds[j]), boundsAlmostEqual[j])
-    return True
-
-
-def convertMpiToList(listWitMpiIntervals):
-    """ converts list with intervals in mpmath.mpi formate to list in list with
-    interval bounds.
-    
-    Args:
-        :listWitMpiIntervals:       list with mpmath.mpi interval(s)
-        
-    Returns:
-        :listWithIntervalBounds:    list with list(s) [a, b] whereas a is the lower
-                                    bound and b the upper bound of the interval
-                                    
-    """
-    
-    listWithIntervalBounds = []
-    for curInterval in listWitMpiIntervals:
-        listWithIntervalBounds.append([float(mpmath.mpf(curInterval.a)), float(mpmath.mpf(curInterval.b))])
-    return listWithIntervalBounds
-    
-
-def convertListToMpi(listWithIntervalBounds):
-    """ converts list with intervals lists into lists with intervals in the
-        mpmath.mpi formate.
-    
-    Args:
-        :listWithIntervalBounds:    list with list(s) [a, b] whereas a is the lower
-                                    bound and b the upper bound of the interval 
-        
-    Returns:
-        :listWitMpiIntervals:       list with mpmath.mpi interval(s)
-        
-    """
-    
-    listWithMpiIntervals = []
-    
-    for curInterval in listWithIntervalBounds:
-        listWithMpiIntervals.append(mpmath.mpi(curInterval[0], curInterval[1]))       
-    return listWithMpiIntervals
-    
 
 def checkVariableBound(newXInterval, relEpsX, absEpsX):
     """ if lower and upper bound of a variable are almost equal the boolean 
@@ -260,8 +165,8 @@ def checkVariableBound(newXInterval, relEpsX, absEpsX):
     
     if mpmath.almosteq(newXInterval.a, newXInterval.b, relEpsX, absEpsX):
         return True
-
-
+    
+    
 def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One function that gets fi, xi and does the procedure
     """ reduces variable interval by either solving a linear function directly
     with Gauss-Seidl-Operator or finding the reduced variable interval(s) of a
@@ -293,9 +198,9 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One fun
         return getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdxInterval, 
                             df2dxInterval, xSymbolic, i, xBounds, bi, dict_options)
 
-
+    
 def splitFunctionByVariableDependency(f, x):
-    """a sympy function expression f is splitted into a sum from x depended terms
+    """ a sympy function expression f is splitted into a sum from x depended terms
     and a sum from x independent terms. If the expressions consists of a product or
     quotient, it is only checked if this one contains x or not. If one or both of the
     resulting parts are empty they are returned as 0.
@@ -314,10 +219,8 @@ def splitFunctionByVariableDependency(f, x):
     allArgumentsWithVariable = []
     allArgumentsWithoutVariable = []
     
-    #if allArguments == ():
-    #    if x in f.free_symbols: return f, 0
-    #    else: return 0, f
-        
+    if f.func.class_key()[2]=='Mul':f = f + numpy.finfo(numpy.float).eps/2
+
     if f.func.class_key()[2]=='Add':
             
         for i in range(0, len(allArguments)):
@@ -359,29 +262,29 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     complex intervals by interval nesting.
     
     Args:
-        fx:                 symbolic function in sympy logic (contains current 
-                            iteration variable X)
-        fWithoutX:          symbolic function in sympy logic (does not contain 
-                            current iteration variable X)                            
-        xSymbolic:          list with symbolic variables in sympy logic
-        i:                  index of current iteration variable
-        xBounds:            numpy array with variable bounds
-        dict_options:       dictionary with entries about stop-tolerances
+        :fx:                 symbolic function in sympy logic (contains current 
+                             iteration variable X)
+        :fWithoutX:          symbolic function in sympy logic (does not contain 
+                             current iteration variable X)                            
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :i:                  index of current iteration variable
+        :xBounds:            numpy array with variable bounds
+        :dict_options:       dictionary with entries about stop-tolerances
 
         
     Returns:
-        dfdX:               first derrivative of function fx with respect to 
-                            variable xSymbolic[i] in mpmath.mpi-logic
-        df2dX:              second derrivative of function fx with respect to 
-                            variable xSymbolic[i] in mpmath.mpi-logic
-        bi:                 residual interval in mpmath.mpi logic
-        fxInterval:         function interval in mpmath.mpi logic
-        dfdxInterval:       Interval of first derrivative in mpmath.mpi logic 
-        df2dxInterval:      Interval of second derrivative in mpmath.mpi logic 
-        xBounds:            real set of variable intervals in mpmath.mpi logic 
+        :dfdX:               first derrivative of function fx with respect to 
+                             variable xSymbolic[i] in mpmath.mpi-logic
+        :df2dX:              second derrivative of function fx with respect to 
+                             variable xSymbolic[i] in mpmath.mpi-logic
+        :bi:                 residual interval in mpmath.mpi logic
+        :fxInterval:         function interval in mpmath.mpi logic
+        :dfdxInterval:       Interval of first derrivative in mpmath.mpi logic 
+        :df2dxInterval:      Interval of second derrivative in mpmath.mpi logic 
+        :xBounds:            real set of variable intervals in mpmath.mpi logic 
     
     """
-    #TODO: Parallelizing and Output       
+       
     dfdX = sympy.diff(fx, xSymbolic[i]) 
     df2dX = sympy.diff(dfdX, xSymbolic[i]) 
     
@@ -437,14 +340,16 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     """ evaluates function expression f for variable bounds xBounds
     
     Args:
-        f:                  scalar function in mpmath logic
-        xSymbolic:          list with symbolic variables in sympy logic
-        xBounds:            numpy array with variable bounds
+        :f:                  scalar function in mpmath logic
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :xBounds:            numpy array with variable bounds
 
         
-    Returns: mpmath.mpi interval of function expression in xBounds
+    Return: 
+        :interval:           of function expression at xBounds in mpmath.mpi logic
     
     """
+    
     fMpmathIV = lambdifyToMpmathIv(xSymbolic, f)
     return  mpmath.mpi(str(fMpmathIV(*xBounds)))
             
@@ -459,12 +364,13 @@ def reformulateComplexExpressions(f):
     In this way, only real numbers remain.
     
     Args:
-        f                       scalar function in sympy logic
+        :f:                       scalar function in sympy logic
     
-    Returns:
-        f                       reformulated scalar function in sympy logic
+    Return:
+        :f:                       reformulated scalar function in sympy logic
     
     """
+    
     allArguments = []
 
     for arg in sympy.preorder_traversal(f):
@@ -482,18 +388,19 @@ def reactOnComplexError(f, xSymbolic, i, xBounds, dict_options):
     """ starts interval nesting procedure to get rid of complex intervals
     
     Args:
-        f:                  scalar function in mpmath logic
-        xSymbolic:          list with symbolic variables in sympy logic
-        i:                  index of current iteration variable
-        xBounds:            numpy array with variable bounds
-        dict_options:       dictionary with variable interval tolerances 
+        :f:                  scalar function in mpmath logic
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :i:                  index of current iteration variable
+        :xBounds:            numpy array with variable bounds
+        :dict_options:       dictionary with variable interval tolerances 
     
-    Returns:
-        realSection:        real xBounds (so far this is only valid if there is
-                            only one complex and one real interval, 
-                            TODO: return set of real intervals for x[i])
+    Return:
+        :realSection:        real xBounds (so far this is only valid if there is
+                             only one complex and one real interval, 
+                             TODO: return set of real intervals for x[i])
 
     """
+    
     absEpsX = dict_options["absTolX"] 
     realSection = []
     curXBounds = copy.deepcopy(xBounds)
@@ -529,15 +436,14 @@ def reactOnComplexError(f, xSymbolic, i, xBounds, dict_options):
 
 
 def checkAbsoluteTolerance(interval, absEpsX):
-    """
-    checks if width of intervals is smaller than a given relative tolerance relEpsX
+    """ checks if width of intervals is smaller than a given relative tolerance relEpsX
     
     Args:
-        interval:           set of intervals in mpmath.mpi-logic
-        absEpsX:             absolute x tolerance
+        :interval:           set of intervals in mpmath.mpi-logic
+        :absEpsX:             absolute x tolerance
     
-    Returns:
-        reducedInterval:    set of intervals with a higher width than absEps
+    Return:
+        :reducedInterval:    set of intervals with a higher width than absEps
         
     """
     
@@ -554,14 +460,14 @@ def testOneBoundOnComplexity(f, xSymbolic, xBounds, i):
     due to complex variable intervals
     
     Args:
-        f:                  scalar function in mpmath logic
-        xSymbolic:          list with symbolic variables in sympy logic
-        xBounds:            numpy array with variable bounds
-        i:                  index of current iteration variable
+        :f:                  scalar function in mpmath logic
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :xBounds:            numpy array with variable bounds
+        :i:                  index of current iteration variable
         
-    Returns:
-        True:               Complex number
-        False:              Real number
+    Return:
+        :True:               Complex number
+        :False:              Real number
     
     """
     
@@ -576,17 +482,17 @@ def complexOperator(complexA, complexMid, complexB, xInterval):
     """ splits xInterval into complex/real-xInterval and real-xInterval 
     
     Args:
-        complexA:           boolean: True = complex lower bound of xInterval
-                            False = real lower bound of xInterval
-        complexB:           boolean: True = complex upper bound of xInterval
-                            False = real upper bound of xInterval
-        complexC:           boolean: True = complex midpoint of xInterval
-                            False = real midpoint of xInterval
-        xInterval:          interval of variable x in mpmath.mpi logic
+        :complexA:           boolean: True = complex lower bound of xInterval
+                             False = real lower bound of xInterval
+        :complexB:           boolean: True = complex upper bound of xInterval
+                             False = real upper bound of xInterval
+        :complexC:           boolean: True = complex midpoint of xInterval
+                             False = real midpoint of xInterval
+        :xInterval:          interval of variable x in mpmath.mpi logic
         
-    Returns:
-        list1:              list with complex-real-xInterval
-        list2:              list with real xInterval
+    Return:
+        :list1:              list with complex-real-xInterval
+        :list2:              list with real xInterval
     
     """
     
@@ -606,17 +512,17 @@ def complexOperator(complexA, complexMid, complexB, xInterval):
 
 
 def getReducedIntervalOfLinearFunction(a, xSymbolic, i, xBounds, bi):
-    """returns reduced interval of variable X if f is linear in X. The equation
+    """ returns reduced interval of variable X if f is linear in X. The equation
     is solved directly by the use of the gaussSeidelOperator.
     
     Args: 
-        a:                  first symbolic derivative of function f with respect to x
-        xSymbolic:          list with symbolic variables in sympy logic
-        i:                  integer with current iteration variable index
-        xBounds:            numpy array with set of variable bounds
-        bi:                 current function residual bounds
+        :a:                  first symbolic derivative of function f with respect to x
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :i:                  integer with current iteration variable index
+        :xBounds:            numpy array with set of variable bounds
+        :bi:                 current function residual bounds
     
-    Returns:                reduced x-Interval(s)
+    Return:                  reduced x-Interval(s)
     
     """
     
@@ -633,10 +539,11 @@ def getReducedIntervalOfLinearFunction(a, xSymbolic, i, xBounds, bi):
 
 
 def checkAndRemoveComplexPart(interval):
-    """ Creates a warning if a complex interval occurs and keeps only the real
+    """ creates a warning if a complex interval occurs and keeps only the real
     part.
     
     """
+    
     if interval.imag != 0:
         print "Warning: A complex interval: ", interval.imag," occured.\n",
         "For further calculations only the real part: ", interval.real, " is used."
@@ -649,15 +556,15 @@ def gaussSeidelOperator(a, b, x):
      
                                     a * x = b
         Args: 
-            a:     interval of mpi format from mpmath library 
-            b:     interval of mpi format from mpmath library
-            x:     interval of mpi format from mpmath library 
+            :a:     interval of mpi format from mpmath library 
+            :b:     interval of mpi format from mpmath library
+            :x:     interval of mpi format from mpmath library 
                     (initially guessed interval of x)
             
-        Returns:
-            interval:   interval(s) of mpi format from mpmath library where
-                        solution for x can be in, if interval remains [] there
-                        is no solution within the initially guessed interval of x
+        Return:
+            :interval:   interval(s) of mpi format from mpmath library where
+                         solution for x can be in, if interval remains [] there
+                         is no solution within the initially guessed interval of x
                         
     """
     
@@ -672,15 +579,15 @@ def gaussSeidelOperator(a, b, x):
     
 
 def ivDivision(i1, i2):
-    """Calculates the result of the divion of two intervals i1, i2: i1 / i2
+    """ calculates the result of the divion of two intervals i1, i2: i1 / i2
     
         Args: 
-            i1:     interval of mpi format from mpmath library
-            i2:     interval of mpi format from mpmath library 
+            :i1:     interval of mpi format from mpmath library
+            :i2:     interval of mpi format from mpmath library 
             
-        Returns:
-            mpmath.mpi(a,b):    resulting interval of division [a,b], 
-                                this is empty if i2 =[0,0] and returns []
+        Return:
+            :mpmath.mpi(a,b):    resulting interval of division [a,b], 
+                                 this is empty if i2 =[0,0] and returns []
                                 
     """
     
@@ -698,17 +605,17 @@ def ivDivision(i1, i2):
 
 
 def ivIntersection(i1, i2):
-    """Returns intersection of two intervals i1 and i2
+    """ returns intersection of two intervals i1 and i2
     
         Args: 
-            i1:     interval of mpi format from mpmath library
-            i2:     interval of mpi format from mpmath library 
+            :i1:     interval of mpi format from mpmath library
+            :i2:     interval of mpi format from mpmath library 
             
-        Returns:
-            mpmath.mpi(a,b):    interval of intersection [a,b], 
-                                if empty [] is returned
+        Return:
+            :mpmath.mpi(a,b):    interval of intersection [a,b], 
+                                 if empty [] is returned
                                 
-        """
+    """
         
     # Different cases:    
     if i1.a <= i2.a and i1.b <= i2.b and i2.a <= i1.b: return mpmath.mpi(i2.a, i1.b)
@@ -720,25 +627,27 @@ def ivIntersection(i1, i2):
 
 
 def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxInterval, xSymbolic, i, xBounds, bi, dict_options):
-    """ Checks function for monotone sections in x and reduces them one after the other.
+    """ checks function for monotone sections in x and reduces them one after the other.
     
     Args: 
-        fx:                 symbolic x-depending part of function f in mpmath.mpi logic
-        dfdX:               first symbolic derivative of function f with respect to x
-                            in mpmath.mpi logic
-        dfdX:               second symbolic derivative of function f with respect to x
-                            in mpmath.mpi logic
-        dfdXInterval:       first derivative of function f with respect to x at xBounds
-        xSymbolic:          list with symbolic variables in sympy logic
-        i:                  integer with current iteration variable index
-        xBounds:            numpy array with set of variable bounds
-        bi:                 current function residual bounds
-        dict_options:       for function and variable interval tolerances in the used
+        :fx:                 symbolic x-depending part of function f in mpmath.mpi logic
+        :dfdX:               first symbolic derivative of function f with respect to x
+                             in mpmath.mpi logic
+        :df2dX:              second symbolic derivative of function f with respect to x
+                             in mpmath.mpi logic
+        :dfdXInterval:       first derivative of function f with respect to x at xBounds
+        :df2dxInterval:      second derivative of function f with respect to x at xBounds        
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :i:                  integer with current iteration variable index
+        :xBounds:            numpy array with set of variable bounds
+        :bi:                 current function residual bounds
+        :dict_options:       for function and variable interval tolerances in the used
                             algorithms
 
-    Returns:                reduced x-Interval(s) and list of monotone x-intervals
+    Return:                reduced x-Interval(s) and list of monotone x-intervals
     
     """
+    
     orgXiBounds = copy.deepcopy(xBounds[i])
 
     if (dfdXInterval == [] or df2dxInterval == []): return [orgXiBounds]
@@ -795,19 +704,19 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
 
     
 def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
-    """seperate variable interval into variable interval sets where a function
+    """seperates variable interval into variable interval sets where a function
     with derivative dfdx is monontoneous
     
     Args:
-        df2dx:               scalar second derivate of function in mpmath.mpi logic
-        xSymbolic:           symbolic variables in derivative function
-        i:                   index of differential variable
-        xBounds:             numpy array with variable bounds
-        dict_options:        dictionary with variable and function interval tolerances
+        :df2dx:               scalar second derivate of function in mpmath.mpi logic
+        :xSymbolic:           symbolic variables in derivative function
+        :i:                   index of differential variable
+        :xBounds:             numpy array with variable bounds
+        :dict_options:        dictionary with variable and function interval tolerances
     
     Return:
-        monIncreasingZone:   monotone increasing intervals 
-        monDecreasingZone:   monotone decreasing intervals 
+        :monIncreasingZone:   monotone increasing intervals 
+        :monDecreasingZone:   monotone decreasing intervals 
     
     """
     
@@ -845,7 +754,7 @@ def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
 
 
 def manipulateLowerUpperBounds(interval, fx, i, xBounds):
-    """shift interval bounds that create +inf/-inf-function value bounds
+    """ shifts interval bounds that create +inf/-inf-function value bounds
     minimally to the side to remove this singular bound.
     
     Args:
@@ -855,6 +764,7 @@ def manipulateLowerUpperBounds(interval, fx, i, xBounds):
         :xBounds:       set of variable bounds
     
     """
+    
     xBounds = copy.deepcopy(xBounds)    
     for j in range(0, len(interval)):
         xBounds[i] = interval[j].a
@@ -872,9 +782,10 @@ def manipulateLowerUpperBounds(interval, fx, i, xBounds):
 
 
 def removeListInList(listInList):
-    """Changes list with the shape: [[a], [b,c], [d], ...] to [a, b, c, d, ...]
+    """changes list with the shape: [[a], [b,c], [d], ...] to [a, b, c, d, ...]
     
     """
+    
     newList = []
     for i in range(0, len(listInList)):
         for j in range(0, len(listInList[i])):
@@ -884,19 +795,19 @@ def removeListInList(listInList):
 
 def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic, 
                                       xBounds, i, bi, dict_options, increasing):
-    """reduces interval sets of one variable by interval nesting
+    """ reduces interval sets of one variable by interval nesting
     
     Args:
-        monotoneZone        list with monotone increasing or decreasing set of intervals
-        reducedIntervals    list with already reduced set of intervals
-        fx:                 symbolic x-depending part of function f
-        xSymbolic:          list with symbolic variables in sympy logic
-        xBounds:            numpy array with set of variable bounds
-        i:                  integer with current iteration variable index        
-        bi:                 current function residual bounds
-        dict_options:       dictionary with function and variable interval tolerances
-        increasing:         boolean, True for increasing function intervals, 
-                            False for decreasing intervals
+        :monotoneZone        list with monotone increasing or decreasing set of intervals
+        :reducedIntervals    list with already reduced set of intervals
+        :fx:                 symbolic x-depending part of function f
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :xBounds:            numpy array with set of variable bounds
+        :i:                  integer with current iteration variable index        
+        :bi:                 current function residual bounds
+        :dict_options:       dictionary with function and variable interval tolerances
+        :increasing:         boolean, True for increasing function intervals, 
+                             False for decreasing intervals
 
     """
     
@@ -920,20 +831,21 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
 
 def monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options):
     """ reduces variable intervals of monotone increasing functions fx
-    by by interval nesting
+    by interval nesting
      
         Args: 
-            fx:                 symbolic xi-depending part of function fi
-            xSymbolic:          list with symbolic variables in sympy logic
-            xBounds:            numpy array with set of variable bounds
-            i:                  integer with current iteration variable index
-            bi:                 current function residual bounds
-            dict_options:       dictionary with function and variable interval tolerances
+            :fx:                 symbolic xi-depending part of function fi
+            :xSymbolic:          list with symbolic variables in sympy logic
+            :xBounds:            numpy array with set of variable bounds
+            :i:                  integer with current iteration variable index
+            :bi:                 current function residual bounds
+            :dict_options:       dictionary with function and variable interval tolerances
 
-        Returns:                list with one entry that is the reduced interval 
-                                of the variable with the index i
+        Return:                  list with one entry that is the reduced interval 
+                                 of the variable with the index i
                         
     """  
+    
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
     relEpsF = dict_options["relTolF"]
@@ -982,20 +894,21 @@ def monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options
 
 def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options):
     """ reduces variable intervals of monotone decreasing functions fx
-    by by interval nesting
+    by interval nesting
      
         Args: 
-            fx:                 symbolic xi-depending part of function fi
-            xSymbolic:          list with symbolic variables in sympy logic
-            xBounds:            numpy array with set of variable bounds
-            i:                  integer with current iteration variable index
-            bi:                 current function residual bounds
-            dict_options:       dictionary with function and variable interval tolerances
+            :fx:                 symbolic xi-depending part of function fi
+            :xSymbolic:          list with symbolic variables in sympy logic
+            :xBounds:            numpy array with set of variable bounds
+            :i:                  integer with current iteration variable index
+            :bi:                 current function residual bounds
+            :dict_options:       dictionary with function and variable interval tolerances
             
-        Returns:                list with one entry that is the reduced interval 
-                                of the variable with the index i
+        Return:                  list with one entry that is the reduced interval 
+                                 of the variable with the index i
                         
     """     
+    
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
     relEpsF = dict_options["relTolF"]
@@ -1042,26 +955,24 @@ def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
 
 
 def iteratefBound(fx, curInterval, xBounds, i, bi, increasing, lowerXBound):
-    """ Returns the half of curInterval that contains the lower or upper
+    """ returns the half of curInterval that contains the lower or upper
     bound of bi (biLimit)
     
     Args:
-        fx:                 symbolic xi-depending part of function fi
-        curInterval:        X-Interval that contains the solution to f(x) = biLimit
-        xBounds:            numpy array with set of variable bounds
-        i:                  integer with current iteration variable index
-        bi:                 current function residual 
-        increasing:         boolean: True = function is monotone increasing, 
-                            False = function is monotone decreasing
-        lowerXBound:        boolean: True = lower Bound is iterated
-                            False = upper bound is iterated
+        :fx:                 symbolic xi-depending part of function fi
+        :curInterval:        X-Interval that contains the solution to f(x) = biLimit
+        :xBounds:            numpy array with set of variable bounds
+        :i:                  integer with current iteration variable index
+        :bi:                 current function residual 
+        :increasing:         boolean: True = function is monotone increasing, 
+                             False = function is monotone decreasing
+        :lowerXBound:        boolean: True = lower Bound is iterated
+                             False = upper bound is iterated
         
-    Returns:    
-        reduced curInterval (by half) and bounds of in curInterval
+    Return:                  reduced curInterval (by half) and bounds of in curInterval
         
     """
     
-
     biBound = residualBoundOperator(bi, increasing, lowerXBound)
     
     curlowerXInterval = mpmath.mpi(curInterval.a, curInterval.mid)  
@@ -1088,12 +999,12 @@ def getFIntervalsFromXBounds(fx, curInterval, xBounds, i):
     bound of variable interval curInterval.
     
     Args:
-        fx:             symbolic function in mpmath.mpi logic
-        curInterval:    current variable interval in mpmath logic
-        xBounds:        set of variable intervals in mpmath logic
-        i:              index of currently iterated variable interval
+        :fx:             symbolic function in mpmath.mpi logic
+        :curInterval:    current variable interval in mpmath logic
+        :xBounds:        set of variable intervals in mpmath logic
+        :i:              index of currently iterated variable interval
                          
-    Returns: function interval for lower variable bound and upper variable bound
+    Return:              function interval for lower variable bound and upper variable bound
     
     """
     
@@ -1111,16 +1022,16 @@ def fBoundsOperator(fIntervalxLow, fIntervalxUp, increasing, lowerXBound):
     bound 
     
     Args:
-        fIntervalxLow:   function interval of lower variable bound in mpmath 
-                         logic
-        fIntervalxUp:    function interval of upper variable bound in mpmath 
-                         logic
-        increasing:      boolean: True = monotone increasing, False = monotone
-                         decreasing function
-        lowerXBound:     boolean: True = lower variable bound, False = upper 
-                         variable bound
+        :fIntervalxLow:   function interval of lower variable bound in mpmath 
+                          logic
+        :fIntervalxUp:    function interval of upper variable bound in mpmath 
+                          logic
+        :increasing:      boolean: True = monotone increasing, False = monotone
+                          decreasing function
+        :lowerXBound:     boolean: True = lower variable bound, False = upper 
+                          variable bound
                          
-    Returns: relevant function interval for iterating bi bound in mpmath logic
+    Return:               relevant function interval for iterating bi bound in mpmath logic
     
     """
     
@@ -1135,13 +1046,13 @@ def residualBoundOperator(bi, increasing, lowerXBound):
     """ returns the residual bound that is iterated in the certain case
     
     Args:
-        bi:              function residual interval in mpmath logic
-        increasing:      boolean: True = monotone increasing, False = monotone
-                         decreasing function
-        lowerXBound:     boolean: True = lower variable bound, False = upper 
-                         variable bound
+        :bi:              function residual interval in mpmath logic
+        :increasing:      boolean: True = monotone increasing, False = monotone
+                          decreasing function
+        :lowerXBound:     boolean: True = lower variable bound, False = upper 
+                          variable bound
                          
-    Returns: lower or upper bound of function residual interval in mpmath logic
+    Return:               lower or upper bound of function residual interval in mpmath logic
     
     """
     
@@ -1152,22 +1063,22 @@ def residualBoundOperator(bi, increasing, lowerXBound):
 
 
 def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
-    """seperate variable interval into variable interval sets where a function
+    """seperates variable interval into variable interval sets where a function
     with derivative dfdx is monontoneous
     
     Args:
-        dfdx:                scalar function in mpmath.mpi logic
-        xSymbolic :          symbolic variables in derivative function
-        i:                   index of differential variable
-        xBounds:             numpy array with variable bounds
-        dict_options:        dictionary with function and variable interval 
-                             tolerances
+        :dfdx:                scalar function in mpmath.mpi logic
+        :xSymbolic :          symbolic variables in derivative function
+        :i:                   index of differential variable
+        :xBounds:             numpy array with variable bounds
+        :dict_options:        dictionary with function and variable interval 
+                              tolerances
     
     Return:
-        monIncreasingZone:   monotone increasing intervals 
-        monDecreasingZone:   monotone decreasing intervals 
-        interval:            non monotone zone if  function interval can not be
-                             reduced to monotone increasing or decreasing section
+        :monIncreasingZone:   monotone increasing intervals 
+        :monDecreasingZone:   monotone decreasing intervals 
+        :interval:            non monotone zone if  function interval can not be
+                              reduced to monotone increasing or decreasing section
     
     """
     
@@ -1219,20 +1130,20 @@ def discretizeAndEvaluateIntervals(dfdX, xBounds, i, intervals, monIncreasingZon
     check all segments on their monotony.
     
     Args:
-        dfdX:                scalar function in mpmath.mpi logic
-        xBounds:             numpy array with variable bounds
-        i:                   index of differential variable
-        intervals:           new unchecked variable intervals
-        monIncreasingZone:   already identified monotone increasing intervals
-        monDecreasingZone:   already identified monotone decreasing intervals 
-        dict_options:        dictionary with function and variable interval 
+        :dfdX:                scalar function in mpmath.mpi logic
+        :xBounds:             numpy array with variable bounds
+        :i:                   index of differential variable
+        :intervals:           new unchecked variable intervals
+        :monIncreasingZone:   already identified monotone increasing intervals
+        :monDecreasingZone:   already identified monotone decreasing intervals 
+        :dict_options:        dictionary with function and variable interval 
                              tolerances and discretization resolution
     
-    Returns:
-        newIntervals:        non monotone intervals if  function interval can not be
+    Return:
+        :newIntervals:        non monotone intervals if  function interval can not be
                              reduced to monotone increasing or decreasing section
-        monIncreasingZone:   monotone increasing intervals 
-        monDecreasingZone:   monotone decreasing intervals 
+        :monIncreasingZone:   monotone increasing intervals 
+        :monDecreasingZone:   monotone decreasing intervals 
 
     """
 
@@ -1252,21 +1163,21 @@ def discretizeAndEvaluataInterval(dfdX, xBounds, i, interval, newIntervals,
     check all segments on their monotony.
     
     Args:
-        dfdX:                scalar function in mpmath.mpi logic
-        xBounds:             numpy array with variable bounds
-        i:                   index of differential variable
-        interval:            unchecked variable interval
-        newIntervals:        already identified non monotone intervals 
-        monIncreasingZone:   already identified monotone increasing intervals
-        monDecreasingZone:   already identified monotone decreasing intervals 
-        dict_options:        dictionary with function and variable interval 
-                             tolerances and discretization resolution
+        :dfdX:                scalar function in mpmath.mpi logic
+        :xBounds:             numpy array with variable bounds
+        :i:                   index of differential variable
+        :interval:            unchecked variable interval
+        :newIntervals:        already identified non monotone intervals 
+        :monIncreasingZone:   already identified monotone increasing intervals
+        :monDecreasingZone:   already identified monotone decreasing intervals 
+        :dict_options:        dictionary with function and variable interval 
+                              tolerances and discretization resolution
     
-    Returns:
-        newIntervals:        non monotone intervals if  function interval can not be
-                             reduced to monotone increasing or decreasing section
-        monIncreasingZone:   monotone increasing intervals 
-        monDecreasingZone:   monotone decreasing intervals 
+    Return:
+        :newIntervals:        non monotone intervals if  function interval can not be
+                              reduced to monotone increasing or decreasing section
+        :monIncreasingZone:   monotone increasing intervals 
+        :monDecreasingZone:   monotone decreasing intervals 
 
     """
     
@@ -1295,9 +1206,9 @@ def convertIntervalBoundsToFloatValues(interval):
     """ converts mpmath.mpi intervals to list with bounds as float values
     
     Args:
-        interval                interval in math.mpi logic
+        :interval:              interval in math.mpi logic
         
-    Returns:                    list with bounds as float values
+    Return:                     list with bounds as float values
     
     """
     
@@ -1305,22 +1216,22 @@ def convertIntervalBoundsToFloatValues(interval):
 
 
 def testIntervalOnMonotony(dfdx, interval, xBounds, i, l, relEpsdFdX, absEpsdFdX):
-    """splits interval into 2 halfs and orders concering their monotony 
+    """ splits interval into 2 halfs and orders concering their monotony 
     behaviour of f (first derivative dfdx):
         1. monotone increasing function in interval of x 
         2. monotone decreasing function in interval of x
         3. non monotone function in interval of x
         
     Args:
-        dfdx:           scalar derivative of f with respect to x in mpmath.mpi-logic
-        interval:       x interval in mpmath.mpi-logic
-        xBounds:        numpy array with variable bounds in mpmath.mpi-logic
-        i:              variable index
-        l:              counts [-inf,inf] dfdxIntervals to filter out functions
-                        that have an x indepenendent derrivate constant interval of 
-                        [-inf, +inf] for example: f=x/y-1 and y in [-1,1]
-        relEpsdFdX:     relative tolerance of first derivative
-        absEpsdFdX:     absolute tolerance of first derivative
+        :dfdx:           scalar derivative of f with respect to x in mpmath.mpi-logic
+        :interval:       x interval in mpmath.mpi-logic
+        :xBounds:        numpy array with variable bounds in mpmath.mpi-logic
+        :i:              variable index
+        :l:              counts [-inf,inf] dfdxIntervals to filter out functions
+                         that have an x indepenendent derrivate constant interval of 
+                         [-inf, +inf] for example: f=x/y-1 and y in [-1,1]
+        :relEpsdFdX:     relative tolerance of first derivative
+        :absEpsdFdX:     absolute tolerance of first derivative
     Reutrn:
         3 lists nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone
         and one updated count of [-inf,inf] dfdxIntervals as integer
@@ -1368,13 +1279,13 @@ def addIntervaltoMonotoneZone(newInterval, monotoneZone, dict_options):
     should not occur.
     
     Args:
-        newInterval:         list with interval(s) in mpmath.mpi logic
-        monotoneZone:        list with intervals from mpmath.mpi logic
-        dict_options:        dictionary with variable interval specified tolerances
-                            absolute = absTolX, relative = relTolX
+        :newInterval:         list with interval(s) in mpmath.mpi logic
+        :monotoneZone:        list with intervals from mpmath.mpi logic
+        :dict_options:        dictionary with variable interval specified tolerances
+                              absolute = absTolX, relative = relTolX
     
     Return:
-        monotoneZone:        monotoneZone including newInterval
+        :monotoneZone:        monotoneZone including newInterval
         
     """
     
@@ -1404,12 +1315,12 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
     same bound
     
     Args:
-        ivSet:              set of intervals in mpmath.mpi logic
-        relEps:             relative tolerance of variable intervals
-        absEps:             absolute tolerance of variable intervals
+        :ivSet:              set of intervals in mpmath.mpi logic
+        :relEps:             relative tolerance of variable intervals
+        :absEps:             absolute tolerance of variable intervals
     
     Returns:
-        newIvSet:           new set of joint intervals
+        :newIvSet:           new set of joint intervals
         
     """
     
@@ -1463,22 +1374,22 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
 
 
 def addIntervalToNonMonotoneZone(newIntervals, curIntervals):
-    """add copy of newInterval(s) to already stored ones in list curIntervals
+    """adds copy of newInterval(s) to already stored ones in list curIntervals
     
     """
+    
     if newIntervals != []: curIntervals.append(copy.deepcopy(newIntervals))  
     
 
 def checkTolerance(interval, relEpsX):
-    """
-    checks if width of intervals is smaller than a given relative tolerance relEpsX
+    """ checks if width of intervals is smaller than a given relative tolerance relEpsX
     
     Args:
-        interval:           set of intervals in mpmath.mpi-logic
-        relEpsX:             relative x tolerance
+        :interval:           set of intervals in mpmath.mpi-logic
+        :relEpsX:            relative x tolerance
     
-    Returns:
-        reducedInterval:    set of intervals with a higher width than absEps
+    Return:
+        :reducedInterval:    set of intervals with a higher width than absEps
         
     """
     
@@ -1500,22 +1411,22 @@ def checkTolerance(interval, relEpsX):
 
 def reduceNonMonotoneIntervals(nonMonotoneZone, reducedIntervals, fx, xSymbolic, i, xBounds, bi, 
                                dict_options):
-    """ Reduces non monotone intervals by simply calculating function values for
+    """ reduces non monotone intervals by simply calculating function values for
     interval segments of a discretized variable interval and keeps those segments
     that intersect with bi. The discretization resolution is defined in dict_options.
     
     Args: 
-        nonMonotoneZone:    list with non monotone variable intervals
-        reducedIntervals:   lits with reduced non monotone variable intervals
-        fx:                 variable-dependent function in mpmath.mpi logic 
-        xSymbolic:          list with symbolic variables in sympy logic
-        i:                  integer with current iteration variable index
-        xBounds:            numpy array with set of variable bounds
-        bi:                 current function residual bounds
-        dict_options:       for function and variable interval tolerances in the used
-                            algorithms and resolution of the discretization
+        :nonMonotoneZone:    list with non monotone variable intervals
+        :reducedIntervals:   lits with reduced non monotone variable intervals
+        :fx:                 variable-dependent function in mpmath.mpi logic 
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :i:                  integer with current iteration variable index
+        :xBounds:            numpy array with set of variable bounds
+        :bi:                 current function residual bounds
+        :dict_options:       for function and variable interval tolerances in the used
+                             algorithms and resolution of the discretization
 
-    Returns:                reduced x-Interval(s) and list of monotone x-intervals
+    Return:                  reduced x-Interval(s) and list of monotone x-intervals
         
  """   
     
@@ -1541,12 +1452,12 @@ def getFunctionValuesIntervalsOfXList(x, f, xBounds, i):
     members of a list and belong to a discretized variable interval.
     
     Args:
-        x:          numpy list with segments for iteration variable xi
-        f:          x-dependent function in mpmath.mpi logic
-        xBounds:    numpy array with variable bounds in mpmath.mpi.logic
-        i:          current iteration variable index
+        :x:          numpy list with segments for iteration variable xi
+        :f:          x-dependent function in mpmath.mpi logic
+        :xBounds:    numpy array with variable bounds in mpmath.mpi.logic
+        :i:          current iteration variable index
     
-    Returns:        list with lower function value bounds within x and upper 
+    Return:         list with lower function value bounds within x and upper 
                     function value bounds within x
                     
     """
@@ -1576,17 +1487,19 @@ def getFunctionValuesIntervalsOfXList(x, f, xBounds, i):
 
 
 def reduceTwoIVSets(ivSet1, ivSet2):
-    """reduces two interval sets to one and keeps only the resulting interval
+    """ reduces two interval sets to one and keeps only the resulting interval
     when elements of both intervals intersect. Each element of the longer interval 
     set is compared to the list of the shorter interval set. 
     
     Args:
-        ivSet1:          list 1 with intervals in mpmath.mpi logic
-        ivSet2:          list 2 with intervals in mpmath.mpi logic
+        :ivSet1:          list 1 with intervals in mpmath.mpi logic
+        :ivSet2:          list 2 with intervals in mpmath.mpi logic
         
-    Return: list with reduced set of intervals
+    Return:               
+        :list:            with reduced set of intervals
     
     """
+    
     ivReduced = []
     if len(ivSet1) >= len(ivSet2):
         ivLong = ivSet1
@@ -1603,14 +1516,14 @@ def reduceTwoIVSets(ivSet1, ivSet2):
 
 
 def compareIntervalToIntervalSet(iv, ivSet):
-    """checks if there is an intersection betweeen interval iv and a list of 
+    """ checks if there is an intersection betweeen interval iv and a list of 
     intervals ivSet. If there is one the intersection is returned. 
     
     Args:
-        iv:         interval in mpmath.mpi logic
-        ivSet:      list with intervals in mpmath.mpi logic
+        :iv:         interval in mpmath.mpi logic
+        :ivSet:      list with intervals in mpmath.mpi logic
     
-    Returns:        intersection or empty list if there is no intersection
+    Return:          intersection or empty list if there is no intersection
     
     """
     
@@ -1627,12 +1540,13 @@ def checkWidths(X, Y, relEps, absEps):
     """ returns the maximum interval width of a set of intervals X
      
         Args: 
-            X:            list with set of intervals    
+            :X:                     list with set of intervals    
 
-        Returns:
-            mpmath.mpi    interval of maximum width
+        Return:
+            :mpmath.mpi interval:   of maximum width
                         
     """
+    
     almostEqual = False * numpy.ones(len(X), dtype = bool)
     for i in range(0,len(X)):
          if(mpmath.almosteq(X[i].delta, Y[i].delta, relEps, absEps)):

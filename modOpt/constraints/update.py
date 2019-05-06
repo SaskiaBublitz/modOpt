@@ -18,14 +18,15 @@ def updateDictToModel(dict_variables, model):
     """ updates variable dictionary to current model values
     
     Args:
-        dict_variables      dictionary with set of state variable values, lower 
-                            and upper bounds
-        model               object of class model
+        :dict_variables:      dictionary with set of state variable values, lower 
+                              and upper bounds
+        :model:               object of class model
     
     Return:
-        dict_variables      updated state variable dictionary
+        :dict_variables:      updated state variable dictionary
            
     """
+    
     xValues = model.getXValues()
     xBounds = model.getXBounds()
     
