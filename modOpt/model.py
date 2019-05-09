@@ -106,10 +106,16 @@ class Model:
 
 
     def getConditionNumber(self):
+        """ Return: Condition number of original system """
+        return numpy.linalg.cond(self.getJacobian())
+
+    def getPermutedConditionNumber(self):
         """ Return: Condition number of permuted system """
-        jVal = self.getJacobian()
-        return numpy.linalg.cond(jVal[self.rowPerm, self.colPerm])
+        return numpy.linalg.cond(self.getPermutedJacobian())    
     
+    def getPermutedAndScaledConditionNumber(self):
+        """ Return: Condition number of permuted and scaled system """
+        return numpy.linalg.cond(self.getPermutedAndScaledJacobian())     
     
     def getFunctionValues(self):
         """ Return: Function Values at current state variable values"""
@@ -117,11 +123,15 @@ class Model:
     
     
     def getScaledFunctionValues(self):
-        """ Return: scaled and permuted function Values at current state variable values"""        
+        """ Return: scaled function Values at current state variable values"""        
         return numpy.dot(numpy.diag(1.0 / self.rowSca), self.getFunctionValues())
         
     
     def getPermutedFunctionValues(self):
+        """ Return: permuted and scaled function Values at current state variable values"""
+        return self.getFunctionValues()[self.rowPerm] 
+
+    def getPermutedAndScaledFunctionValues(self):
         """ Return: permuted and scaled function Values at current state variable values"""
         return self.getScaledFunctionValues()[self.rowPerm] 
 
@@ -133,30 +143,43 @@ class Model:
         """ Return: jacobian evaluated at current state variable values"""
         return self.jacobian(*numpy.append(self.stateVarValues[0], self.stateVarValues[0]))
 
-
     def getScaledJacobian(self):
         """ Return: scaled jacobian evaluated at current state variable values"""
         return casadi.mtimes(casadi.mtimes(casadi.diag(1.0 / self.rowSca), self.getJacobian()), 
                              casadi.diag(self.colSca))
 
-  
     def getPermutedJacobian(self):
+        """ Return: permuted jacobian evaluated at current state variable values"""
+        return self.getJacobian()[self.rowPerm, self.colPerm]
+ 
+    def getPermutedAndScaledJacobian(self):
         """ Return: permuted and scaled jacobian evaluated at current state variable values"""
         return self.getScaledJacobian()[self.rowPerm, self.colPerm]
-            
-               
+                           
     def getScaledXValues(self):
          """ Return: Scaled state variable values in global order"""
          return self.stateVarValues[0] / self.colSca          
     
-    
     def getPermutedXValues(self):
+         """ Return: Permuted state variable values"""
+         return self.getXValues()[self.colPerm] 
+
+    def getPermutedAndScaledXValues(self):
          """ Return: Permuted and scaled state variable values"""
          return self.getScaledXValues()[self.colPerm] 
-    
-    
-
-    
+     
+    def getBlockID(self):
+        blockIDinGlbOrder =[]
+        for glbID in range(0, len(self.xSymbolic)):
+            permID = self.rowPerm.index(glbID)
+            
+            for b in range(0, len(self.blocks)):
+                if permID in self.blocks[b]:
+                    blockIDinGlbOrder.append(b)
+                    break
+        return blockIDinGlbOrder        
+        
+        
     def setXBounds(self, xBounds):
         """ sets the state variable bounds to the intervals given by the array
         xBounds
@@ -192,15 +215,11 @@ class Model:
         
         """ 
         
-       # self.jValues[self.rowPerm, self.colPerm] = res_scaling["Matrix"]
-        
-        if res_scaling.has_key("FunctionVector"): 
+        if res_scaling.has_key("Equations"): 
             self.rowSca[self.rowPerm] = res_scaling["Equations"]
-            #self.fValues[self.rowPerm] = res_scaling["FunctionVector"]
         
         if res_scaling.has_key("Variables"):
             self.colSca[self.colPerm] = res_scaling["Variables"]
-            #self.stateVarValues = [self.stateVarValues[0] / self.colSca]
                         
             
 def createBlocks(blocks):

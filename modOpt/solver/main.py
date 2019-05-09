@@ -56,25 +56,32 @@ def solveBlocksSequence(model, solv_options, dict_options):
        
     """
     
-    res_solver = {}
     rBlocks, cBlocks = getListsWithBlockMembersByGlbID(model)
     xInF = getListWithFunctionMembersByGlbID(model)   
+    res_solver = {}
+    res_solver["Iteration Number of Blocks"] = numpy.zeros(len(rBlocks))
+    res_solver["Residual of Blocks"] = numpy.zeros(len(rBlocks))
     
-    x = model.stateVarValues[0]
-
+    
+    
     for b in range(len(rBlocks)):
 
-        curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, model.fSymCasadi)
-        
+        curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
+                               model.fSymCasadi, model.stateVarValues[0])
+        if dict_options["scaling"] != 'None':
+            curBlock.rowSca = model.rowSca[curBlock.rowPerm]
+            curBlock.colSca = model.colSca[curBlock.colPerm]
         if solv_options["solver"] == 'newton':
-            newton.doNewton(curBlock, x, solv_options)
+            tol, iterNo = newton.doNewton(curBlock, solv_options, dict_options)
+            res_solver["Iteration Number of Blocks"][b] = iterNo
+            res_solver["Residual of Blocks"][b] = tol 
         # TODO: Add other solvers, e.g. ipopt
             
-    model.stateVarValues[0] = x
+    model.stateVarValues[0] = curBlock.x_tot
     
     res_solver["Model"] = model
     res_solver["Residual"] = model.getFunctionValuesResidual()
-
+    res_solver["Total Iteration Number"] = sum(res_solver["Iteration Number of Blocks"])
     return res_solver 
 
 

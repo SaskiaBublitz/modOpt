@@ -111,7 +111,7 @@ def getFileName(dict_options):
     if dict_options["scaling"] == 'MC29': name = ''.join([name,'_sca29'])
     if dict_options["scaling"] == 'Inf RowSca and Mean ColSca': name = ''.join([name,'_scaRInfCMean'])
     if dict_options["scaling"] == 'Inf RowSca and gMean ColSca': name = ''.join([name,'_scaRInfCgMean'])
-    if dict_options["condNo"]: name = ''.join([name, '_cond'])
+    #if dict_options["condNo"]: name = ''.join([name, '_cond'])
     return name
 
 
