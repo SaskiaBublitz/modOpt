@@ -18,7 +18,7 @@ import iNes_procedure
 Main that invokes methods for variable constraints reduction
 ***************************************************
 """
-__all__ = ['reduceVariableBounds']
+__all__ = ['reduceVariableBounds', 'nestBlocks']
 
 def reduceVariableBounds(model, options):
     """ variable bounds are reduced based on user-defined input
@@ -41,7 +41,7 @@ def reduceVariableBounds(model, options):
             
     if options['method'] == 'partial':
         # Decomposition:
-        jacobian = model.getJacobian(model.stateVarValues[0])
+        jacobian = model.getJacobian()
         dict_permutation = mod.doDulmageMendelsohn(jacobian)
         model.updateToPermutation(dict_permutation["Row Permutation"],
                                      dict_permutation["Column Permutation"],
@@ -74,9 +74,9 @@ def doIntervalNesting(model, dict_options):
     """
     
     iterNo = 0
-    xBounds = model.getXBounds()
-    xSymbolic = model.getXSymbolic()
-    parameter = model.getParameter()
+    xBounds = model.xBounds
+    xSymbolic = model.xSymbolic
+    parameter = model.parameter
     blocks = model.blocks
     newModel = copy.deepcopy(model)
     dimVar = len(xSymbolic)
@@ -109,3 +109,20 @@ def doIntervalNesting(model, dict_options):
     newModel.setXBounds(xBounds)
     
     return newModel, iterNo
+
+
+def nestBlocks(model):
+    """ creates list with nested blocks for complete interval nesting procedurce
+
+    Args:
+        :model:         instance of class Model 
+    
+    """
+    
+    nestedBlocks = []
+    
+    for item in model.blocks:
+        nestedBlocks.append([item])
+    model.blocks = nestedBlocks
+    
+    

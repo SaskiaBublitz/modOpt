@@ -5,10 +5,11 @@ Imported Packages
 """
 import casadi
 import sympy
+
 """
-***************************************************
+*****************************************************************
 Dulmage-Mendelsohn-Decomposition based on casadi package (python)
-***************************************************
+*****************************************************************
 """
 
 __all__ =['getCasadiJandF','doDulmageMendelsohn']
@@ -16,11 +17,11 @@ __all__ =['getCasadiJandF','doDulmageMendelsohn']
 def doDulmageMendelsohn(A):
     """invokes Dulmage-Mendelsohn-Decomposition from Casadi's Package
     Args:
-        A (m,n):          mxn matrix
+        :A:          mxn matrix
     
     Returns:     
-        output (dict):    Results from Dulmage-Mendelsohn Decomposition 
-                          with items as seen from the Code below.
+        :output:    dictionary with results from Dulmage-Mendelsohn 
+                    Decomposition.
                         
     """  
     
@@ -52,14 +53,14 @@ def createDict(X, LABEL):
 
 
 def writeResults(fileName, dict_variables):
-    """ Creates File(s) with  final start values and lower and upper bounds. 
+    """ creates File(s) with  final start values and lower and upper bounds. 
     For the ith set of start values, lower and upper bounds a new text file is 
     generated using the label "_i". 
     
     Args:
-        fileName                String with name of text file(s)
-        dict_variables          Dictionary with sets of state variable values,
-                                lower and upper bounds
+        :fileName:                String with name of text file(s)
+        :dict_variables:          Dictionary with sets of state variable values,
+                                 lower and upper bounds
         
     """
     if dict_variables[dict_variables.keys()[0]][0] != []:
@@ -81,12 +82,13 @@ def writeResults(fileName, dict_variables):
 
 
 def getCasadiJandF(xSymbolic, fSymbolic):
-    """Symbolic Jacoobian and Functions are prepared from sympy variables
+    """ Symbolic Jacoobian and Functions are prepared from sympy variables
     and function which are converted to casadi objects.
 
     Args:
-        xSymbolic:        n variables in sympy formate
-        fSymbolic:        m functions in sympy formate
+        :xSymbolic:        n variables in sympy formate
+        :fSymbolic:        m functions in sympy formate
+        
     Returns:
             casadi.SX.array(m,n):     symbolic jacobian matrix
             casadi.SX.array(m,1):     symbolic equation system
@@ -105,10 +107,14 @@ def getCasadiJandF(xSymbolic, fSymbolic):
 
 
 def convertSympyVariablesToCasadi(xSymbolic):
-    """Converting sympy symbols to variables in casaid.SX.sym formate. The
+    """ converting sympy symbols to variables in casaid.SX.sym formate. The
     variables are returned in a list.
     
+    Args:
+        :xSymbolic:     list wit symbolic state variables in sypmy logic
+
     """
+    
     xSymbolicInCasadi = []
     for x in xSymbolic:
         exec("%s = casadi.SX.sym('%s')" % (repr(x), repr(x)))
@@ -128,4 +134,3 @@ def lambdifyToCasadi(x, f):
             "log" : casadi.SX.log}
     
     return sympy.lambdify(x,f, toCasadi) 
-

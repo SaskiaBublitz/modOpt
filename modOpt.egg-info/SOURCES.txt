@@ -1,5 +1,6 @@
 README.rst
 setup.py
+modOpt/MC33.py
 modOpt/__init__.py
 modOpt/model.py
 modOpt.egg-info/PKG-INFO
