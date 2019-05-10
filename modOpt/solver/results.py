@@ -4,7 +4,7 @@ Output
 ***************************************************
 """
 
-__all__ = ['writeInitialSettings', 'writeResults']
+__all__ = ['writeInitialSettings', 'writeResults', 'writeResultsAnalytics']
 
 
 def writeInitialSettings(dict_options, solv_options, model):
@@ -46,16 +46,55 @@ def writeIterVarValues(res_file, model):
         
 def writeResults(dict_options, res_solver):
     res_file = open(''.join([dict_options["fileName"],"_results.txt"]), "w")
-    writeSolverOutput(res_file, res_solver)
     writeIterVarValues(res_file,  res_solver["Model"])
     writeFuncResiduals(res_file, res_solver["Model"])
 
 
+def writeResultsAnalytics(dict_options, res_solver):
+    res_file = open(''.join([dict_options["fileName"],"_analysis.txt"]), "w")
+    writeSolverOutput(res_file, res_solver)
+    writeFunctionLegend(res_file, res_solver["Model"])
+    writeFunctionTable(res_file, res_solver)
+
+def writeFunctionLegend(res_file, model):
+    res_file.write("Legend of functions:\n\n") 
+    res_file.write("Global ID:    Function Expression\n") 
+    
+    for i in range(0, len(model.fSymbolic)):
+        res_file.write("%s:    %s\n"%(i, model.fSymbolic[i]))
+    res_file.write("\n")  
+
+
+def writeFunctionTable(res_file, res_solver):
+    
+    model = res_solver["Model"]
+    blockID = model.getBlockID()    
+    exitflag = getQuantityForFunction(res_solver["Exitflag"], blockID)
+    iterNo = getQuantityForFunction(res_solver["IterNo"], blockID)
+    funVal = model.getFunctionValues()
+    
+    res_file.write("Table with Function Results:\n\n") 
+    res_file.write("GLbID  BlockID  Exitflag  IterNo  Residual\n") 
+    
+    for i in range(0, len(model.fSymbolic)):
+        res_file.write("%s  %s  %s  %s  %s\n"%(i, 
+                                               blockID[i], 
+                                               exitflag[i], 
+                                               iterNo[i], 
+                                               funVal[i]))
+
+def getQuantityForFunction(blockList, blockID):
+    functionList = []
+    for b in blockID:
+        functionList.append(blockList[b])
+        
+    return functionList
+    
 def writeSolverOutput(res_file, res_solver):
     res_file.write("Solver Output:\n")
-    res_file.write("Iteration number: %s\n"%(res_solver["Total Iteration Number"]))
+    res_file.write("Iteration number: %s\n"%(res_solver["IterNo_tot"]))
     res_file.write("Total Residual: %s\n\n"%(res_solver["Residual"])) 
-
+    #TODO exitflag
 
 def writeFuncResiduals(res_file, model):
     res_file.write("Function Residual Values:\n") 

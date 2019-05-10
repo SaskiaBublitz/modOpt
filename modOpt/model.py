@@ -77,7 +77,7 @@ class Model:
         self.parameter = PARAMS
         self.rowPerm = range(0,len(X))
         self.colPerm = range(0,len(X))
-        self.blocks = [[self.rowPerm]]
+        self.blocks = [self.rowPerm]
         self.fSymCasadi = FSYMCASADI 
         self.rowSca = numpy.ones(len(X))
         self.colSca = numpy.ones(len(X))

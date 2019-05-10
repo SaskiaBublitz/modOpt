@@ -91,8 +91,7 @@ class Block:
         #self.F = F
         #self.x = x
         #self.y = y
-    
-    
+        
     def getPermutedJacobian(self):
          """ Return: block jacobian evaluated at x_tot"""
          J_tot = self.J_sym_tot(*numpy.append(self.x_tot, self.x_tot))
@@ -102,7 +101,12 @@ class Block:
          """ Return: scaled block jacobian evaluated at x_tot """
          return casadi.mtimes(casadi.mtimes(casadi.diag(1.0 / self.rowSca), self.getPermutedJacobian()), 
                              casadi.diag(self.colSca))
-     
+
+    def getFunctionValues(self):
+        """ Return: block function values evaluated at x_tot """
+        F_tot = numpy.array(self.F_sym_tot(*self.x_tot))
+        return F_tot[self.rowPerm]
+
     def getPermutedFunctionValues(self):
         """ Return: block function values evaluated at x_tot """
         F_tot = numpy.array(self.F_sym_tot(*self.x_tot))
@@ -120,6 +124,18 @@ class Block:
         """ Return: scaled block iteration variable values """       
         return self.getIterVarValues() / self.colSca 
 
+    def setScaling(self, model):
+        """ sets scaling of block due to the complete model
+        
+        Args:
+            :model:         instance of class Model
+            
+        """
+        
+        self.rowSca = model.rowSca[self.rowPerm]
+        self.colSca = model.colSca[self.colPerm]
+
+
     def updateToScaling(self, res_scaling):
         """ updates the jacobian entries jValues by the scaling factors. Mind 
         that jValues remains in global order.
@@ -132,7 +148,7 @@ class Block:
        # self.jValues[self.rowPerm, self.colPerm] = res_scaling["Matrix"]
         
         if res_scaling.has_key("Equations"): 
-            self.rowSca[self.rowPerm] = res_scaling["Equations"]
+            self.rowSca = res_scaling["Equations"]
         
         if res_scaling.has_key("Variables"):
-            self.colSca[self.colPerm] = res_scaling["Variables"]
+            self.colSca = res_scaling["Variables"]

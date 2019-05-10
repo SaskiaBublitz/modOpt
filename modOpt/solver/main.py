@@ -8,6 +8,7 @@ Import packages
 import newton
 import numpy
 import block
+import modOpt.scaling as mos
 """
 ****************************************************
 Main that starts solving procedure in decomposed NLE
@@ -16,31 +17,59 @@ Main that starts solving procedure in decomposed NLE
 __all__ = ['solveSystem_NLE']
 
 
-def solveSystem_NLE(model, solv_options, dict_options):
+def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
     """ solve nonlinear algebraic equation system (NLE)
     
     Args:
-        :model:         object of class model in modOpt.model that contains all
-                        information of the NLE-evaluation and decomposition
-        :solv_options:  dictionary with user defined solver settings
-        :dict_options:  dictionary with user specified settings
+        :model:                 object of class model in modOpt.model that contains all
+                                information of the NLE-evaluation and decomposition
+        :dict_equations:        dictionary with information about equations
+        :dict_variables:        dichtionary with information about variables                                
+        :solv_options:          dictionary with user defined solver settings
+        :dict_options:          dictionary with user specified settings
      
-    Return:     updated model and equation system residual measured by the
-                Euclydian norm of all function residuals after the solver terminated
+    Return:     
+        :res_solver:            dictionary with solver results
                 
     """
+    
+    if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] =='tot_init':
+        mos.scaleSystem(model, dict_equations, dict_variables, dict_options) 
+
             
     if dict_options["decomp"] == 'DM' or dict_options["decomp"] == 'None': 
-        res_solver = solveBlocksSequence(model, solv_options, dict_options)
+        res_solver = solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables)
+        updateToSolver(res_solver, dict_equations, dict_variables)
         return res_solver
     
     if dict_options["decomp"] == 'BBTF':
         #TODO: Add Nested procuedure
         return []
     
-   
+    
+def updateToSolver(res_solver, dict_equations, dict_variables):
+    """ updates dictionaries to solver results
+    
+    Args:
+        :res_solver:            dictionary with solver results  
+        :dict_equations:        dictionary with information about equations
+        :dict_variables:        dichtionary with information about variables          
+    
+    """
 
-def solveBlocksSequence(model, solv_options, dict_options):
+    model = res_solver["Model"]     
+    fVal = model.getFunctionValues()
+    
+    
+    for i in range(0,len(model.xSymbolic)):
+        dict_equations[model.fSymbolic[i]][0] = fVal[i]
+        dict_equations[model.fSymbolic[i]][3] = model.rowSca[i]
+        
+        dict_variables[model.xSymbolic[i]][0] = model.stateVarValues[0][i]
+        dict_variables[model.xSymbolic[i]][3] = model.colSca[i]
+    
+    
+def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables):
     """ solve block decomposed system in sequence. This method can also be used
     if no decomposition is done. In this case the system contains one block that 
     equals the entire system.
@@ -55,34 +84,104 @@ def solveBlocksSequence(model, solv_options, dict_options):
         :res_solver:    dictionary with solver results
        
     """
-    
-    rBlocks, cBlocks = getListsWithBlockMembersByGlbID(model)
-    xInF = getListWithFunctionMembersByGlbID(model)   
-    res_solver = {}
-    res_solver["Iteration Number of Blocks"] = numpy.zeros(len(rBlocks))
-    res_solver["Residual of Blocks"] = numpy.zeros(len(rBlocks))
-    
-    
-    
+    rBlocks, cBlocks, xInF = getBlockInformation(model)
+    res_solver = createSolverResultDictionary(len(rBlocks))
+        
     for b in range(len(rBlocks)):
 
         curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
                                model.fSymCasadi, model.stateVarValues[0])
-        if dict_options["scaling"] != 'None':
-            curBlock.rowSca = model.rowSca[curBlock.rowPerm]
-            curBlock.colSca = model.colSca[curBlock.colPerm]
-        if solv_options["solver"] == 'newton':
-            tol, iterNo = newton.doNewton(curBlock, solv_options, dict_options)
-            res_solver["Iteration Number of Blocks"][b] = iterNo
-            res_solver["Residual of Blocks"][b] = tol 
-        # TODO: Add other solvers, e.g. ipopt
+        
+        if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] =='tot_init':
+            curBlock.setScaling(model)
+        
+        if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] =='block_init':
+            mos.scaleSystem(curBlock, dict_equations, dict_variables, dict_options)
             
-    model.stateVarValues[0] = curBlock.x_tot
+        if solv_options["solver"] == 'newton': 
+            doNewton(model, curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables)
+             
+        # TODO: Add other solvers, e.g. ipopt
+             
+    putResultsInDict(curBlock.x_tot, model, res_solver)
+
+    return res_solver 
+
+
+def getBlockInformation(model):
+    """ collects information available from block decomposition
     
+    Args:
+        :model:         object of class model in modOpt.model that contains all
+
+    Return:
+        :rBlocks:      Nested list with blocks that contain global ID's of the 
+                       functions
+        :rBlocks:      Nested list with blocks that contain global ID's of the 
+                       iteration variables
+        :xInf:         Nested list with functions in global order that contains 
+                        global ID's of all variables that occur in this function
+                        
+    """
+    
+    rBlocks, cBlocks = getListsWithBlockMembersByGlbID(model)
+    xInF = getListWithFunctionMembersByGlbID(model) 
+    return rBlocks, cBlocks, xInF 
+    
+
+def createSolverResultDictionary(blockNo):
+    """ sets up dictionary for solver results
+    
+    Args:
+        :blockNo: Number of blocks
+        
+    Return:         initial dictionary
+        
+    """
+
+    res_solver = {}
+    res_solver["IterNo"] = numpy.zeros(blockNo)
+    res_solver["Exitflag"] = numpy.zeros(blockNo)
+    
+    return res_solver
+
+    
+def doNewton(model, curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+    """ starts Newton-Raphson Method
+    
+    Args:
+        :model:           object of type Model
+        :curBlock:        object of type Block
+        :b:               current block index
+        :solv_options:    dictionary with user specified solver settings
+        :dict_options:    dictionary with user specified structure settings
+        :res_solver:      dictionary with results from solver
+        
+    """
+    
+    try: 
+        exitflag, iterNo = newton.doNewton(curBlock, solv_options, dict_options, dict_equations, dict_variables)
+        res_solver["IterNo"][b] = iterNo
+        res_solver["Exitflag"][b] = exitflag
+        
+    except: 
+        print "Error in Block ", b
+        res_solver["IterNo"][b] = 0
+        res_solver["Exitflag"][b] = -1    
+    
+
+def putResultsInDict(x, model, res_solver):
+    """ updates model and results dictionary
+    Args:
+        :x:               numpy array with final iteration variable values
+        :model:           object of type Model
+        :res_solver:      dictionary with results from solver    
+    """
+    
+    model.stateVarValues[0] = x
     res_solver["Model"] = model
     res_solver["Residual"] = model.getFunctionValuesResidual()
-    res_solver["Total Iteration Number"] = sum(res_solver["Iteration Number of Blocks"])
-    return res_solver 
+    res_solver["IterNo_tot"] = sum(res_solver["IterNo"])
 
 
 def getListsWithBlockMembersByGlbID(model):

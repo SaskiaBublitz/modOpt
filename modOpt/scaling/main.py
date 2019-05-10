@@ -61,7 +61,7 @@ def scaleSystem(model, dict_eq, dict_var, dict_options):
     return True
 
 
-def updateDictionaries(dict_eq, dict_var, res_scaling, model):
+def updateDictionaries(dict_eq, dict_var,res_scaling, model):
     """ updates all dictionaries after scaling
 
     Args:
@@ -72,24 +72,16 @@ def updateDictionaries(dict_eq, dict_var, res_scaling, model):
     
     """
   
-    rowPermId = getPermutationIndex(model.rowPerm)
-    colPermId = getPermutationIndex(model.colPerm)
 
     if res_scaling.has_key("Equations"):
-        EqPermSca = numpy.array(res_scaling["Equations"])
-        dict_eq = setValuesByGlobalId(dict_eq, 3, EqPermSca[rowPermId])
+        dict_eq = setDictionary(dict_eq, model.rowPerm, 3, model.rowSca)
         
-    if res_scaling.has_key("FunctionVector"):    
-        FPermSca = numpy.array(res_scaling ["FunctionVector"])
-        dict_eq = setValuesByGlobalId(dict_eq, 0, FPermSca[rowPermId]) 
     
     if res_scaling.has_key("Variables"):
-        XPermSca = numpy.array(res_scaling["Variables"])
-        dict_var = setValuesByGlobalId(dict_var, 0, model.stateVarValues[0]) 
-        dict_var = setValuesByGlobalId(dict_var, 3 , XPermSca[colPermId])  
+        dict_var = setDictionary(dict_var, model.colPerm, 3 , model.colSca)  
 
 
-def setValuesByGlobalId(dictionary, column, newValues):
+def setDictionary(dictionary, glbID, column, newValues):
     """ writes newValues in a column of dictionary
 
     Args:
@@ -101,9 +93,12 @@ def setValuesByGlobalId(dictionary, column, newValues):
 
     """  
      
-    for i in range(0,len(dictionary)):
-        glbID = dictionary.values()[i][1]
-        dictionary.values()[i][column] = newValues[glbID]
+    for i in glbID:
+        for entry in dictionary:
+            if dictionary[entry][1] == i: 
+                dictionary[entry][column] = newValues[glbID.index(i)]
+                break
+        
     return dictionary
 
 
