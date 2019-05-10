@@ -53,6 +53,7 @@ class Block:
         self.x_tot = x
         self.rowSca = numpy.ones(len(self.rowPerm))
         self.colSca = numpy.ones(len(self.colPerm))
+
         
     def getSubsystemVariableIDs(self, xInF):
         """ gets global id of all variables within a certain block
@@ -91,38 +92,46 @@ class Block:
         #self.F = F
         #self.x = x
         #self.y = y
+
         
     def getPermutedJacobian(self):
          """ Return: block jacobian evaluated at x_tot"""
          J_tot = self.J_sym_tot(*numpy.append(self.x_tot, self.x_tot))
          return J_tot[self.rowPerm, self.colPerm]
+
     
     def getScaledJacobian(self):
          """ Return: scaled block jacobian evaluated at x_tot """
          return casadi.mtimes(casadi.mtimes(casadi.diag(1.0 / self.rowSca), self.getPermutedJacobian()), 
                              casadi.diag(self.colSca))
 
+
     def getFunctionValues(self):
         """ Return: block function values evaluated at x_tot """
         F_tot = numpy.array(self.F_sym_tot(*self.x_tot))
         return F_tot[self.rowPerm]
+
 
     def getPermutedFunctionValues(self):
         """ Return: block function values evaluated at x_tot """
         F_tot = numpy.array(self.F_sym_tot(*self.x_tot))
         return F_tot[self.rowPerm]
 
+
     def getScaledFunctionValues(self):
         """ Return: scaled block function values evaluated at x_tot """
         return numpy.dot(numpy.diag(1.0 / self.rowSca), self.getPermutedFunctionValues())
+
         
     def getIterVarValues(self):
         """ Return: block iteration variable values """       
         return self.x_tot[self.colPerm]
 
+
     def getScaledIterVarValues(self):
         """ Return: scaled block iteration variable values """       
         return self.getIterVarValues() / self.colSca 
+
 
     def setScaling(self, model):
         """ sets scaling of block due to the complete model

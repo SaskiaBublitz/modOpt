@@ -33,7 +33,7 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
                 
     """
     
-    if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] =='tot_init':
+    if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] == 'tot_init':
         mos.scaleSystem(model, dict_equations, dict_variables, dict_options) 
 
             
@@ -75,34 +75,37 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
     equals the entire system.
 
     Args:
-        :model:         object of class model in modOpt.model that contains all
-                        information of the NLE-evaluation and decomposition
-        :solv_options:  dictionary with user defined solver settings
-        :dict_options:  dictionary with user specified settings
+        :model:             object of class model in modOpt.model that contains all
+                            information of the NLE-evaluation and decomposition
+        :solv_options:      dictionary with user defined solver settings
+        :dict_options:      dictionary with user specified settings
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
  
     Return:
         :res_solver:    dictionary with solver results
        
     """
+    # Initialization of known system quantities
     rBlocks, cBlocks, xInF = getBlockInformation(model)
     res_solver = createSolverResultDictionary(len(rBlocks))
-        
-    for b in range(len(rBlocks)):
+    
+    # Block iteration:    
+    for b in range(len(rBlocks)): 
 
         curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
                                model.fSymCasadi, model.stateVarValues[0])
         
-        if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] =='tot_init':
-            curBlock.setScaling(model)
-        
-        if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] =='block_init':
-            mos.scaleSystem(curBlock, dict_equations, dict_variables, dict_options)
+        if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
+                       model, curBlock, dict_equations, dict_variables)
             
         if solv_options["solver"] == 'newton': 
-            doNewton(model, curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables)
+            doNewton(model, curBlock, b, solv_options, dict_options, res_solver, 
+                     dict_equations, dict_variables)
              
         # TODO: Add other solvers, e.g. ipopt
-             
+    
+    # Write Results:         
     putResultsInDict(curBlock.x_tot, model, res_solver)
 
     return res_solver 
@@ -133,7 +136,7 @@ def createSolverResultDictionary(blockNo):
     """ sets up dictionary for solver results
     
     Args:
-        :blockNo: Number of blocks
+        :blockNo:   Number of blocks
         
     Return:         initial dictionary
         
@@ -145,17 +148,41 @@ def createSolverResultDictionary(blockNo):
     
     return res_solver
 
+  
+def getInitialScaling(dict_options, model, curBlock, dict_equations, dict_variables):
+    """solve block decomposed system in sequence. This method can also be used
+    if no decomposition is done. In this case the system contains one block that 
+    equals the entire system.
+
+    Args:
+        :dict_options:      dictionary with user specified settings        
+        :model:             object of class model in modOpt.model that contains all
+                            information of the NLE-evaluation and decomposition
+        :curBlock:          object of type Block
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
+        
+    """
     
+    if dict_options["scaling procedure"] =='tot_init': # scaling of complete decomposed system
+            curBlock.setScaling(model)
+        
+    elif dict_options["scaling procedure"] =='block_init': # blockwise scaling
+            mos.scaleSystem(curBlock, dict_equations, dict_variables, dict_options)   
+
+
 def doNewton(model, curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
     """ starts Newton-Raphson Method
     
     Args:
-        :model:           object of type Model
-        :curBlock:        object of type Block
-        :b:               current block index
-        :solv_options:    dictionary with user specified solver settings
-        :dict_options:    dictionary with user specified structure settings
-        :res_solver:      dictionary with results from solver
+        :model:             object of type Model
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
         
     """
     
@@ -176,6 +203,7 @@ def putResultsInDict(x, model, res_solver):
         :x:               numpy array with final iteration variable values
         :model:           object of type Model
         :res_solver:      dictionary with results from solver    
+        
     """
     
     model.stateVarValues[0] = x
@@ -201,7 +229,7 @@ def getListsWithBlockMembersByGlbID(model):
     
     rowPerm = model.rowPerm
     colPerm = model.colPerm
-    blocksPerm = model.blocks #for permuted matrix
+    blocksPerm = model.blocks
     
     rBlocks = []
     cBlocks =[]
@@ -245,7 +273,6 @@ def getListWithFunctionMembersByGlbID(model):
         col = nz[1][i]
         
         xInF[row].append(col)
-
     
     return xInF
      

@@ -84,17 +84,29 @@ def writeFunctionTable(res_file, res_solver):
                                                funVal[i]))
 
 def getQuantityForFunction(blockList, blockID):
+    """ get a quantities of the functions in global order referring to their block ID
+    
+    Args:
+        :blocklist:         list with block quanities
+        :blockID:           list with blockID of functions in global order
+    
+    Return:
+        :functionList:      list with function quantities in global order
+    
+    """
+    
     functionList = []
     for b in blockID:
         functionList.append(blockList[b])
         
     return functionList
+
     
 def writeSolverOutput(res_file, res_solver):
     res_file.write("Solver Output:\n")
     res_file.write("Iteration number: %s\n"%(res_solver["IterNo_tot"]))
     res_file.write("Total Residual: %s\n\n"%(res_solver["Residual"])) 
-    #TODO exitflag
+
 
 def writeFuncResiduals(res_file, model):
     res_file.write("Function Residual Values:\n") 
@@ -102,5 +114,17 @@ def writeFuncResiduals(res_file, model):
     for i in range(0, len(model.fSymbolic)):
         res_file.write("%s  =   %s\n"%(fValues[i], model.fSymbolic[i]))
     res_file.write("\n")  
-#def writeFunctionResiduals(res_file, dict_equations):   
+
+
+def getFileName(name, struc_options):
+    if struc_options["decomp"] =='None': name = ''.join([name, '_org'])
+    if struc_options["decomp"] =='DM': name = ''.join([name,'_DM'])
+    if struc_options["decomp"] =='BBTF': name = ''.join([name,'_DM'])
+    if struc_options["scaling"] =='MC29': name = ''.join([name,'_MC29'])
+    if struc_options["scaling"] =='MC77': name = ''.join([name,'_MC77'])
+    if struc_options["scaling"] =='Inf RowSca and Mean ColSca': name = ''.join([name,'_InfMean'])
+    if struc_options["scaling"] =='Inf RowSca and gMean ColSca': name = ''.join([name,'_InfgMean'])
+    if struc_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
+    if struc_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
+    if struc_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
      

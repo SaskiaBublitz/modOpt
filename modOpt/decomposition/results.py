@@ -13,7 +13,7 @@ Output
 ***************************************************
 """
 
-__all__ = ['writeResults', 'plotIncidence']
+__all__ = ['writeResults', 'plotIncidence', 'plotColoredIncidence']
 
 
 def writeResults(dict_equations, dict_variables, dict_options, res_conditionNumber = None):
@@ -102,16 +102,11 @@ def getFileName(dict_options):
     
     Return:               file name as string
         
-    """
-    
+    """  
     name = dict_options["fileName"]
     if dict_options["decomp"] =='None': name = ''.join([name, '_org'])
     if dict_options["decomp"] =='DM': name = ''.join([name,'_DM'])
     if dict_options["decomp"] =='BBTF': name = ''.join([name,'_BBTF'])
-    if dict_options["scaling"] == 'MC29': name = ''.join([name,'_sca29'])
-    if dict_options["scaling"] == 'Inf RowSca and Mean ColSca': name = ''.join([name,'_scaRInfCMean'])
-    if dict_options["scaling"] == 'Inf RowSca and gMean ColSca': name = ''.join([name,'_scaRInfCgMean'])
-    #if dict_options["condNo"]: name = ''.join([name, '_cond'])
     return name
 
 
@@ -262,4 +257,126 @@ def plotIncidence(model, dict_var, dict_options, plot_options):
     plt.imshow(incidence, cmap=cm, vmin=0, vmax=1.5)
 
     plt.savefig(''.join([fileName, "_incidence.pdf"]), bbox_inches='tight',dpi=1000)
+
+
+def plotColoredIncidence(res_solver, dict_options, plot_options):
+    """ plot incidence matrix of non linear algebraic system with solver results.
     
+    blue  = (sub) system solved
+    red   = iteration of (sub) system failed
+    black = (sub) system solved but for wrong input data i.e. failed results from 
+            sub system before
+            
+    Args:
+        :res_solver:        dictionary with resutls from solver
+        :dict_options:      dictionary with user specified settings
+        :plot_options:      dictionary with user specified plot settings
+    
+    """
+            
+    J, ex, model = getResults(res_solver) 
+
+    
+    incidence = prepareIncidence(J, ex, dict_options)
+    
+    plot_options["color"] = cl.ListedColormap(["white","red","black", "blue"], name = 'from_list', N = None)
+    plot_options["lineStyle"] = '-'
+    plot_options["lineWidth"] = 0.1
+    plot_options["fontSize"] = int(210/J.shape[0])
+
+    plotPDF(J, incidence, model, dict_options, plot_options)
+    
+
+def prepareIncidence(J, ex, dict_options):
+    
+    incidence = numpy.zeros(J.shape)
+    
+    if dict_options["decomp"] == 'None':
+        nz_row = numpy.array(J.row())
+        nz_col = numpy.array(J.sparsity().get_col())
+        nz_count = len(nz_row)
+        
+        if ex[0] == 1: nz = numpy.repeat(1.5, nz_count)
+        if ex[0] <= 0: nz = numpy.repeat(0.5, nz_count)
+        incidence[nz_row, nz_col] = nz
+    
+    if dict_options["decomp"] != 'None':
+        dim = J.shape[0]
+
+        
+        for k in range(0, dim):
+            col_nz_index = J[:,k].row()
+            row_nz_index = J[k,:].sparsity().get_col()
+
+            if ex[k]==1:
+                if all(x!=0.5 for x in incidence[k,row_nz_index]): 
+                    incidence[col_nz_index,k]=1.5
+                else: 
+                    incidence[col_nz_index,k]=0.5
+                    incidence[k,k] = 1
+            if ex[k]<=0: incidence[col_nz_index,k]=0.5    
+            
+    return incidence
+
+def plotPDF(J, incidence, model, dict_options, plot_options):
+    plt.grid(linestyle = plot_options["lineStyle"], linewidth= plot_options["lineWidth"] )
+    plt.imshow(incidence, cmap=plot_options["color"], vmin=0, vmax=1.5)
+    plt.xticks(range(0,J.shape[0]), model.xSymbolic[model.colPerm], fontsize = plot_options["fontSize"])
+    plt.yticks(range(0,J.shape[0]), model.rowPerm, fontsize = plot_options["fontSize"])
+    locs, labels = plt.xticks()  
+    plt.setp(labels, rotation=-90) 
+    plt.ylabel("Equation No.")
+    plt.savefig(''.join([dict_options["fileName"], "_incidence.pdf"]),bbox_inches='tight')       
+
+
+def getResults(res_solver):
+    
+    model = res_solver["Model"]
+    exblock = res_solver["Exitflag"]
+    blockID = model.getBlockID()
+    ex = getQuantityForFunction(exblock, blockID) # in global order
+    ex = getPermID(ex, model.rowPerm)
+    
+    
+    J = model.getPermutedJacobian()
+    
+    return J, ex, model
+    
+    
+def getQuantityForFunction(blockList, blockID):
+    """ get a quantities of the functions in global order referring to their block ID
+    
+    Args:
+        :blocklist:         list with block quanities
+        :blockID:           list with blockID of functions in global order
+    
+    Return:
+        :functionList:      list with function quantities in global order
+    
+    """
+    functionList = []
+    for b in blockID:
+        functionList.append(blockList[b])
+        
+    return functionList
+
+
+def getPermID(quantityInGlbOrder, permOrder):
+    """ get quantities in permuted order
+ 
+    Args:
+        :QuantityInGlbOrder:       list with quantities in global order
+        :permOrder:                list with permuted order
+
+    Return:
+        :QuantityInPermOrder:       list with quantites in permuted order
+    
+    """
+   
+    quantityInPermOrder = numpy.zeros(len(quantityInGlbOrder))
+   
+    for i in range(0, len(quantityInGlbOrder)):
+        j = permOrder.index(i)
+        quantityInPermOrder[j] =quantityInGlbOrder[i]
+        
+    return quantityInPermOrder

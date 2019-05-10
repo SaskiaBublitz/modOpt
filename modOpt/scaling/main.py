@@ -82,10 +82,12 @@ def updateDictionaries(dict_eq, dict_var,res_scaling, model):
 
 
 def setDictionary(dictionary, glbID, column, newValues):
-    """ writes newValues in a column of dictionary
+    """ writes newValues in a column of dictionary referring to list with
+    glbIDs
 
     Args:
         :dictionary:   dictionary where newValues are stored
+        :glbID:        list with glbID's referring to list newValues
         :column:       column index in dictionary where newValues shall be stored
         :newValues:    new values that shall be written to dictionary
     
@@ -100,24 +102,6 @@ def setDictionary(dictionary, glbID, column, newValues):
                 break
         
     return dictionary
-
-
-def getPermutationIndex(permOrder):
-    """ gets index after permutation based on permOrder
-
-    Args:
-        :permOrder:   list with permuted global indices
-    
-    Return:
-        :permID:      list with permuted permutation indices
-
-    """     
-    
-    permID = numpy.zeros(len(permOrder), int)
-    
-    for glbID in range(0,len(permOrder)):
-        permID[glbID] = list(permOrder).index(glbID)
-    return permID
 
 
 def colScalingMean(A, res_scaling):
@@ -182,5 +166,3 @@ def rowScaling(A, F, res_scaling):
     res_scaling["Matrix"] = A_sca
     res_scaling["FunctionVector"] = F_sca
     res_scaling["Equations"] = row_sca  
-
-

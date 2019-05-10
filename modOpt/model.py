@@ -109,13 +109,16 @@ class Model:
         """ Return: Condition number of original system """
         return numpy.linalg.cond(self.getJacobian())
 
+
     def getPermutedConditionNumber(self):
         """ Return: Condition number of permuted system """
         return numpy.linalg.cond(self.getPermutedJacobian())    
+
     
     def getPermutedAndScaledConditionNumber(self):
         """ Return: Condition number of permuted and scaled system """
         return numpy.linalg.cond(self.getPermutedAndScaledJacobian())     
+
     
     def getFunctionValues(self):
         """ Return: Function Values at current state variable values"""
@@ -131,42 +134,52 @@ class Model:
         """ Return: permuted and scaled function Values at current state variable values"""
         return self.getFunctionValues()[self.rowPerm] 
 
+
     def getPermutedAndScaledFunctionValues(self):
         """ Return: permuted and scaled function Values at current state variable values"""
         return self.getScaledFunctionValues()[self.rowPerm] 
 
+
     def getFunctionValuesResidual(self):    
         """ Return: euclydian norm of current function values"""
         return numpy.linalg.norm(self.getPermutedFunctionValues()) 
+
     
     def getJacobian(self):
         """ Return: jacobian evaluated at current state variable values"""
         return self.jacobian(*numpy.append(self.stateVarValues[0], self.stateVarValues[0]))
 
+
     def getScaledJacobian(self):
         """ Return: scaled jacobian evaluated at current state variable values"""
         return casadi.mtimes(casadi.mtimes(casadi.diag(1.0 / self.rowSca), self.getJacobian()), 
+
                              casadi.diag(self.colSca))
 
     def getPermutedJacobian(self):
         """ Return: permuted jacobian evaluated at current state variable values"""
         return self.getJacobian()[self.rowPerm, self.colPerm]
+
  
     def getPermutedAndScaledJacobian(self):
         """ Return: permuted and scaled jacobian evaluated at current state variable values"""
         return self.getScaledJacobian()[self.rowPerm, self.colPerm]
+
                            
     def getScaledXValues(self):
          """ Return: Scaled state variable values in global order"""
          return self.stateVarValues[0] / self.colSca          
+
     
     def getPermutedXValues(self):
          """ Return: Permuted state variable values"""
          return self.getXValues()[self.colPerm] 
 
+
     def getPermutedAndScaledXValues(self):
          """ Return: Permuted and scaled state variable values"""
          return self.getScaledXValues()[self.colPerm] 
+
      
     def getBlockID(self):
         blockIDinGlbOrder =[]
