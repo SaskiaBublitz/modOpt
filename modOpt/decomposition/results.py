@@ -321,8 +321,8 @@ def prepareIncidence(J, ex, dict_options):
 def plotPDF(J, incidence, model, dict_options, plot_options):
     plt.grid(linestyle = plot_options["lineStyle"], linewidth= plot_options["lineWidth"] )
     plt.imshow(incidence, cmap=plot_options["color"], vmin=0, vmax=1.5)
-    plt.xticks(range(0,J.shape[0]), model.xSymbolic[model.colPerm], fontsize = plot_options["fontSize"])
-    plt.yticks(range(0,J.shape[0]), model.rowPerm, fontsize = plot_options["fontSize"])
+    plt.xticks(range(0,len(model.colPerm)), model.colPerm, fontsize = plot_options["fontSize"])
+    plt.yticks(range(0,len(model.rowPerm)), model.rowPerm, fontsize = plot_options["fontSize"])
     locs, labels = plt.xticks()  
     plt.setp(labels, rotation=-90) 
     plt.ylabel("Equation No.")

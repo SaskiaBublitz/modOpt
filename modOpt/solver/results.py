@@ -25,20 +25,20 @@ def writeInitialSettings(dict_options, solv_options, model):
 
 
 def writeRestructuringSettings(res_file, dict_options):
-    res_file.write("Restructuring Settings:\n")
+    res_file.write(" ################# Restructuring Settings ################# \n\n")
     res_file.write("Decomposition Method: %s\n"%(dict_options["decomp"]))
     res_file.write("Scaling Method: %s\n\n"%(dict_options["scaling"]))
 
 
 def writeSolverSettings(res_file, solv_options):
-    res_file.write("Solver Settings:\n")
+    res_file.write(" ################# Solver Settings ################# \n")
     res_file.write("Solver: %s\n"%(solv_options["solver"]))
     res_file.write("Function Residual: %s\n"%(solv_options["FTOL"]))
     res_file.write("Maximum iteration number per Block: %s\n\n"%(solv_options["iterMax"]))
     
     
 def writeIterVarValues(res_file, model):
-    res_file.write("Iteration Variable Values:\n")    
+    res_file.write(" ################# Iteration Variable Values ################# \n\n")    
     for i in range(0, len(model.xSymbolic)):
         res_file.write("%s    %s\n"%(model.xSymbolic[i], model.stateVarValues[0][i]))
     res_file.write("\n")  
@@ -57,7 +57,7 @@ def writeResultsAnalytics(dict_options, res_solver):
     writeFunctionTable(res_file, res_solver)
 
 def writeFunctionLegend(res_file, model):
-    res_file.write("Legend of functions:\n\n") 
+    res_file.write(" ################# Legend of functions ################# \n\n") 
     res_file.write("Global ID:    Function Expression\n") 
     
     for i in range(0, len(model.fSymbolic)):
@@ -73,7 +73,7 @@ def writeFunctionTable(res_file, res_solver):
     iterNo = getQuantityForFunction(res_solver["IterNo"], blockID)
     funVal = model.getFunctionValues()
     
-    res_file.write("Table with Function Results:\n\n") 
+    res_file.write(" ################# Table with Function Results ################# \n\n") 
     res_file.write("GLbID  BlockID  Exitflag  IterNo  Residual\n") 
     
     for i in range(0, len(model.fSymbolic)):
@@ -82,6 +82,7 @@ def writeFunctionTable(res_file, res_solver):
                                                exitflag[i], 
                                                iterNo[i], 
                                                funVal[i]))
+
 
 def getQuantityForFunction(blockList, blockID):
     """ get a quantities of the functions in global order referring to their block ID
