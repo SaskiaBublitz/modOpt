@@ -98,7 +98,7 @@ def setDictionary(dictionary, glbID, column, newValues):
     for i in glbID:
         for entry in dictionary:
             if dictionary[entry][1] == i: 
-                dictionary[entry][column] = newValues[glbID.index(i)]
+                dictionary[entry][column] = newValues[list(glbID).index(i)]
                 break
         
     return dictionary

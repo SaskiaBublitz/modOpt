@@ -212,13 +212,12 @@ def writeCondNo(res_file, res_condNo, dict_options):
         res_file.write("\nRestructured System: %s"%(res_condNo["Restructured"]))
 
 
-def plotIncidence(model, dict_var, dict_options, plot_options):
+def plotIncidence(model, dict_options, plot_options):
     """  plot incidence matrix of equation system and store it in PDF file
     
     Args:
         :model:           object of type model containig all equation system 
                           evaluation information        
-        :dict_var:        dictionary with information about all state variables
         :dict_options:    dictionary with user specified settings    
         :plot_options:    dictionary with user specified plotting options    
                 
@@ -230,7 +229,6 @@ def plotIncidence(model, dict_var, dict_options, plot_options):
     colPerm = model.colPerm
     Jperm = model.getPermutedJacobian()
     
-    #varNames = getKeyByGlobalId(dict_var)
     varNames = numpy.array(model.xSymbolic)[colPerm]
     
     incidence = numpy.zeros(Jperm.shape)
@@ -275,7 +273,6 @@ def plotColoredIncidence(res_solver, dict_options, plot_options):
     """
             
     J, ex, model = getResults(res_solver) 
-
     
     incidence = prepareIncidence(J, ex, dict_options)
     
@@ -283,53 +280,17 @@ def plotColoredIncidence(res_solver, dict_options, plot_options):
     plot_options["lineStyle"] = '-'
     plot_options["lineWidth"] = 0.1
     plot_options["fontSize"] = int(210/J.shape[0])
-
-    plotPDF(J, incidence, model, dict_options, plot_options)
     
-
-def prepareIncidence(J, ex, dict_options):
+    plotPDF(incidence, model, dict_options, plot_options)
     
-    incidence = numpy.zeros(J.shape)
-    
-    if dict_options["decomp"] == 'None':
-        nz_row = numpy.array(J.row())
-        nz_col = numpy.array(J.sparsity().get_col())
-        nz_count = len(nz_row)
-        
-        if ex[0] == 1: nz = numpy.repeat(1.5, nz_count)
-        if ex[0] <= 0: nz = numpy.repeat(0.5, nz_count)
-        incidence[nz_row, nz_col] = nz
-    
-    if dict_options["decomp"] != 'None':
-        dim = J.shape[0]
-
-        
-        for k in range(0, dim):
-            col_nz_index = J[:,k].row()
-            row_nz_index = J[k,:].sparsity().get_col()
-
-            if ex[k]==1:
-                if all(x!=0.5 for x in incidence[k,row_nz_index]): 
-                    incidence[col_nz_index,k]=1.5
-                else: 
-                    incidence[col_nz_index,k]=0.5
-                    incidence[k,k] = 1
-            if ex[k]<=0: incidence[col_nz_index,k]=0.5    
-            
-    return incidence
-
-def plotPDF(J, incidence, model, dict_options, plot_options):
-    plt.grid(linestyle = plot_options["lineStyle"], linewidth= plot_options["lineWidth"] )
-    plt.imshow(incidence, cmap=plot_options["color"], vmin=0, vmax=1.5)
-    plt.xticks(range(0,len(model.colPerm)), model.colPerm, fontsize = plot_options["fontSize"])
-    plt.yticks(range(0,len(model.rowPerm)), model.rowPerm, fontsize = plot_options["fontSize"])
-    locs, labels = plt.xticks()  
-    plt.setp(labels, rotation=-90) 
-    plt.ylabel("Equation No.")
-    plt.savefig(''.join([dict_options["fileName"], "_incidence.pdf"]),bbox_inches='tight')       
-
 
 def getResults(res_solver):
+    """ get results from solver needed for incidence plot
+    
+    Args:
+        :res_solver:        dictionary with solver output
+    
+    """
     
     model = res_solver["Model"]
     exblock = res_solver["Exitflag"]
@@ -380,3 +341,79 @@ def getPermID(quantityInGlbOrder, permOrder):
         quantityInPermOrder[j] =quantityInGlbOrder[i]
         
     return quantityInPermOrder
+
+
+def prepareIncidence(J, ex, dict_options):
+    """ returns incidence matrix with different nonzero values, i.e.: 0.5 for 
+    failed blocks, 1.5 for solved blocks and 1 for blocks that were solved but
+    based on wrong input variables from blocks before.
+    
+    Args:
+        :J:                     matrix in casadi formate
+        :ex:                    list with exit flags of all functions
+        :deict_options:         dictionary with user specified settings
+        
+    """
+    
+    incidence = numpy.zeros(J.shape)
+    
+    if dict_options["decomp"] == 'None':
+        nz_row = numpy.array(J.row())
+        nz_col = numpy.array(J.sparsity().get_col())
+        nz_count = len(nz_row)
+        
+        if ex[0] == 1: nz = numpy.repeat(1.5, nz_count)
+        if ex[0] <= 0: nz = numpy.repeat(0.5, nz_count)
+        incidence[nz_row, nz_col] = nz
+    
+    if dict_options["decomp"] != 'None':
+        dim = J.shape[0]
+
+        
+        for k in range(0, dim):
+            col_nz_index = J[:,k].row()
+            row_nz_index = J[k,:].sparsity().get_col()
+
+            if ex[k]==1:
+                if all(x!=0.5 for x in incidence[k,row_nz_index]): 
+                    incidence[col_nz_index,k]=1.5
+                else: 
+                    incidence[col_nz_index,k]=0.5
+                    incidence[k,k] = 1
+            if ex[k]<=0: incidence[col_nz_index,k]=0.5    
+            
+    return incidence
+
+
+def plotPDF(incidence, model, dict_options, plot_options):
+    """ plots colored incidence matrix and stores it in a PDF
+    
+    Args:
+        :incidence:         matrix with different nonzero values due to the solver
+                            output
+        :model:             object of type model
+        :dict_options:      dictionary with user specificed settings
+        :plot_options:      dictionary with plot style settings
+    
+    """
+    fileName = getFileName(dict_options)
+    xSymbolicPerm = [model.xSymbolic[i] for i in model.colPerm]
+
+    
+    
+    if plot_options["labelsAndGrid"]: 
+        plt.grid(linestyle='-', linewidth=0.1)    
+        plt.grid(linestyle = plot_options["lineStyle"], linewidth= plot_options["lineWidth"] )
+        plt.imshow(incidence, cmap=plot_options["color"], vmin=0, vmax=1.5)
+        plt.xticks(range(0,len(model.colPerm)), xSymbolicPerm, fontsize = plot_options["fontSize"])
+        plt.yticks(range(0,len(model.rowPerm)), model.rowPerm, fontsize = plot_options["fontSize"])
+        locs, labels = plt.xticks()  
+        plt.setp(labels, rotation=-90) 
+        plt.ylabel("Equation No.")
+        
+    else:
+        plt.ylabel("Equations")
+        plt.xlabel("Variables")
+        plt.imshow(incidence, cmap=plot_options["color"], vmin=0, vmax=1.5)
+        
+    plt.savefig(''.join([fileName, "_incidence.pdf"]),bbox_inches='tight')       
