@@ -6,7 +6,7 @@ Import packages
 ***************************************************
 """
 import time
-import modOpt.decomposition.dM  as mod
+from modOpt.decomposition.dM  import doDulmageMendelsohn
 import copy
 import numpy
 import parallelization
@@ -42,7 +42,7 @@ def reduceVariableBounds(model, options):
     if options['method'] == 'partial':
         # Decomposition:
         jacobian = model.getJacobian()
-        dict_permutation = mod.doDulmageMendelsohn(jacobian)
+        dict_permutation = doDulmageMendelsohn(jacobian)
         model.updateToPermutation(dict_permutation["Row Permutation"],
                                      dict_permutation["Column Permutation"],
                                      dict_permutation["Number of Row Blocks"])
