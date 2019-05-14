@@ -18,7 +18,7 @@ setup(name='modOpt',
       install_requires=['numpy',
                         'sympy',
                         'mpmath',
-                        'casadi'],
-                        #TODO: dependency_links=['hereGoesTheGitHubLink'],
-                        #for: copy, itertools, time
+                        'casadi',
+						'matplotlib'],
+                        #TODO: What to do with copy, itertools, time, multiprocessing
       zip_safe=False)
