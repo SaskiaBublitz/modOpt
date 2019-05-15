@@ -105,7 +105,7 @@ def doIntervalNesting(model, dict_options):
         if newXBounds != []: xBounds = newXBounds
         else: 
             print "NoSolutionError: No valid solution space was found. Please check consistency of initial constraints"
-            
+            return newModel, iterNo
     newModel.setXBounds(xBounds)
     
     return newModel, iterNo
