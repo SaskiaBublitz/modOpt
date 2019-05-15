@@ -3,12 +3,15 @@
 Import packages
 ***************************************************
 """
-import matplotlib
-matplotlib.use('Agg')
+import platform
+if platform.system() != 'Windows': 
+    import matplotlib
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cl
 import numpy
 
+    
 """
 ***************************************************
 Output
