@@ -14,15 +14,19 @@ Update directories
 
 __all__ = ['updateDictToModel']
 
-def updateDictToModel(dict_variables, model):
+def updateDictToModel(dict_variables, res_solver):
     """ updates variable dictionary to current model values
     
     Args:
         :dict_variables:      dictionary with set of state variable values, lower 
                               and upper bounds
-        :model:               object of class model
+        :res_solver:          dictionary with resulting model after variable bounds 
+                              reduction
            
     """
+    
+    model = res_solver["Model"]
+    
     if model != []:
         xValues = model.stateVarValues
         xBounds = model.xBounds

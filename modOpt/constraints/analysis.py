@@ -13,17 +13,19 @@ analysis tools
 
 __all__ = ['analyseResults']
 
-def analyseResults(dict_options, initialModel, modelWithReducedBounds):
+def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
     calculated and stored in a textfile <fileName>_analysis.txt
     
     Args:
-        :dict_options:              dictionary with user settings
-        :initialModel:              instance of type model with initial bounds 
-        :modelWithReducedBounds:    instance of type model with reduced bounds 
+        :dict_options:     dictionary with user settings
+        :initialModel:     instance of type model with initial bounds 
+        :res_solver:       dictionary with resulting model after variable bounds 
+                           reduction 
         
     """
     
+    modelWithReducedBounds = res_solver["Model"]
     varSymbolic = initialModel.xSymbolic
     initVarBounds = initialModel.xBounds[0]
     if modelWithReducedBounds != []:

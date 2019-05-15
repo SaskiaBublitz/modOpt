@@ -30,11 +30,12 @@ def reduceVariableBounds(model, options):
         
     Return:
         :reducedModel:  model with reduced XBounds
-        :iterNo:        number of outter iteration Steps
-                        is returned, otherwise an empty list is returned
-        :t:             measured time
+        :res_solver:    dictionary with resulting model of procedure, iteration 
+                        number and time (if time measurement is chosen)
     
     """
+    
+    res_solver = {}
     
     if options['method'] == 'complete':
         model.blocks = [range(0, len(model.xSymbolic))]
@@ -52,11 +53,17 @@ def reduceVariableBounds(model, options):
         reducedModel, iterNo = doIntervalNesting(model, options)
         toc = time.clock()
         t = toc - tic
-        return reducedModel, iterNo, t
+        res_solver["Model"] = reducedModel
+        res_solver["iterNo"] = iterNo
+        res_solver["time"] = t
+        return res_solver
         
     else:
         reducedModel, iterNo = doIntervalNesting(model, options)
-        return reducedModel, iterNo, []
+        res_solver["Model"] = reducedModel
+        res_solver["iterNo"] = iterNo
+        res_solver["time"] = []
+        return res_solver
 
 
 def doIntervalNesting(model, dict_options):

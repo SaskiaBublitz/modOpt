@@ -14,18 +14,20 @@ sets initials to arithemtic mean value of an interval
 
 __all__ = ['setStateVarValuesToMidPointOfIntervals']
 
-def setStateVarValuesToMidPointOfIntervals(model, dict_options):
+def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
     """ Set all state variable values of a model to the midpoint of their related
     interval
     
     Args:
-        model:          object of class model in modOpt.model that contains all
-                        information of the NLE-evaluation from MOSAICm.
-        dict_options:   dictionary with user settings used because of absEps. 
+        :res_solver:     dictionary with resulting model after variable bounds 
+                        reduction
+        :dict_options:   dictionary with user settings used because of absEps. 
                         if mean value is 0, the inital value is set to the absEps
                         value
         
     """
+    
+    model = res_solver["Model"]
     
     if model.xBounds !=[]:
         absEps = dict_options["absEps"]
