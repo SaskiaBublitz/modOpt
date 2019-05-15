@@ -14,11 +14,18 @@ setup(name='modOpt',
       author='Saskia Bublitz',
       author_email='saskia.bublitz@tu-berlin.de',
       license='TU Berlin',
-      packages=['modOpt'],
+	  
+      packages=['modOpt',
+				'modOpt.constraints',
+				'modOpt.initialization',
+				'modOpt.decomposition',
+				'modOpt.scaling',
+				'modOpt.solver'],
+	  include_package_data=True,
       install_requires=['numpy',
                         'sympy',
                         'mpmath',
-                        'casadi'],
-                        #TODO: dependency_links=['hereGoesTheGitHubLink'],
-                        #for: copy, itertools, time
+                        'casadi',
+						'matplotlib'],
+                        #TODO: What to do with copy, itertools, time, multiprocessing
       zip_safe=False)
