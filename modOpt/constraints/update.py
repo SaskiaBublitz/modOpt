@@ -14,35 +14,36 @@ Update directories
 
 __all__ = ['updateDictToModel']
 
-def updateDictToModel(dict_variables, model):
+def updateDictToModel(dict_variables, res_solver):
     """ updates variable dictionary to current model values
     
     Args:
         :dict_variables:      dictionary with set of state variable values, lower 
                               and upper bounds
-        :model:               object of class model
-    
-    Return:
-        :dict_variables:      updated state variable dictionary
+        :res_solver:          dictionary with resulting model after variable bounds 
+                              reduction
            
     """
     
-    xValues = model.stateVarValues
-    xBounds = model.xBounds
+    model = res_solver["Model"]
     
-    for i in range(0, len(dict_variables)):
-        glbIdx = dict_variables[dict_variables.keys()[i]][3]
-        curXValues = []
-        curXLowerBounds = []
-        curXUpperBounds = []
+    if model != []:
+        xValues = model.stateVarValues
+        xBounds = model.xBounds
+    
+        for i in range(0, len(dict_variables)):
+            glbIdx = dict_variables[dict_variables.keys()[i]][3]
+            curXValues = []
+            curXLowerBounds = []
+            curXUpperBounds = []
         
-        for j in range(0, len(xValues)):
-            curXValues.append(float(xValues[j][glbIdx]))
-            curXLowerBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].a)))
-            curXUpperBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].b)))
+            for j in range(0, len(xValues)):
+                curXValues.append(float(xValues[j][glbIdx]))
+                curXLowerBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].a)))
+                curXUpperBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].b)))
             
-        dict_variables[dict_variables.keys()[i]][0] = curXValues
-        dict_variables[dict_variables.keys()[i]][1] = curXLowerBounds
-        dict_variables[dict_variables.keys()[i]][2] = curXUpperBounds
-    
-    return dict_variables
+            dict_variables[dict_variables.keys()[i]][0] = curXValues
+            dict_variables[dict_variables.keys()[i]][1] = curXLowerBounds
+            dict_variables[dict_variables.keys()[i]][2] = curXUpperBounds
+                
+    else: dict_variables = []

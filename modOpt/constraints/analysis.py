@@ -13,26 +13,31 @@ analysis tools
 
 __all__ = ['analyseResults']
 
-def analyseResults(fileName, varSymbolic, initVarBounds, reducedVarBounds):
+def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
     calculated and stored in a textfile <fileName>_analysis.txt
     
     Args:
-        :fileName:            string with file name
-        :varSymbolic:         list with symbolic variables in sympy logic
-        :initVarBounds:       list with initial variable bounds
-        :reducedVarBounds:    list with reduced variable bound sets
+        :dict_options:     dictionary with user settings
+        :initialModel:     instance of type model with initial bounds 
+        :res_solver:       dictionary with resulting model after variable bounds 
+                           reduction 
         
     """
     
-    boundRatios =getBoundRatios(initVarBounds, reducedVarBounds)
-    boundRatioOfVars, solvedVars = getBoundRatioOfVars(boundRatios)
-    hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
+    modelWithReducedBounds = res_solver["Model"]
+    varSymbolic = initialModel.xSymbolic
+    initVarBounds = initialModel.xBounds[0]
+    if modelWithReducedBounds != []:
+        reducedVarBounds = modelWithReducedBounds.xBounds
+        boundRatios =getBoundRatios(initVarBounds, reducedVarBounds)
+        boundRatioOfVars, solvedVars = getBoundRatioOfVars(boundRatios)
+        hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
                                                                          (len(varSymbolic)-len(solvedVars)))
 
-    hypercubicLFraction = sum(hypercubicLFractions)
-    writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
-                         hypercubicLFractions, hypercubicLFraction, solvedVars)
+        hypercubicLFraction = sum(hypercubicLFractions)
+        writeAnalysisResults(dict_options["fileName"], varSymbolic, boundRatios, boundRatioOfVars,
+                             hypercubicLFractions, hypercubicLFraction, solvedVars)
  
     
 def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,

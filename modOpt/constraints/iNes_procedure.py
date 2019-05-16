@@ -141,7 +141,9 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                                                     xSymbolic, f[i], j, dict_options))
 
             if y != [] and y != [[]]: xNewBounds[j] = y
-            else: return [], boundsAlmostEqual
+            else: 
+                print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
+                return [], boundsAlmostEqual
 
             if len(xNewBounds[j]) == 1: 
                 boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
