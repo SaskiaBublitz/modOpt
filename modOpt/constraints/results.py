@@ -15,7 +15,7 @@ def createDict(X, LABEL):
     return X_DICT
 
 
-def writeResults(dict_options, dict_variables, t, iterNo):
+def writeResults(dict_options, dict_variables, res_solver):
     """ creates File(s) with  final start values and lower and upper bounds. 
     For the ith set of start values, lower and upper bounds a new text file is 
     generated using the label "_i". 
@@ -24,11 +24,11 @@ def writeResults(dict_options, dict_variables, t, iterNo):
         :dict_options:            Dictionary with user settings
         :dict_variables:          Dictionary with sets of state variable values,
                                   lower and upper bounds
-        :t:                       float with time the procedure took    
-        :iterNo:                  integer with iteration steps the procedure took               
+        :res_solver:              Dictionary with results from procedure              
         
     """
-    
+    t = res_solver["time"]
+    iterNo = res_solver["iterNo"]
     fileName = dict_options["fileName"] 
     
     if dict_variables[dict_variables.keys()[0]][0] != []:

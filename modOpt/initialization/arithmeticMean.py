@@ -30,7 +30,7 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
     model = res_solver["Model"]
     
     if model.xBounds !=[]:
-        absEps = dict_options["absEps"]
+        absEps = dict_options["absTolX"]
         model.stateVarValues = numpy.empty((len(model.xBounds), len(model.xBounds[0])))
         for i in range(0, len(model.xBounds)):
             for j in range(0, len(model.xBounds[i])):
