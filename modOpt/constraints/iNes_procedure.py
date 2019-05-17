@@ -9,7 +9,7 @@ import sympy
 import mpmath
 import itertools
 import parallelization
-import FailedSystem
+from FailedSystem import FailedSystem
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
            'checkWidths', 'getPrecision']
@@ -77,8 +77,8 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
                            dict_options["absTolX"]): 
                 xAlmostEqual[k] = True
                 break
-        results["newXBounds"] = newXBounds
-        results["xAlmostEqual"] = xAlmostEqual
+    results["newXBounds"] = newXBounds
+    results["xAlmostEqual"] = xAlmostEqual
     return results
 
 
@@ -155,7 +155,8 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                     if y == [] or y ==[[]]: 
                         print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
                         output["intervalsPerm"] = []
-                        output["noSolution"] = FailedSystem(f[i], xSymbolic[j])
+                        failedSystem = FailedSystem(f[i], xSymbolic[j])
+                        output["noSolution"] = failedSystem
                         return output
 
             xNewBounds[j] = y

@@ -42,10 +42,12 @@ class Model:
                             [[0], [1, 2], [3], [4]] with one 2-dimensional block 
                             consisting of the permuted equations and variables 
                             2 and 3.
-    :fValues:               optional 1D-array with current function values in
+    :fSymCasadi:            symbolic functions in casadi logic
                             global order, default = None
-    :jValues:               optional 2D.array with current jacobian entries in
-                            global order, default = None
+    :rowSca:                numpy array with equation scaling factors
+    :colSca:                numpy array with variable scaling factors
+    :failed:                if true model status is well, if false procedure
+                            failed to find a proper solution for the system
                             
     """
     
@@ -62,9 +64,7 @@ class Model:
                            of state variables. (in global order)
             :PARAMS:       array with values of model parameter 
             :JACOBIAN:     if used, array with symbolic jacobian            
-            :FVALUES:      optional 1D-array with current function values in
-                           global order, default = None
-            :JVALUES:      optional 2D.array with current jacobian entries in
+            :FSYMCASADI:   optional 1D-array with current symbolic functions in
                            global order, default = None
             
         """
@@ -81,6 +81,7 @@ class Model:
         self.fSymCasadi = FSYMCASADI 
         self.rowSca = numpy.ones(len(X))
         self.colSca = numpy.ones(len(X))
+        self.failed = False
 
 
     def getBoundsOfPermutedModel(self, xBounds, xSymbolic, parameter):
