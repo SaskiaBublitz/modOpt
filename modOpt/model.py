@@ -191,8 +191,31 @@ class Model:
                     blockIDinGlbOrder.append(b)
                     break
         return blockIDinGlbOrder        
+
+
+    def getXBoundsOfCertainVariablesFromIntervalSet(self, certainVariables, intervalID):
+        """ returns bounds of certain variables from the model for a specific interval
+        set accessed by intervalID
         
+        Args:
+            :certainVariables:          list with variable names as sympy.symbols
+            :intervalID:                Position of interval set in xBounds list
+                                        of the model
+        Returns:
+            :certainXBounds:            numpy array with referring xBounds         
         
+        """
+        
+        certainXBounds = numpy.empty((len(certainVariables)), dtype=object)
+        curXBounds = self.xBounds[intervalID]
+        
+        for i in range(0, len(certainVariables)):
+            glbID = self.xSymbolic.index(certainVariables[i])
+            certainXBounds[i] = curXBounds[glbID]
+   
+        return certainXBounds
+        
+    
     def setXBounds(self, xBounds):
         """ sets the state variable bounds to the intervals given by the array
         xBounds

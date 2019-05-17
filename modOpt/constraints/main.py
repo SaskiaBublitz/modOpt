@@ -102,7 +102,7 @@ def doIntervalNesting(res_solver, dict_options):
         if output.has_key("noSolution"):
             res_solver["Model"] = newModel
             res_solver["iterNo"] = iterNo
-            res_solver["noSolution"] = output
+            res_solver["noSolution"] = output["noSolution"]
             return True #TODO: Proof if newModel should be returned
         
         elif xAlmostEqual.all():

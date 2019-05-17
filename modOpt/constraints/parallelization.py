@@ -9,6 +9,7 @@ import mpmath
 import iNes_procedure
 import itertools
 from multiprocessing import Manager, Process #cpu_count
+import FailedSystem
 
 __all__ = ['reduceMultipleXBounds', 'reduceXBounds']
 
@@ -222,7 +223,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                 xNewBounds[n] = convertListToMpi(results['%d' % n][0])
                 boundsAlmostEqual[n] = results['%d' % n][1]
             else: 
-                output["intervalsPerm"]  = []      #TODO: Proof functionality   
+                output["intervalsPerm"]  = [] 
                 output["noSolution"] = results['%d' % n][2] 
                 return output
 
@@ -274,7 +275,7 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
                 y = iNes_procedure.reduceTwoIVSets(y, iNes_procedure.reduceXIntervalByFunction(xBounds, 
                                             xSymbolic, f[i], j, dict_options))
             if y==[] or y==[[]]:
-                results['%d' % n] = ([], boundsAlmostEqual[j], f[i]) # TODO: Add Object critical Equation
+                results['%d' % n] = ([], boundsAlmostEqual[j], FailedSystem(f[i], xSymbolic[j]))
                 return True                
                 
     xNewBounds[j] = y
