@@ -29,7 +29,6 @@ def reduceVariableBounds(model, options):
         :options:     dictionary with user-specified information
         
     Return:
-        :reducedModel:  model with reduced XBounds
         :res_solver:    dictionary with resulting model of procedure, iteration 
                         number and time (if time measurement is chosen)
     
@@ -47,39 +46,33 @@ def reduceVariableBounds(model, options):
         model.updateToPermutation(dict_permutation["Row Permutation"],
                                      dict_permutation["Column Permutation"],
                                      dict_permutation["Number of Row Blocks"])
-        
+    res_solver["Model"] = model
+    
     if options['timer'] == True: 
         tic = time.clock()
-        reducedModel, iterNo = doIntervalNesting(model, options)
+        doIntervalNesting(res_solver, options)
         toc = time.clock()
         t = toc - tic
-        res_solver["Model"] = reducedModel
-        res_solver["iterNo"] = iterNo
         res_solver["time"] = t
         return res_solver
         
     else:
-        reducedModel, iterNo = doIntervalNesting(model, options)
-        res_solver["Model"] = reducedModel
-        res_solver["iterNo"] = iterNo
+        doIntervalNesting(res_solver, options)
         res_solver["time"] = []
         return res_solver
 
 
-def doIntervalNesting(model, dict_options):
+def doIntervalNesting(res_solver, dict_options):
     """ iterates the state variable intervals related to model using the
     Gauss-Seidel Operator combined with an interval nesting strategy
     
     Args:
-        :model:           object of class model
+        :res_solver:      dictionary for storing procedure output
         :dict_options:    dictionary with solver options
-    
-    Return:
-        :newModel:        model object with reduced state variable bounds
-        :iterNo:          number of iteration steps in Newton algorithm
-        
+            
     """
     
+    model = res_solver["Model"]
     iterNo = 0
     xBounds = model.xBounds
     xSymbolic = model.xSymbolic
@@ -93,31 +86,44 @@ def doIntervalNesting(model, dict_options):
     for l in range(0, dict_options["iterMaxNewton"]): 
          
         iterNo = l + 1
-        
+       
         if dict_options["Parallel Branches"]:
-            newXBounds, xAlmostEqual, boundsAlmostEqual = parallelization.reduceMultipleXBounds(xBounds, 
+            output = parallelization.reduceMultipleXBounds(xBounds, 
                                         boundsAlmostEqual, model, blocks, dimVar,
                                         xSymbolic, parameter, dict_options)
-                    
-        else:
-            newXBounds, xAlmostEqual, boundsAlmostEqual = iNes_procedure.reduceMultipleXBounds(xBounds, 
-                                                        xSymbolic, parameter, model, dimVar, blocks, 
-                                                        boundsAlmostEqual, dict_options)
-
-        if xAlmostEqual.all():
-            newModel.setXBounds(xBounds)
-
-            return newModel, iterNo
-          
-        elif newXBounds != []: xBounds = newXBounds
-        
+               
         else: 
-            print "NoSolutionError: No valid solution space was found. Please check consistency of initial constraints"
+            output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
+                                                          model, dimVar, blocks, boundsAlmostEqual, dict_options)
+        
+        xAlmostEqual = output["xAlmostEqual"]
+        newXBounds = output["newXBounds"]
+ 
+        if output.has_key("noSolution"):
+                       
             newModel.setXBounds(xBounds)
-            return newModel, iterNo
+            newModel.failed = True
+ 
+            res_solver["Model"] = newModel
+            res_solver["iterNo"] = iterNo
+            res_solver["noSolution"] = output["noSolution"]
+            return True
+        
+        elif xAlmostEqual.all():
+            newModel.setXBounds(xBounds)
+            res_solver["Model"] = newModel
+            res_solver["iterNo"] = iterNo
+            
+            return True
+          
+        else: xBounds = newXBounds
+        
+    # Terminates with reaching iterMax:
     newModel.setXBounds(xBounds)
+    res_solver["Model"] = newModel
+    res_solver["iterNo"] = iterNo
     
-    return newModel, iterNo
+    return True
 
 
 def nestBlocks(model):

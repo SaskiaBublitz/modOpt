@@ -11,7 +11,7 @@ analysis tools
 ***************************************************
 """
 
-__all__ = ['analyseResults']
+__all__ = ['analyseResults', 'trackErrors']
 
 def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
@@ -223,3 +223,43 @@ def calcBoundFraction(initVarBound, curVarBound):
     return bratio
 
 
+def trackErrors(initialModel, res_solver, dict_options):
+    """ proofs if current state of model is correctly and write the error that
+    occured in case the model failed to an error text file.
+    
+    Args:
+        :initialModel:      instance of type Model at initial point
+        :res_solver:        dictionary with solver output
+        :dict_options:      dictionary with user specified settings
+        
+    """
+    if res_solver["Model"].failed:
+        fileName = dict_options["fileName"] + "_errorAnalysis.txt"
+        failedModel = res_solver["Model"]
+        failedSystem = res_solver["noSolution"]
+        fCrit = failedSystem.critF
+        varCrit = failedSystem.critVar
+        varsInF = failedSystem.varsInF
+        
+        xBoundsInitial = initialModel.getXBoundsOfCertainVariablesFromIntervalSet(varsInF, 0)
+        xBoundsFailed = failedModel.getXBoundsOfCertainVariablesFromIntervalSet(varsInF, 0)
+        
+        writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBoundsFailed)
+
+
+def writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBoundsFailed) :
+    res_file = open(fileName, "w") 
+    res_file.write("***** Error Analysis *****\n\n")    
+
+    res_file.write("Algorithm failed because it could not find any solution for %s in equation:\n\n %s\n\n"%(varCrit, fCrit)) 
+     
+    res_file.write("The following table shows the initial and final bounds of all variables in this equation before termination:\n\n")
+                    
+    res_file.write("VARNAME \t INITBOUNDS \t FINALBOUNDS \n" )
+     
+    for i in range(0, len(varsInF)):
+        res_file.write("%s \t %s \t %s \n"%(varsInF[i],  str(xBoundsInitial[i]), str(xBoundsFailed[i])))
+     
+    res_file.close()
+                    
+    

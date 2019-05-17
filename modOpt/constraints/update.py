@@ -27,7 +27,7 @@ def updateDictToModel(dict_variables, res_solver):
     
     model = res_solver["Model"]
     
-    if model != []:
+    if not model.failed :
         xValues = model.stateVarValues
         xBounds = model.xBounds
     
@@ -45,5 +45,3 @@ def updateDictToModel(dict_variables, res_solver):
             dict_variables[dict_variables.keys()[i]][0] = curXValues
             dict_variables[dict_variables.keys()[i]][1] = curXLowerBounds
             dict_variables[dict_variables.keys()[i]][2] = curXUpperBounds
-                
-    else: dict_variables = []

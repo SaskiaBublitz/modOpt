@@ -9,6 +9,7 @@ import sympy
 import mpmath
 import itertools
 import parallelization
+from FailedSystem import FailedSystem
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
            'checkWidths', 'getPrecision']
@@ -34,12 +35,15 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
         :dict_options:          dictionary with user specified algorithm settings
     
     Return:
-        :newXBounds:            list with list of reduced interval sets in mpmath.mpi logic
-        :xAlmostEqual:          list with as many boolean values as interval sets in xBounds 
-        :boundsAlmostEqual:     list with as many boolean values as iteration variables 
+        :results:               dictionary with newXBounds and a list of booleans
+                                that marks all non reducable variable bounds with True.
+                                If solver terminates because of a NoSolution case the
+                                critical equation is also stored in results for the error
+                                analysis.
             
     """
     
+    results = {}
     newXBounds = []
     xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)
     
@@ -51,13 +55,16 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
         dict_options["precision"] = getPrecision(xBoundsPerm)
         
         if not dict_options["Parallel Variables"]:
-            intervalsPerm, boundsAlmostEqual = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                             blocks, dict_options, boundsAlmostEqual)
+            output = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                  blocks, dict_options, boundsAlmostEqual)
         else:
-            intervalsPerm, boundsAlmostEqual = parallelization.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                             blocks, dict_options, boundsAlmostEqual)
-            
-        if intervalsPerm == []:
+            output = parallelization.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
+                                                  blocks, dict_options, boundsAlmostEqual)
+        
+        intervalsPerm = output["intervalsPerm"]
+        
+        if output.has_key("noSolution") :
+            results["noSolution"] = output["noSolution"]
             break
         
         for m in range(0, len(intervalsPerm)): 
@@ -70,7 +77,9 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
                            dict_options["absTolX"]): 
                 xAlmostEqual[k] = True
                 break
-    return newXBounds, xAlmostEqual, boundsAlmostEqual
+    results["newXBounds"] = newXBounds
+    results["xAlmostEqual"] = xAlmostEqual
+    return results
 
 
 def getPrecision(xBounds):
@@ -110,10 +119,14 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                                 if variable bounds can't be further reduced, the
                                 variable entry in the list equals true. The variable
                                 order is given by the global index.
-        Returns:                list with new set of variable bounds
+        Returns:
+            :output:            dictionary with new interval sets(s) in a list and
+                                eventually an instance of class failedSystem if
+                                the procedure failed.
                         
     """    
     
+    output = {}
     xNewBounds = copy.deepcopy(xBounds)
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
@@ -139,16 +152,20 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                     else: 
                         y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
                                                     xSymbolic, f[i], j, dict_options))
+                    if y == [] or y ==[[]]: 
+                        print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
+                        output["intervalsPerm"] = []
+                        failedSystem = FailedSystem(f[i], xSymbolic[j])
+                        output["noSolution"] = failedSystem
+                        return output
 
-            if y != [] and y != [[]]: xNewBounds[j] = y
-            else: 
-                print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
-                return [], boundsAlmostEqual
+            xNewBounds[j] = y
 
             if len(xNewBounds[j]) == 1: 
                 boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
             
-    return list(itertools.product(*xNewBounds)), boundsAlmostEqual
+    output["intervalsPerm"] = list(itertools.product(*xNewBounds))
+    return output
 
 
 def checkVariableBound(newXInterval, relEpsX, absEpsX):
