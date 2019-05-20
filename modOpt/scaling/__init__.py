@@ -1,5 +1,5 @@
 """
 public functions and classes
 """
-from .main import *
+from .main import scaleSystem
 
