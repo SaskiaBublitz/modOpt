@@ -336,7 +336,7 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     except:
         newXBounds = reactOnComplexError(dfdxBounds, xSymbolic, i, xBounds, dict_options)
         if newXBounds == []: 
-            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], xBounds
+            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], [], xBounds
         else: 
             xBounds[i] = newXBounds
             dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)            
@@ -347,7 +347,7 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     except:
         newXBounds = reactOnComplexError(df2dxBounds, xSymbolic, i, xBounds, dict_options)
         if newXBounds == []: 
-            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], xBounds
+            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], [], xBounds
         else: 
             xBounds[i] = newXBounds
             dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)
@@ -359,7 +359,7 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     """ evaluates function expression f for variable bounds xBounds
     
     Args:
-        :f:                  scalar function in mpmath logic
+        :f:                  scalar function in sympy logic
         :xSymbolic:          list with symbolic variables in sympy logic
         :xBounds:            numpy array with variable bounds
 
