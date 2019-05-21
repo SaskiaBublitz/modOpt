@@ -46,9 +46,9 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
     results = {}
     newXBounds = []
     xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)
-    
+
     for k in range(0,len(xBounds)):
-        
+
         FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
                                                                               xSymbolic, 
                                                                               parameter)
@@ -64,7 +64,7 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
         intervalsPerm = output["intervalsPerm"]
         
         if output.has_key("noSolution") :
-            results["noSolution"] = output["noSolution"]
+            saveFailedIntervalSet = output["noSolution"] #TODO: maybe save all dead XBounds
             break
         
         for m in range(0, len(intervalsPerm)): 
@@ -77,7 +77,12 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
                            dict_options["absTolX"]): 
                 xAlmostEqual[k] = True
                 break
+            
     results["newXBounds"] = newXBounds
+    
+    if newXBounds == []: 
+        results["noSolution"] = saveFailedIntervalSet
+        
     results["xAlmostEqual"] = xAlmostEqual
     return results
 
@@ -153,10 +158,11 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                         y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
                                                     xSymbolic, f[i], j, dict_options))
                     if y == [] or y ==[[]]: 
-                        print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
+                        #print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
                         output["noSolution"] = failedSystem
+                        print "Failed"
                         return output
 
             xNewBounds[j] = y

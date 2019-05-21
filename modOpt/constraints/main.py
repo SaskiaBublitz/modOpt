@@ -98,7 +98,7 @@ def doIntervalNesting(res_solver, dict_options):
         
         xAlmostEqual = output["xAlmostEqual"]
         newXBounds = output["newXBounds"]
- 
+        
         if output.has_key("noSolution"):
                        
             newModel.setXBounds(xBounds)
