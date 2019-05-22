@@ -157,12 +157,10 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                     else: 
                         y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
                                                     xSymbolic, f[i], j, dict_options))
-                    if y == [] or y ==[[]]: 
-                        #print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
+                    if y == [] or y ==[[]]:
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
                         output["noSolution"] = failedSystem
-                        print "Failed"
                         return output
 
             xNewBounds[j] = y
