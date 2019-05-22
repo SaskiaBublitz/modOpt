@@ -42,6 +42,7 @@ def doNewton(curBlock, solv_options, dict_options, dict_eq, dict_var):
         
         iterNo = iterNo + 1
         tol = numpy.linalg.norm(curBlock.getPermutedFunctionValues())
+        if numpy.isnan(tol): return -1, iterNo
         
     if iterNo == iterMax and tol > FTOL: return 0, iterNo
     

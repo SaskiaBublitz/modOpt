@@ -46,9 +46,9 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
     results = {}
     newXBounds = []
     xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)
-    
+
     for k in range(0,len(xBounds)):
-        
+
         FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
                                                                               xSymbolic, 
                                                                               parameter)
@@ -64,7 +64,7 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
         intervalsPerm = output["intervalsPerm"]
         
         if output.has_key("noSolution") :
-            results["noSolution"] = output["noSolution"]
+            saveFailedIntervalSet = output["noSolution"] #TODO: maybe save all dead XBounds
             break
         
         for m in range(0, len(intervalsPerm)): 
@@ -77,7 +77,12 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
                            dict_options["absTolX"]): 
                 xAlmostEqual[k] = True
                 break
+            
     results["newXBounds"] = newXBounds
+    
+    if newXBounds == []: 
+        results["noSolution"] = saveFailedIntervalSet
+        
     results["xAlmostEqual"] = xAlmostEqual
     return results
 
@@ -152,8 +157,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                     else: 
                         y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
                                                     xSymbolic, f[i], j, dict_options))
-                    if y == [] or y ==[[]]: 
-                        print "No solution for ", xSymbolic[j], " in interval", xBounds[j]
+                    if y == [] or y ==[[]]:
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
                         output["noSolution"] = failedSystem
@@ -336,7 +340,7 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     except:
         newXBounds = reactOnComplexError(dfdxBounds, xSymbolic, i, xBounds, dict_options)
         if newXBounds == []: 
-            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], xBounds
+            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], [], xBounds
         else: 
             xBounds[i] = newXBounds
             dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)            
@@ -347,7 +351,7 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     except:
         newXBounds = reactOnComplexError(df2dxBounds, xSymbolic, i, xBounds, dict_options)
         if newXBounds == []: 
-            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], xBounds
+            return fxBounds, dfdxBounds, df2dxBounds, [], [], [], [], xBounds
         else: 
             xBounds[i] = newXBounds
             dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)
@@ -359,7 +363,7 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     """ evaluates function expression f for variable bounds xBounds
     
     Args:
-        :f:                  scalar function in mpmath logic
+        :f:                  scalar function in sympy logic
         :xSymbolic:          list with symbolic variables in sympy logic
         :xBounds:            numpy array with variable bounds
 

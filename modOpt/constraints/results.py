@@ -39,7 +39,9 @@ def writeResults(dict_options, dict_variables, res_solver):
             res_file = open(''.join([fileName,"_", str(i+1),".txt"]), "w") 
             
             res_file.write("***** %s th Set of Initial Values and Bounds*****\n\n"%(i+1))
-    
+            if res_solver["Model"].failed:
+                res_file.write("!!! Caution: Variable Reduction failed !!! \n Output equals the last reducable interval set.\n\n")
+                
             for var in dict_variables.keys():
                 res_file.write("%s %s %s %s\n"%(var,
                                                 dict_variables[var][0][i], 
