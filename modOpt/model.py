@@ -30,6 +30,8 @@ class Model:
                             state variable bounds. 
                             (in global order)                            
     :xSymbolic:             sympy array of dimension m with symbolic expression 
+    :fSymbolic:             sympy array with functions of equation system
+    :jacobian:              casadi array with symbolic jacobian matrix
                             of state variables. (in global order)
     :parameter:             array with values for model parameter                                                    
     :rowPerm:               array of dimension m with permutation order of 
@@ -257,7 +259,12 @@ class Model:
         
         if res_scaling.has_key("Variables"):
             self.colSca[self.colPerm] = res_scaling["Variables"]
+
                         
+    def getModelDimension(self):
+        "returns system dimension"
+        return len(self.xSymbolic)
+
             
 def createBlocks(blocks):
     """ creates blocks for permutation order 1 to n based on block border list
