@@ -27,21 +27,21 @@ def updateDictToModel(dict_variables, res_solver):
     
     model = res_solver["Model"]
     
-    if not model.failed :
-        xValues = model.stateVarValues
-        xBounds = model.xBounds
+    #if not model.failed :
+    xValues = model.stateVarValues
+    xBounds = model.xBounds
+
+    for i in range(0, len(dict_variables)):
+        glbIdx = dict_variables[dict_variables.keys()[i]][3]
+        curXValues = []
+        curXLowerBounds = []
+        curXUpperBounds = []
     
-        for i in range(0, len(dict_variables)):
-            glbIdx = dict_variables[dict_variables.keys()[i]][3]
-            curXValues = []
-            curXLowerBounds = []
-            curXUpperBounds = []
+        for j in range(0, len(xValues)):
+            curXValues.append(float(xValues[j][glbIdx]))
+            curXLowerBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].a)))
+            curXUpperBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].b)))
         
-            for j in range(0, len(xValues)):
-                curXValues.append(float(xValues[j][glbIdx]))
-                curXLowerBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].a)))
-                curXUpperBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].b)))
-            
-            dict_variables[dict_variables.keys()[i]][0] = curXValues
-            dict_variables[dict_variables.keys()[i]][1] = curXLowerBounds
-            dict_variables[dict_variables.keys()[i]][2] = curXUpperBounds
+        dict_variables[dict_variables.keys()[i]][0] = curXValues
+        dict_variables[dict_variables.keys()[i]][1] = curXLowerBounds
+        dict_variables[dict_variables.keys()[i]][2] = curXUpperBounds

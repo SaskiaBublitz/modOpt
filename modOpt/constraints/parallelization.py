@@ -64,10 +64,12 @@ def reduceMultipleXBounds(xBounds, boundsAlmostEqual, model, blocks, dimVar,
         jobs.append(p)
         
     startAndDeleteJobs(actNum, jobs, started, done, len(xBounds), CPU_count)
-    
-    if results.has_key("noSolution"): 
-        output["noSolution"] = results["noSolution"]
+            
     output["newXBounds"], boundsAlmostEqual = getReducedXBoundsResults(results, len(xBounds), output["xAlmostEqual"])
+    
+    if output["newXBounds"] == []:
+        output["noSolution"] = results["noSolution"]
+        
     return output
 
 
