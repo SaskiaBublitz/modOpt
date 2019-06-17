@@ -9,6 +9,7 @@ import sympy
 import mpmath
 import itertools
 import parallelization
+import time
 from FailedSystem import FailedSystem
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
@@ -423,13 +424,16 @@ def reactOnComplexError(f, xSymbolic, i, xBounds, dict_options):
                              TODO: return set of real intervals for x[i])
 
     """
-    
+    tmax = dict_options["tmax"]
     absEpsX = dict_options["absTolX"] 
     realSection = []
     curXBounds = copy.deepcopy(xBounds)
     problematicSection = [xBounds[i]]
+    timeout = False
+    t0 = time.clock()
+    tf = time.clock()
     
-    while problematicSection != []:
+    while problematicSection != [] and timeout == False:
         curProblematicSection =[]
         for j in range(0, len(problematicSection)):
             
@@ -454,9 +458,18 @@ def reactOnComplexError(f, xSymbolic, i, xBounds, dict_options):
                     realSection = addIntervaltoMonotoneZone(realInterval, realSection, dict_options)
                     
         problematicSection = checkAbsoluteTolerance(removeListInList(curProblematicSection), absEpsX)
+        checkTimeout(t0, tf, tmax, timeout)
     if realSection ==[]: return []
     else: return realSection[0]
 
+
+def checkTimeout(t0, tf, tmax, timeout):
+    #TODO: Docu
+    tf = tf - t0
+    if tf > tmax: 
+        timeout == True
+        print "Warning: Timeout of process."
+    
 
 def checkAbsoluteTolerance(interval, absEpsX):
     """ checks if width of intervals is smaller than a given relative tolerance relEpsX
@@ -742,7 +755,7 @@ def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
         :monDecreasingZone:   monotone decreasing intervals 
     
     """
-    
+    tmax = dict_options["tmax"]
     relEpsX = dict_options["relTolX"]
     relEpsF = dict_options["relTolF"]
     absEpsF = dict_options["absTolF"]
@@ -754,8 +767,11 @@ def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
     
     interval = [xBounds[i]] 
     l = 0
-    while interval != [] and l < lmax:
-        
+    timeout = False
+    t0 = time.clock()
+    tf = time.clock()
+    #while interval != [] and l < lmax: #TODO: timeout function
+    while interval != [] and timeout == False and l < lmax:    
         curIntervals = []
                
         for k in range(0, len(interval)):
@@ -769,6 +785,7 @@ def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
             addIntervalToNonMonotoneZone(newIntervals, curIntervals)    
                
         interval = checkTolerance(removeListInList(curIntervals), relEpsX)
+        checkTimeout(t0, tf, tmax, timeout)
     
     manipulateLowerUpperBounds(monIncreasingZone, df2dx, i, xBounds)
     manipulateLowerUpperBounds(monDecreasingZone, df2dx, i, xBounds)
@@ -1104,7 +1121,7 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
                               reduced to monotone increasing or decreasing section
     
     """
-    
+    tmax = dict_options["tmax"]
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
     relEpsF = dict_options["relTolF"]
@@ -1118,8 +1135,11 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
     monDecreasingZone = []
     l=0
     interval = [xBounds[i]] 
+    timeout = False
+    t0 = time.clock()
+    tf = time.clock()
     
-    while interval != [] and l < lmax:
+    while interval != [] and timeout == False and l < lmax:  
         
         curIntervals = []
                
@@ -1140,6 +1160,7 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
             addIntervalToNonMonotoneZone(newIntervals, curIntervals)
             
         interval = checkTolerance(removeListInList(curIntervals), relEpsX)
+        checkTimeout(t0, tf, tmax, timeout)
         
     manipulateLowerUpperBounds(monIncreasingZone, dfdx, i, xBounds)
     manipulateLowerUpperBounds(monDecreasingZone, dfdx, i, xBounds)
