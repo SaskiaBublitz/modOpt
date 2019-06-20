@@ -145,8 +145,8 @@ def startAndDeleteJobs(actNum, jobs, started, done, jobNo, CPU_count):
     
     while numpy.sum(done) < jobNo:
         for jobId in range(0, jobNo):
-            addNotStartedJobs(actNum, jobs, started, done, jobId, CPU_count) 
-            deleteFinishedJobs(actNum, jobs, started, done, jobId)
+            actNum = addNotStartedJobs(actNum, jobs, started, done, jobId, CPU_count)
+            actNum = deleteFinishedJobs(actNum, jobs, started, done, jobId)
 
 
 def getReducedXBoundsResults(results, noOfxBounds, xAlmostEqual):
@@ -222,8 +222,8 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
         actNum = 0
         for n in range(0, blockDim):
             p = Process(target=reduceXBounds_Worker, args=(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual, n, b, blockDim, results))
-            jobs.append(p)
-
+            jobs.append(p)        
+        
         startAndDeleteJobs(actNum, jobs, started, done, blockDim, CPU_count)
         
         for n in range(0, blockDim):
@@ -334,6 +334,7 @@ def addNotStartedJobs(actNum, jobs, started, done, jobId, CPU_count):
         jobs[jobId].start()
         started[jobId] = 1
         actNum += 1
+    return actNum     
 
                                
 def deleteFinishedJobs(actNum, jobs, started, done, jobId):
@@ -352,9 +353,11 @@ def deleteFinishedJobs(actNum, jobs, started, done, jobId):
     
     if ((started[jobId] == 1) & (done[jobId] == 0)):
         jobs[jobId].join(1e-4)
+
         if (jobs[jobId].is_alive() == False):
             done[jobId] = 1
             actNum -= 1
+    return actNum
 
 
 def convertMpiToList(listWitMpiIntervals):
