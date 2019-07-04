@@ -65,7 +65,7 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
         intervalsPerm = output["intervalsPerm"]
         
         if output.has_key("noSolution") :
-            saveFailedIntervalSet = output["noSolution"] #TODO: maybe save all dead XBounds
+            saveFailedIntervalSet = output["noSolution"]
             break
         
         for m in range(0, len(intervalsPerm)): 
@@ -464,7 +464,16 @@ def reactOnComplexError(f, xSymbolic, i, xBounds, dict_options):
 
 
 def checkTimeout(t0, tf, tmax, timeout):
-    #TODO: Docu
+    """ sets timeout variable true if current time of loop tf exceeds maximum loop time
+    
+    Args:
+        :t0:        integer with start time of loop
+        :tf:        integer with current time of loop
+        :tmax:      integer with maximum time of loop
+        :timeout:   boolean true if tf > tmax
+        
+    """
+    
     tf = tf - t0
     if tf > tmax: 
         timeout == True
@@ -770,7 +779,7 @@ def getContinuousFunctionSections(df2dx, xSymbolic, i, xBounds, dict_options):
     timeout = False
     t0 = time.clock()
     tf = time.clock()
-    #while interval != [] and l < lmax: #TODO: timeout function
+    
     while interval != [] and timeout == False and l < lmax:    
         curIntervals = []
                
