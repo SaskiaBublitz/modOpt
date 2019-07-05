@@ -671,6 +671,68 @@ def ivIntersection(i1, i2):
     else: return []
 
 
+def getReducedIntervalOfNonlinearFunction_alt(fx, dfdX, df2dX, dfdXInterval, df2dxInterval, xSymbolic, i, xBounds, bi, dict_options):
+    """ checks function for monotone sections in x and reduces them one after the other.
+    
+    Args: 
+        :fx:                 symbolic x-depending part of function f in mpmath.mpi logic
+        :dfdX:               first symbolic derivative of function f with respect to x
+                             in mpmath.mpi logic
+        :df2dX:              second symbolic derivative of function f with respect to x
+                             in mpmath.mpi logic
+        :dfdXInterval:       first derivative of function f with respect to x at xBounds
+        :df2dxInterval:      second derivative of function f with respect to x at xBounds        
+        :xSymbolic:          list with symbolic variables in sympy logic
+        :i:                  integer with current iteration variable index
+        :xBounds:            numpy array with set of variable bounds
+        :bi:                 current function residual bounds
+        :dict_options:       for function and variable interval tolerances in the used
+                            algorithms
+
+    Return:                reduced x-Interval(s) and list of monotone x-intervals
+    
+    """
+    increasingZones = []
+    decreasingZones = []
+    nonMonotoneZones = []
+    reducedIntervals = []
+    curXiBounds = [copy.deepcopy(xBounds[i])]
+    
+    if (dfdXInterval == [] or df2dxInterval == []): return [curXiBounds]
+    
+    if bool(df2dxInterval >= 0) == False and bool(df2dxInterval <= 0) == False:
+        incrZoneIndf2dX, decrZoneIndf2dX = getContinuousFunctionSections(df2dX, xSymbolic, i, xBounds, dict_options)
+        curXiBounds = removeListInList([incrZoneIndf2dX, decrZoneIndf2dX])   
+        if curXiBounds == []: return []
+        
+    for curInterval in curXiBounds:
+        xBounds[i] = curInterval
+        increasingZone, decreasingZone, nonMonotoneZone = getMonotoneFunctionSections(dfdX, xSymbolic, i, xBounds, dict_options)
+        if increasingZone !=[]: increasingZones.append(increasingZone)                                                                            
+        if decreasingZone !=[]: decreasingZones.append(decreasingZone)    
+        if nonMonotoneZone !=[]: nonMonotoneZones.append(nonMonotoneZone)
+    
+    if increasingZones == [] and decreasingZones == [] and nonMonotoneZones == []: return []
+    
+    if increasingZones !=[]:
+            increasingZones = removeListInList(increasingZones)                
+            reducedIntervals = reduceMonotoneIntervals(increasingZones, reducedIntervals, fx, xSymbolic, 
+                                    xBounds, i, bi, dict_options, increasing = True)  
+ 
+    if decreasingZones !=[]:
+            decreasingZones = removeListInList(decreasingZones)                
+            reducedIntervals = reduceMonotoneIntervals(decreasingZones, reducedIntervals, fx, xSymbolic, 
+                                    xBounds, i, bi, dict_options, increasing = False)  
+       
+    if nonMonotoneZones !=[]:
+        nonMonotoneZones = removeListInList(nonMonotoneZones)   
+        reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
+                                                          fx, xSymbolic, i, xBounds, bi, 
+                                                          dict_options)
+
+    return reducedIntervals
+
+    
 def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxInterval, xSymbolic, i, xBounds, bi, dict_options):
     """ checks function for monotone sections in x and reduces them one after the other.
     
@@ -709,7 +771,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
                                     xBounds, i, bi, dict_options, increasing = True)    
             return reducedIntervals
         
-        return [monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)]
+        return [monotoneIncreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)]
 
     
     if (dfdXInterval <= 0):
@@ -734,8 +796,15 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, df2dX, dfdXInterval, df2dxIn
 
         if increasingZone == [] and decreasingZone == [] and nonMonotoneZone == []: return [orgXiBounds]
         
-        # TODO: non-continuous functions  
-        
+        # TODO: non-continuous functions
+        """ need to figure out how to detect them. Approach:
+            1. calculate first derrivative dfdx
+            2. if dfdx has -inf or +inf =>
+            3. start method(dfdx, x) that filter these points out
+            4. start normal monotone sections identification by dfdx
+            
+        """
+
         reducedIntervals = reduceMonotoneIntervals(increasingZone, reducedIntervals, fx, xSymbolic, 
                                  xBounds, i, bi, dict_options, increasing = True)
         
@@ -866,7 +935,7 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
     for j in range(0, len(monotoneZone)): #TODO: Parallelizing
         xBounds[i] = monotoneZone[j] 
         
-        if increasing: curReducedInterval = monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
+        if increasing: curReducedInterval = monotoneIncreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
                 # TODO: add noncontinuous block for several monotone intervals
         else: curReducedInterval = monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
         
@@ -878,7 +947,7 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
     return reducedIntervals
 
 
-def monotoneIncresingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options):
+def monotoneIncreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options):
     """ reduces variable intervals of monotone increasing functions fx
     by interval nesting
      
