@@ -447,12 +447,12 @@ def reactOnComplexError(f, xSymbolic, i, xBounds, dict_options):
             if problematicInterval != []: 
                 if curProblematicSection == []: curProblematicSection.append(problematicInterval)
                 else:
-                    addIntervaltoMonotoneZone(problematicInterval, curProblematicSection, dict_options)
+                    addIntervaltoZone(problematicInterval, curProblematicSection, dict_options)
             
             if realInterval !=[]:
                 if realSection == []: realSection = realInterval
                 else: 
-                    realSection = addIntervaltoMonotoneZone(realInterval, realSection, dict_options)
+                    realSection = addIntervaltoZone(realInterval, realSection, dict_options)
                     
         problematicSection = checkAbsoluteTolerance(removeListInList(curProblematicSection), absEpsX)
         timeout = checkTimeout(t0, tmax, timeout)
@@ -851,7 +851,7 @@ def getContinuousFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
                
         for curInterval in interval:
             newContinuousZone = testIntervalOnContinuity(dfdx, curInterval, xBounds, i, discontinuousZone)
-            continuousZone = addIntervaltoMonotoneZone(newContinuousZone, continuousZone, dict_options)  
+            continuousZone = addIntervaltoZone(newContinuousZone, continuousZone, dict_options)  
                
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
         timeout = checkTimeout(t0, tmax, timeout)
@@ -899,8 +899,8 @@ def getContinuousFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
 #                                                                                                 xBounds, i, l,
 #                                                                                                 relEpsF, absEpsF)
 #                        
-#            monIncreasingZone = addIntervaltoMonotoneZone(newMonIncreasingZone, monIncreasingZone, dict_options)            
-#            monDecreasingZone = addIntervaltoMonotoneZone(newMonDecreasingZone, monDecreasingZone, dict_options)
+#            monIncreasingZone = addIntervaltoZone(newMonIncreasingZone, monIncreasingZone, dict_options)            
+#            monDecreasingZone = addIntervaltoZone(newMonDecreasingZone, monDecreasingZone, dict_options)
 #            addIntervalToNonMonotoneZone(newIntervals, curIntervals)    
 #               
 #        interval = checkTolerance(removeListInList(curIntervals), relEpsX)
@@ -1242,39 +1242,36 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
     tmax = dict_options["tmax"]
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
-    
-    relEpsdFdX = 1e-1
-    absEpsdFdX = 1e-1
-        
+            
     monIncreasingZone = []
     monDecreasingZone = []
     interval = [xBounds[i]] 
     
     timeout = False
-    dfdXconst = False
     t0 = time.clock()
     
-    while interval != [] and timeout == False and dfdXconst == False:  
+    while interval != [] and timeout == False: #and dfdXconst == False:  
         
         curIntervals = []
                
-        for k in range(0, len(interval)):
-            newIntervals, newMonIncreasingZone, newMonDecreasingZone, dfdXconst = testIntervalOnMonotony(dfdx, 
-                                                    interval[k], xBounds, i, relEpsdFdX, absEpsdFdX)
+        for xc in interval:
+            newIntervals, newMonIncreasingZone, newMonDecreasingZone = testIntervalOnMonotony(dfdx, 
+                                                    xc, xBounds, i)
             
-            if (newIntervals != [] and checkTolerance(newIntervals, absEpsX)==[]):
-                newIntervals, monIncreasingZone, monDecreasingZone = discretizeAndEvaluateIntervals(dfdx, 
-                                                    xBounds, i, newIntervals, monIncreasingZone, 
-                                                    monDecreasingZone, dict_options)
+            #if (newIntervals != [] and checkTolerance(newIntervals, relEpsX)==[]):
+            #    newIntervals, monIncreasingZone, monDecreasingZone = discretizeAndEvaluateIntervals(dfdx, 
+            #                                        xBounds, i, newIntervals, monIncreasingZone, 
+            #                                        monDecreasingZone, dict_options)
             
-            monIncreasingZone = addIntervaltoMonotoneZone(newMonIncreasingZone, 
+            monIncreasingZone = addIntervaltoZone(newMonIncreasingZone, 
                                                           monIncreasingZone, dict_options)            
-            monDecreasingZone = addIntervaltoMonotoneZone(newMonDecreasingZone, 
+            monDecreasingZone = addIntervaltoZone(newMonDecreasingZone, 
                                                           monDecreasingZone, dict_options)
        
-            addIntervalToNonMonotoneZone(newIntervals, curIntervals)
-            
-        interval = checkIntervalWidth(removeListInList(curIntervals), absEpsX, relEpsX)       
+            curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
+        
+        if interval == curIntervals: break
+        interval = checkIntervalWidth(curIntervals, absEpsX, relEpsX)       
         timeout = checkTimeout(t0, tmax, timeout)
             
     return monIncreasingZone, monDecreasingZone, interval
@@ -1348,12 +1345,12 @@ def discretizeAndEvaluataInterval(dfdX, xBounds, i, interval, newIntervals,
                max(intervalPoints[j], intervalPoints[j+1]))
         
         if dfdX(*xBounds) > 0:
-            monIncreasingZone = addIntervaltoMonotoneZone([xBounds[i]], monIncreasingZone, dict_options)
+            monIncreasingZone = addIntervaltoZone([xBounds[i]], monIncreasingZone, dict_options)
             
         elif dfdX(*xBounds) < 0:
-            monDecreasingZone = addIntervaltoMonotoneZone([xBounds[i]], monDecreasingZone, dict_options)
+            monDecreasingZone = addIntervaltoZone([xBounds[i]], monDecreasingZone, dict_options)
         else: 
-            newIntervals = addIntervaltoMonotoneZone([xBounds[i]], newIntervals, dict_options)
+            newIntervals = addIntervaltoZone([xBounds[i]], newIntervals, dict_options)
         
     return newIntervals, monIncreasingZone, monDecreasingZone
   
@@ -1407,7 +1404,7 @@ def testIntervalOnContinuity(dfdx, interval, xBounds, i, discontinuousZone):
     return continuousZone
 
 
-def testIntervalOnMonotony(dfdx, interval, xBounds, i, relEpsdFdX, absEpsdFdX):
+def testIntervalOnMonotony(dfdx, interval, xBounds, i):
     """ splits interval into 2 halfs and orders concering their monotony 
     behaviour of f (first derivative dfdx):
         1. monotone increasing function in interval of x 
@@ -1421,19 +1418,15 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i, relEpsdFdX, absEpsdFdX):
         :i:              variable index
                          that have an x indepenendent derrivate constant interval of 
                          [-inf, +inf] for example: f=x/y-1 and y in [-1,1]
-        :relEpsdFdX:     relative tolerance of first derivative
-        :absEpsdFdX:     absolute tolerance of first derivative
     Reutrn:
         3 lists nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone
         and one updated count of [-inf,inf] dfdxIntervals as integer
         
     """
-    dfdXconst = False
     nonMonotoneZone = []    
     monotoneIncreasingZone = []
     monotoneDecreasingZone = []
- 
-    
+   
     curXBoundsLow = mpmath.mpi(interval.a, interval.mid)
     curXBoundsUp = mpmath.mpi(interval.mid, interval.b)
      
@@ -1450,14 +1443,11 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i, relEpsdFdX, absEpsdFdX):
     if bool(dfdxUp >= 0): monotoneIncreasingZone.append(curXBoundsUp)
     elif bool(dfdxUp <= 0): monotoneDecreasingZone.append(curXBoundsUp)
     else: nonMonotoneZone.append(curXBoundsUp)
-    
-    if mpmath.almosteq(dfdxUp.a, dfdxLow.a, relEpsdFdX, absEpsdFdX): dfdXconst = True
-    if mpmath.almosteq(dfdxUp.b, dfdxLow.b, relEpsdFdX, absEpsdFdX): dfdXconst = True #l = l+1
-    
-    return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone, dfdXconst
+        
+    return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone
 
 
-def addIntervaltoMonotoneZone(newInterval, monotoneZone, dict_options):
+def addIntervaltoZone(newInterval, monotoneZone, dict_options):
     """ adds one or two monotone intervals newInterval to list of other monotone 
     intervals. Function is related to function testIntervalOnMonotony, since if  the
     lower and upper part of an interval are identified as monoton towards the same direction
