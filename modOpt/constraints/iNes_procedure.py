@@ -220,7 +220,7 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One fun
              
     else: # Nonlinear Case -> solving system by interval nesting
         return getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdxInterval, 
-                            df2dxInterval, xSymbolic, i, xBounds, bi, dict_options)
+                                                     xSymbolic, i, xBounds, bi, dict_options)
 
     
 def splitFunctionByVariableDependency(f, x):
@@ -455,7 +455,7 @@ def reactOnComplexError(f, xSymbolic, i, xBounds, dict_options):
                     realSection = addIntervaltoMonotoneZone(realInterval, realSection, dict_options)
                     
         problematicSection = checkAbsoluteTolerance(removeListInList(curProblematicSection), absEpsX)
-        checkTimeout(t0, tmax, timeout)
+        timeout = checkTimeout(t0, tmax, timeout)
     if realSection ==[]: return []
     else: return realSection[0]
 
@@ -473,9 +473,9 @@ def checkTimeout(t0, tmax, timeout):
     tf = time.clock()
     
     if (tf-t0) > tmax: 
-        timeout == True
+        timeout = True
         print "Warning: Timeout of process."
-        
+    return timeout
 
 def checkIntervalWidth(interval, absEpsX, relEpsX):
     """ checks if width of intervals is smaller than a given absolute or relative tolerance
@@ -484,13 +484,16 @@ def checkIntervalWidth(interval, absEpsX, relEpsX):
         :interval:           set of intervals in mpmath.mpi-logic
         :absEpsX:            absolute x tolerance
         :relEpsX:            relative x tolerance
-        
+    
+    Return:
+        :interval:    set of intervals with a higher width than absEps 
     """
     
     for curInterval in interval:
         if mpmath.almosteq(curInterval.a, curInterval.b, absEpsX, relEpsX):
                 interval.remove(curInterval)
-
+    return interval
+                
     
 def checkAbsoluteTolerance(interval, absEpsX):
     """ checks if width of intervals is smaller than a given absolute tolerance absEpsX
@@ -684,15 +687,14 @@ def ivIntersection(i1, i2):
     else: return []
 
 
-def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, df2dxInterval, xSymbolic, i, xBounds, bi, dict_options):
+def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, xSymbolic, i, xBounds, bi, dict_options):
     """ checks function for monotone sections in x and reduces them one after the other.
     
     Args: 
         :fx:                 symbolic x-depending part of function f in mpmath.mpi logic
         :dfdX:               first symbolic derivative of function f with respect to x
                              in mpmath.mpi logic
-        :dfdXInterval:       first derivative of function f with respect to x at xBounds
-        :df2dxInterval:      second derivative of function f with respect to x at xBounds        
+        :dfdXInterval:       first derivative of function f with respect to x at xBounds      
         :xSymbolic:          list with symbolic variables in sympy logic
         :i:                  integer with current iteration variable index
         :xBounds:            numpy array with set of variable bounds
@@ -710,7 +712,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, df2dxInterval,
     reducedIntervals = []
     curXiBounds = [copy.deepcopy(xBounds[i])]
     
-    if (dfdXInterval == [] or df2dxInterval == []): return []
+    if dfdXInterval == []: return []
     
     if '-inf' in dfdXInterval or '+inf' in dfdXInterval: # condition for discontinuities
         curXiBounds = getContinuousFunctionSections(dfdX, xSymbolic, i, xBounds, dict_options)
@@ -847,13 +849,12 @@ def getContinuousFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
     while interval != [] and timeout == False:    
         discontinuousZone = []
                
-        for k in range(0, len(interval)):
-            newContinuousZone = testIntervalOnContinuity(dfdx, interval[k], xBounds, i, discontinuousZone)
+        for curInterval in interval:
+            newContinuousZone = testIntervalOnContinuity(dfdx, curInterval, xBounds, i, discontinuousZone)
             continuousZone = addIntervaltoMonotoneZone(newContinuousZone, continuousZone, dict_options)  
                
-        checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
-        interval = discontinuousZone
-        checkTimeout(t0, tmax, timeout)
+        interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
+        timeout = checkTimeout(t0, tmax, timeout)
        
     return continuousZone
 
@@ -903,7 +904,7 @@ def getContinuousFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
 #            addIntervalToNonMonotoneZone(newIntervals, curIntervals)    
 #               
 #        interval = checkTolerance(removeListInList(curIntervals), relEpsX)
-#        checkTimeout(t0, tmax, timeout)
+#        timeout = checkTimeout(t0, tmax, timeout)
 #    
 #    manipulateLowerUpperBounds(monIncreasingZone, df2dx, i, xBounds)
 #    manipulateLowerUpperBounds(monDecreasingZone, df2dx, i, xBounds)
@@ -911,32 +912,32 @@ def getContinuousFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
 #    return monIncreasingZone, monDecreasingZone
 
 
-def manipulateLowerUpperBounds(interval, fx, i, xBounds):
-    """ shifts interval bounds that create +inf/-inf-function value bounds
-    minimally to the side to remove this singular bound.
-    
-    Args:
-        :interval:      interval in mpmath.mpi logic
-        :fx:            function that is evaluated in mpmath.mpi logic
-        :i:             iteration variable index as integer
-        :xBounds:       set of variable bounds
-    
-    """
-    
-    xBounds = copy.deepcopy(xBounds)    
-    for j in range(0, len(interval)):
-        xBounds[i] = interval[j].a
-        
-        curdf2dx = fx(*xBounds) 
-        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
-            interval[j] = mpmath.mpi(interval[j].a + numpy.finfo(numpy.float).eps,
-            interval[j].b)
-            
-        xBounds[i] = interval[j].b
-        curdf2dx = fx(*xBounds) 
-        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
-            b = interval[j].b - numpy.finfo(numpy.float).eps
-            interval[j] = mpmath.mpi(interval[j].a, b.a)
+#def manipulateLowerUpperBounds(interval, fx, i, xBounds):
+#    """ shifts interval bounds that create +inf/-inf-function value bounds
+#    minimally to the side to remove this singular bound.
+#    
+#    Args:
+#        :interval:      interval in mpmath.mpi logic
+#        :fx:            function that is evaluated in mpmath.mpi logic
+#        :i:             iteration variable index as integer
+#        :xBounds:       set of variable bounds
+#    
+#    """
+#    
+#    xBounds = copy.deepcopy(xBounds)    
+#    for j in range(0, len(interval)):
+#        xBounds[i] = interval[j].a
+#        
+#        curdf2dx = fx(*xBounds) 
+#        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
+#            interval[j] = mpmath.mpi(interval[j].a + numpy.finfo(numpy.float).eps,
+#            interval[j].b)
+#            
+#        xBounds[i] = interval[j].b
+#        curdf2dx = fx(*xBounds) 
+#        if curdf2dx.a == '-inf' or curdf2dx.b == '+inf': 
+#            b = interval[j].b - numpy.finfo(numpy.float).eps
+#            interval[j] = mpmath.mpi(interval[j].a, b.a)
 
 
 def removeListInList(listInList):
@@ -970,13 +971,12 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
     """
     
     relEpsX = dict_options["relTolX"]
-    precision = dict_options["precision"]
+    precision = getPrecision(xBounds)
 
-    for j in range(0, len(monotoneZone)): #TODO: Parallelizing
-        xBounds[i] = monotoneZone[j] 
+    for curMonZone in monotoneZone: #TODO: Parallelizing
+        xBounds[i] = curMonZone 
         
         if increasing: curReducedInterval = monotoneIncreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
-                # TODO: add noncontinuous block for several monotone intervals
         else: curReducedInterval = monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
         
         if curReducedInterval !=[] and reducedIntervals != []:
@@ -1242,29 +1242,27 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
     tmax = dict_options["tmax"]
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
-    relEpsF = dict_options["relTolF"]
-    absEpsF = dict_options["absTolF"]
-    lmax = dict_options["NoOfNonChangingValues"]     
     
-    relEpsdFdX = relEpsF/relEpsX
-    absEpsdFdX = absEpsF/absEpsX
+    relEpsdFdX = 1e-1
+    absEpsdFdX = 1e-1
         
     monIncreasingZone = []
     monDecreasingZone = []
-    l=0
     interval = [xBounds[i]] 
+    
     timeout = False
+    dfdXconst = False
     t0 = time.clock()
     
-    while interval != [] and timeout == False and l < lmax:  
+    while interval != [] and timeout == False and dfdXconst == False:  
         
         curIntervals = []
                
         for k in range(0, len(interval)):
-            newIntervals, newMonIncreasingZone, newMonDecreasingZone, l = testIntervalOnMonotony(dfdx, 
-                                                    interval[k], xBounds, i, l, relEpsdFdX, absEpsdFdX)
+            newIntervals, newMonIncreasingZone, newMonDecreasingZone, dfdXconst = testIntervalOnMonotony(dfdx, 
+                                                    interval[k], xBounds, i, relEpsdFdX, absEpsdFdX)
             
-            if newIntervals != [] and checkTolerance(newIntervals, relEpsX)==[]:
+            if (newIntervals != [] and checkTolerance(newIntervals, absEpsX)==[]):
                 newIntervals, monIncreasingZone, monDecreasingZone = discretizeAndEvaluateIntervals(dfdx, 
                                                     xBounds, i, newIntervals, monIncreasingZone, 
                                                     monDecreasingZone, dict_options)
@@ -1276,12 +1274,9 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
        
             addIntervalToNonMonotoneZone(newIntervals, curIntervals)
             
-        interval = checkTolerance(removeListInList(curIntervals), relEpsX)
-        checkTimeout(t0, tmax, timeout)
-        
-    manipulateLowerUpperBounds(monIncreasingZone, dfdx, i, xBounds)
-    manipulateLowerUpperBounds(monDecreasingZone, dfdx, i, xBounds)
-    
+        interval = checkIntervalWidth(removeListInList(curIntervals), absEpsX, relEpsX)       
+        timeout = checkTimeout(t0, tmax, timeout)
+            
     return monIncreasingZone, monDecreasingZone, interval
 
 
@@ -1412,7 +1407,7 @@ def testIntervalOnContinuity(dfdx, interval, xBounds, i, discontinuousZone):
     return continuousZone
 
 
-def testIntervalOnMonotony(dfdx, interval, xBounds, i, l, relEpsdFdX, absEpsdFdX):
+def testIntervalOnMonotony(dfdx, interval, xBounds, i, relEpsdFdX, absEpsdFdX):
     """ splits interval into 2 halfs and orders concering their monotony 
     behaviour of f (first derivative dfdx):
         1. monotone increasing function in interval of x 
@@ -1424,7 +1419,6 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i, l, relEpsdFdX, absEpsdFdX
         :interval:       x interval in mpmath.mpi-logic
         :xBounds:        numpy array with variable bounds in mpmath.mpi-logic
         :i:              variable index
-        :l:              counts [-inf,inf] dfdxIntervals to filter out functions
                          that have an x indepenendent derrivate constant interval of 
                          [-inf, +inf] for example: f=x/y-1 and y in [-1,1]
         :relEpsdFdX:     relative tolerance of first derivative
@@ -1434,37 +1428,33 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i, l, relEpsdFdX, absEpsdFdX
         and one updated count of [-inf,inf] dfdxIntervals as integer
         
     """
-
+    dfdXconst = False
     nonMonotoneZone = []    
     monotoneIncreasingZone = []
     monotoneDecreasingZone = []
-       
-    xBoundsLow = copy.deepcopy(xBounds)
-    xBoundsUp = copy.deepcopy(xBounds)
+ 
     
     curXBoundsLow = mpmath.mpi(interval.a, interval.mid)
     curXBoundsUp = mpmath.mpi(interval.mid, interval.b)
-    
-    
-    xBoundsLow[i] = curXBoundsLow
-    xBoundsUp[i] = curXBoundsUp
-
-    dfdxLow = dfdx(*xBoundsLow)    
-    dfdxUp = dfdx(*xBoundsUp)
-  
+     
+    xBounds[i] = curXBoundsLow    
+    dfdxLow = dfdx(*xBounds)    
+     
     if bool(dfdxLow >= 0): monotoneIncreasingZone.append(curXBoundsLow)
     elif bool(dfdxLow <= 0): monotoneDecreasingZone.append(curXBoundsLow)
     else: nonMonotoneZone.append(curXBoundsLow)
+
+    xBounds[i] = curXBoundsUp
+    dfdxUp = dfdx(*xBounds)
 
     if bool(dfdxUp >= 0): monotoneIncreasingZone.append(curXBoundsUp)
     elif bool(dfdxUp <= 0): monotoneDecreasingZone.append(curXBoundsUp)
     else: nonMonotoneZone.append(curXBoundsUp)
     
-    if dfdxUp == mpmath.mpi('-inf', '+inf'): l = l+1
-    if dfdxLow == mpmath.mpi('-inf', '+inf'): l = l+1
-    if mpmath.almosteq(dfdxUp.a, dfdxLow.a, relEpsdFdX, absEpsdFdX): l = l+1
-    if mpmath.almosteq(dfdxUp.b, dfdxLow.b, relEpsdFdX, absEpsdFdX): l = l+1
-    return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone, l
+    if mpmath.almosteq(dfdxUp.a, dfdxLow.a, relEpsdFdX, absEpsdFdX): dfdXconst = True
+    if mpmath.almosteq(dfdxUp.b, dfdxLow.b, relEpsdFdX, absEpsdFdX): dfdXconst = True #l = l+1
+    
+    return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone, dfdXconst
 
 
 def addIntervaltoMonotoneZone(newInterval, monotoneZone, dict_options):
@@ -1546,7 +1536,7 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
                     ivSet.remove(ivSet[i])
                     ivSet.remove(iv)
                     break
-                elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX, absEpsX): 
+                elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX*1e-5, absEpsX*1e-5): 
                     newIvSet.append(mpmath.mpi(iv.a, ivSet[i].b))
                     ivSet.remove(ivSet[i])
                     ivSet.remove(iv)
@@ -1628,7 +1618,7 @@ def reduceNonMonotoneIntervals(nonMonotoneZone, reducedIntervals, fx, xSymbolic,
  """   
     
     relEpsX = dict_options["relTolX"]
-    precision = dict_options["precision"]
+    precision = getPrecision(xBounds)
     resolution = dict_options["resolution"]
     
     for curNonMonZone in nonMonotoneZone:
