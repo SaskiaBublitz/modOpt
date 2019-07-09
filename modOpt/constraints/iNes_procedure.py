@@ -216,7 +216,7 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One fun
         return [xBounds[i]]
     
     #if(df2dxInterval == 0 and fxInterval == dfdxInterval*xBounds[i]): # Linear Case -> solving system directly
-    if not xSymbolic[i] in dfdX_sympy.free_symbols: # Linear Case -> solving system directly
+    if not xSymbolic[i] in dfdX_sympy.free_symbol and fxInterval == dfdxInterval*xBounds[i]: # Linear Case -> solving system directly
         return getReducedIntervalOfLinearFunction(dfdX, xSymbolic, i, xBounds, bi)
              
     else: # Nonlinear Case -> solving system by interval nesting
