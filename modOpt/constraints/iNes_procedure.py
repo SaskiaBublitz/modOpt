@@ -208,14 +208,15 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One fun
     """       
     xBounds = copy.deepcopy(xBounds)
     fx, fWithoutX = splitFunctionByVariableDependency(f, xSymbolic[i])
-
-    fx, dfdX, bi, fxInterval, dfdxInterval, df2dxInterval, xBounds = calculateCurrentBounds(fx, 
-                    fWithoutX, xSymbolic, i, xBounds, dict_options)
+    dfdX_sympy = sympy.diff(fx, xSymbolic[i]) 
+    fx, dfdX, bi, fxInterval, dfdxInterval, xBounds = calculateCurrentBounds(fx, 
+                    fWithoutX, dfdX_sympy, xSymbolic, i, xBounds, dict_options)
     
-    if bi == [] or fxInterval == [] or dfdxInterval == [] or df2dxInterval == []: 
+    if bi == [] or dfdxInterval == []: 
         return [xBounds[i]]
     
-    if(df2dxInterval == 0 and fxInterval == dfdxInterval*xBounds[i]): # Linear Case -> solving system directly
+    #if(df2dxInterval == 0 and fxInterval == dfdxInterval*xBounds[i]): # Linear Case -> solving system directly
+    if not xSymbolic[i] in dfdX_sympy.free_symbols: # Linear Case -> solving system directly
         return getReducedIntervalOfLinearFunction(dfdX, xSymbolic, i, xBounds, bi)
              
     else: # Nonlinear Case -> solving system by interval nesting
@@ -279,7 +280,7 @@ def lambdifyToMpmathIv(x, f):
     return sympy.lambdify(x,f, mpmathIv)
 
 
-def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
+def calculateCurrentBounds(fx, fWithoutX, dfdX, xSymbolic, i, xBounds, dict_options):
     """ calculates bounds of function fx, the residual fWithoutX, first and second
     derrivative of function fx with respect to variable xSymbolic[i] (dfX, df2dX).
     It uses the tolerance values from dict_options in the complex case to remove 
@@ -307,12 +308,12 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     
     """
        
-    dfdX = sympy.diff(fx, xSymbolic[i]) 
-    df2dX = sympy.diff(dfdX, xSymbolic[i]) 
+    #dfdX = sympy.diff(fx, xSymbolic[i]) 
+    #df2dX = sympy.diff(dfdX, xSymbolic[i]) 
     
     fxBounds = lambdifyToMpmathIv(xSymbolic, fx)
     dfdxBounds = lambdifyToMpmathIv(xSymbolic, dfdX)
-    df2dxBounds = lambdifyToMpmathIv(xSymbolic, df2dX)
+    #df2dxBounds = lambdifyToMpmathIv(xSymbolic, df2dX)
     
     try:
         bi = getBoundsOfFunctionExpression(-fWithoutX, xSymbolic, xBounds)
@@ -320,7 +321,7 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     except:
         fWithoutX = reformulateComplexExpressions(fWithoutX)
         try : bi = getBoundsOfFunctionExpression(-fWithoutX, xSymbolic, xBounds)
-        except: return fxBounds, dfdxBounds, [], [], [], [], xBounds
+        except: return fxBounds, dfdxBounds, [], [], [], xBounds
       
     try:
        fxInterval = getBoundsOfFunctionExpression(fx, xSymbolic, xBounds)
@@ -328,7 +329,7 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     except:
         newXBounds = reactOnComplexError(fxBounds, xSymbolic, i, xBounds, dict_options)
         if newXBounds == []: 
-            return fxBounds, dfdxBounds, [], [], [], [], xBounds
+            return fxBounds, dfdxBounds, bi, [], [], xBounds
         else: 
             xBounds[i] = newXBounds
             fxInterval = getBoundsOfFunctionExpression(fx, xSymbolic, xBounds)
@@ -339,25 +340,25 @@ def calculateCurrentBounds(fx, fWithoutX, xSymbolic, i, xBounds, dict_options):
     except:
         newXBounds = reactOnComplexError(dfdxBounds, xSymbolic, i, xBounds, dict_options)
         if newXBounds == []: 
-            return fxBounds, dfdxBounds, [], [], [], [], xBounds
+            return fxBounds, dfdxBounds, bi, fxInterval, [], xBounds
         else: 
             xBounds[i] = newXBounds
             dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)            
  
-    try:    
-        df2dxInterval = getBoundsOfFunctionExpression(df2dX, xSymbolic, xBounds)
+    #try:    
+    #    df2dxInterval = getBoundsOfFunctionExpression(df2dX, xSymbolic, xBounds)
         
-    except:
-        newXBounds = reactOnComplexError(df2dxBounds, xSymbolic, i, xBounds, dict_options)
-        if newXBounds == []: 
-            return fxBounds, dfdxBounds, [], [], [], [], xBounds
-        else: 
+    #except:
+    #    newXBounds = reactOnComplexError(df2dxBounds, xSymbolic, i, xBounds, dict_options)
+    #    if newXBounds == []: 
+    #        return fxBounds, dfdxBounds, [], [], [], [], xBounds
+    #    else: 
             xBounds[i] = newXBounds
             dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)
 
-    return fxBounds, dfdxBounds, bi, fxInterval, dfdxInterval, df2dxInterval, xBounds   
+    return fxBounds, dfdxBounds, bi, fxInterval, dfdxInterval, xBounds   
     
-            
+    
 def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     """ evaluates function expression f for variable bounds xBounds
     
