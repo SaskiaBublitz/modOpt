@@ -5,6 +5,9 @@ Import packages
 """
 import mpmath
 import copy
+import modOpt.decomposition as mod
+import sympy
+
 """
 ***************************************************
 analysis tools
@@ -34,14 +37,54 @@ def analyseResults(dict_options, initialModel, res_solver):
         boundRatioOfVars, solvedVars = getBoundRatioOfVars(boundRatios)
         hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
                                                                          (len(varSymbolic)-len(solvedVars)))
-
+        
         hypercubicLFraction = sum(hypercubicLFractions)
+        density = getDensityOfJacoboan(modelWithReducedBounds)
+        nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
         writeAnalysisResults(dict_options["fileName"], varSymbolic, boundRatios, boundRatioOfVars,
-                             hypercubicLFractions, hypercubicLFraction, solvedVars)
+                             hypercubicLFractions, hypercubicLFraction, solvedVars, density, nonLinRatio)
  
+
+def getDensityOfJacoboan(model):
+    """ returns nonzero density of jacobian matrix from equation system
+    
+    Args:
+        :model:         instance of class Model
+        
+    Return:     ratio of nonzero entries to total number of entries in jacobian (mxm)
+    
+    """
+    
+    model.jacobian, f = mod.getCasadiJandF(model.xSymbolic, model.fSymbolic)
+    return float(model.getJacobian().nnz()) / model.getModelDimension()**2
+    
+
+def getNonLinearityRatio(model):
+    """ identifies nonlinear dependencies of variables in jacobian matrix by 
+    second derrivate and counts all nonlinear entries to calculate the ratio
+    of nonlinear entries to total number of entries in jacobian.
+    
+    Args:
+        :model:     istance of class Model
+    
+    Return:         float of ratio: nonlinear entries / total entries
+        
+    """
+
+    nonLin = 0
+
+    for curX in model.xSymbolic:
+        for curF in model.fSymbolic:
+            if curX in curF.free_symbols:
+                d2fdx = sympy.diff(sympy.diff(curF, curX), curX)
+                if d2fdx != 0: nonLin = nonLin + 1
+                
+    return nonLin / float(model.getJacobian().nnz())            
+    
     
 def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
-                         hypercubicLFractions, hypercubicLFraction, solvedVars):
+                         hypercubicLFractions, hypercubicLFraction, solvedVars, density,
+                         nonLinRatio):
     """ writes anaylsis results to a textfile  <fileName>_analysis.txt
     
     Args:
@@ -54,13 +97,21 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
         :hypercubicLFractions:        list with fractional length of each sub-hypercube
         :hypercubicLFraction:         If the volumes were hypercubic, the hypercubicLFraction
                                       equals their edge length reduction
-                                    
+        :solvedVars:                  list with indices of solved variables
+        :density:                     float with nonzero density of jacobian
+        :nonLinRatio:                 float with nonlinear entries / total entries of jacobian
+        
     """
     
     res_file = open(''.join([fileName,"_analysis.txt"]), "w") 
+    
     res_file.write("***** Results of Analysis *****\n\n") 
     
     noOfVarSets = len(boundRatios)
+    res_file.write("System Dimension: \t%s\n"%(len(boundRatios[0]))) 
+    res_file.write("Jacobian Nonzero Density: \t%s\n"%(density))
+    res_file.write("Jacobian Nonlinearity Ratio: \t%s\n"%(nonLinRatio))
+    res_file.write("\n") 
     res_file.write("Variables\t") 
     
     for j in range(0, noOfVarSets):
@@ -261,5 +312,4 @@ def writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBound
         res_file.write("%s \t %s \t %s \n"%(varsInF[i],  str(xBoundsInitial[i]), str(xBoundsFailed[i])))
      
     res_file.close()
-                    
     
