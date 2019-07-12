@@ -1269,7 +1269,7 @@ def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
        
             curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
         
-        if interval == curIntervals: break
+        #if interval == curIntervals: break
         interval = checkIntervalWidth(curIntervals, absEpsX, relEpsX)       
         timeout = checkTimeout(t0, tmax, timeout)
             
