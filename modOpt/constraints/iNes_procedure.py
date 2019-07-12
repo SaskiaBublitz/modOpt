@@ -21,7 +21,7 @@ Algorithm for interval Nesting procedure
 ***************************************************
 """
 
-def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, boundsAlmostEqual,
+def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks,
                           dict_options):
     """ reduction of multiple solution interval sets
     
@@ -31,8 +31,7 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
         :parameter:             list with parameter values of equation system        
         :model:                 object of type model
         :dimVar:                integer that equals iteration variable dimension        
-        :blocks:                list with block indices of equation system
-        :boundsAlmostEqual:     list with as many boolean values as iteration variables         
+        :blocks:                list with block indices of equation system       
         :dict_options:          dictionary with user specified algorithm settings
     
     Return:
@@ -57,27 +56,27 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks, 
         
         if not dict_options["Parallel Variables"]:
             output = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                  blocks, dict_options, boundsAlmostEqual)
+                                  blocks, dict_options)#, boundsAlmostEqual)
         else:
             output = parallelization.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                  blocks, dict_options, boundsAlmostEqual)
+                                                  blocks, dict_options)#, boundsAlmostEqual)
         
         intervalsPerm = output["intervalsPerm"]
+        xAlmostEqual[k] = output["xAlmostEqual"]
         
         if output.has_key("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             break
         
-        for m in range(0, len(intervalsPerm)): 
-            
+        for m in range(0, len(intervalsPerm)):          
             x = numpy.empty(dimVar, dtype=object)     
             x[model.colPerm]  = numpy.array(intervalsPerm[m])           
             newXBounds.append(x)
             
-            if checkWidths(xBounds[k], x, dict_options["relTolX"], 
-                           dict_options["absTolX"]): 
-                xAlmostEqual[k] = True
-                break
+            #if checkWidths(xBounds[k], x, dict_options["relTolX"], 
+            #               dict_options["absTolX"]): 
+            #    xAlmostEqual[k] = True
+            #    break
             
     results["newXBounds"] = newXBounds
     
@@ -108,7 +107,7 @@ def getPrecision(xBounds):
     return 5*10**(numpy.floor(numpy.log10(minValue))-2)
 
 
-def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual):
+def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
     """ solves an equation system blockwise. For block dimensions > 1 each 
     iteration variable interval of the block is reduced sequentially by all 
     equations of the block. The narrowest bounds from this procedure are taken
@@ -121,10 +120,6 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
             blocks:             List with blocklists, whereas the blocklists contain
                                 the block elements with index after permutation
             dict_options:       dictionary with solving settings
-            boundsAlmostEqual:  boolean list, dimension equals number of variables.
-                                if variable bounds can't be further reduced, the
-                                variable entry in the list equals true. The variable
-                                order is given by the global index.
         Returns:
             :output:            dictionary with new interval sets(s) in a list and
                                 eventually an instance of class failedSystem if
@@ -134,9 +129,9 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
     
     output = {}
     xNewBounds = copy.deepcopy(xBounds)
-    relEpsX = dict_options["relTolX"]
-    absEpsX = dict_options["absTolX"]
-    
+#    relEpsX = dict_options["relTolX"]
+#    absEpsX = dict_options["absTolX"]
+    xUnchanged = True
     
     for b in range(0, len(blocks)):
         blockDim = len(blocks[b])
@@ -144,9 +139,9 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
             y = [] 
             j = blocks[b][n]
             
-            if boundsAlmostEqual[j] == True: 
-                xNewBounds[j] = [xNewBounds[j]]
-                continue           
+ #           if boundsAlmostEqual[j] == True: 
+ #               xNewBounds[j] = [xNewBounds[j]]
+ #               continue           
             if dict_options["Debug-Modus"]: print j
             
             for m in range(0, blockDim):
@@ -162,13 +157,18 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options, boundsAlmostEqual
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
                         output["noSolution"] = failedSystem
+                        output["xAlmostEqual"] = False     
                         return output
 
             xNewBounds[j] = y
 
-            if len(xNewBounds[j]) == 1: 
-                boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
+#            if len(xNewBounds[j]) == 1: 
+#                boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
             
+            if xNewBounds[j] != [xBounds[j]] and xUnchanged:
+                xUnchanged = False
+                
+    output["xAlmostEqual"] = xUnchanged     
     output["intervalsPerm"] = list(itertools.product(*xNewBounds))
     return output
 
@@ -216,7 +216,7 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One fun
         return [xBounds[i]]
     
     #if(df2dxInterval == 0 and fxInterval == dfdxInterval*xBounds[i]): # Linear Case -> solving system directly
-    if not xSymbolic[i] in dfdX_sympy.free_symbol and fxInterval == dfdxInterval*xBounds[i]: # Linear Case -> solving system directly
+    if not xSymbolic[i] in dfdX_sympy.free_symbols and fxInterval == dfdxInterval*xBounds[i]: # Linear Case -> solving system directly
         return getReducedIntervalOfLinearFunction(dfdX, xSymbolic, i, xBounds, bi)
              
     else: # Nonlinear Case -> solving system by interval nesting
@@ -711,13 +711,14 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, xSymbolic, i, 
     decreasingZones = []
     nonMonotoneZones = []
     reducedIntervals = []
-    curXiBounds = [copy.deepcopy(xBounds[i])]
+    orgXiBounds = [copy.deepcopy(xBounds[i])]
+    curXiBounds = orgXiBounds
     
     if dfdXInterval == []: return []
     
     if '-inf' in dfdXInterval or '+inf' in dfdXInterval: # condition for discontinuities
         curXiBounds = getContinuousFunctionSections(dfdX, xSymbolic, i, xBounds, dict_options)
-        if curXiBounds == []: return []
+        if curXiBounds == []: return orgXiBounds
     
     for curInterval in curXiBounds:
         xBounds[i] = curInterval
@@ -725,9 +726,6 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, xSymbolic, i, 
         if increasingZone !=[]: increasingZones.append(increasingZone)                                                                            
         if decreasingZone !=[]: decreasingZones.append(decreasingZone)    
         if nonMonotoneZone !=[]: nonMonotoneZones.append(nonMonotoneZone)
-
-    
-    if increasingZones == [] and decreasingZones == [] and nonMonotoneZones == []: return []
     
     if increasingZones !=[]:
             increasingZones = removeListInList(increasingZones)                
@@ -856,7 +854,7 @@ def getContinuousFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
                
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
         timeout = checkTimeout(t0, tmax, timeout)
-       
+        
     return continuousZone
 
     

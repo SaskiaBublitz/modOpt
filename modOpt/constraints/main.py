@@ -80,7 +80,7 @@ def doIntervalNesting(res_solver, dict_options):
     blocks = model.blocks
     newModel = copy.deepcopy(model)
     dimVar = len(xSymbolic)
-    boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
+    #boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
 
 
     for l in range(0, dict_options["iterMaxNewton"]): 
@@ -88,13 +88,12 @@ def doIntervalNesting(res_solver, dict_options):
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
-            output = parallelization.reduceMultipleXBounds(xBounds, 
-                                        boundsAlmostEqual, model, blocks, dimVar,
+            output = parallelization.reduceMultipleXBounds(xBounds, model, blocks, dimVar,
                                         xSymbolic, parameter, dict_options)
                
         else: 
             output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
-                                                          model, dimVar, blocks, boundsAlmostEqual, dict_options)
+                                                          model, dimVar, blocks, dict_options)
         
         xAlmostEqual = output["xAlmostEqual"]
         newXBounds = output["newXBounds"]
