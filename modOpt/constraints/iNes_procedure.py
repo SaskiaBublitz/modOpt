@@ -52,7 +52,7 @@ def reduceMultipleXBounds(xBounds, xSymbolic, parameter, model, dimVar, blocks,
         FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
                                                                               xSymbolic, 
                                                                               parameter)
-        dict_options["precision"] = getPrecision(xBoundsPerm)
+        #dict_options["precision"] = getPrecision(xBoundsPerm)
         
         if not dict_options["Parallel Variables"]:
             output = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
@@ -217,11 +217,11 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One fun
     
     #if(df2dxInterval == 0 and fxInterval == dfdxInterval*xBounds[i]): # Linear Case -> solving system directly
     if not xSymbolic[i] in dfdX_sympy.free_symbols and fxInterval == dfdxInterval*xBounds[i]: # Linear Case -> solving system directly
-        return getReducedIntervalOfLinearFunction(dfdX, xSymbolic, i, xBounds, bi)
+        return getReducedIntervalOfLinearFunction(dfdX, i, xBounds, bi)
              
     else: # Nonlinear Case -> solving system by interval nesting
         return getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdxInterval, 
-                                                     xSymbolic, i, xBounds, bi, dict_options)
+                                                     i, xBounds, bi, dict_options)
 
     
 def splitFunctionByVariableDependency(f, x):
@@ -573,13 +573,12 @@ def complexOperator(complexA, complexMid, complexB, xInterval):
     else: return [], []
 
 
-def getReducedIntervalOfLinearFunction(a, xSymbolic, i, xBounds, bi):
+def getReducedIntervalOfLinearFunction(a, i, xBounds, bi):
     """ returns reduced interval of variable X if f is linear in X. The equation
     is solved directly by the use of the gaussSeidelOperator.
     
     Args: 
         :a:                  first symbolic derivative of function f with respect to x
-        :xSymbolic:          list with symbolic variables in sympy logic
         :i:                  integer with current iteration variable index
         :xBounds:            numpy array with set of variable bounds
         :bi:                 current function residual bounds
@@ -688,7 +687,7 @@ def ivIntersection(i1, i2):
     else: return []
 
 
-def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, xSymbolic, i, xBounds, bi, dict_options):
+def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi, dict_options):
     """ checks function for monotone sections in x and reduces them one after the other.
     
     Args: 
@@ -696,7 +695,6 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, xSymbolic, i, 
         :dfdX:               first symbolic derivative of function f with respect to x
                              in mpmath.mpi logic
         :dfdXInterval:       first derivative of function f with respect to x at xBounds      
-        :xSymbolic:          list with symbolic variables in sympy logic
         :i:                  integer with current iteration variable index
         :xBounds:            numpy array with set of variable bounds
         :bi:                 current function residual bounds
@@ -717,30 +715,30 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, xSymbolic, i, 
     if dfdXInterval == []: return []
     
     if '-inf' in dfdXInterval or '+inf' in dfdXInterval: # condition for discontinuities
-        curXiBounds = getContinuousFunctionSections(dfdX, xSymbolic, i, xBounds, dict_options)
+        curXiBounds = getContinuousFunctionSections(dfdX, i, xBounds, dict_options)
         if curXiBounds == []: return orgXiBounds
     
     for curInterval in curXiBounds:
         xBounds[i] = curInterval
-        increasingZone, decreasingZone, nonMonotoneZone = getMonotoneFunctionSections(dfdX, xSymbolic, i, xBounds, dict_options)
+        increasingZone, decreasingZone, nonMonotoneZone = getMonotoneFunctionSections(dfdX, i, xBounds, dict_options)
         if increasingZone !=[]: increasingZones.append(increasingZone)                                                                            
         if decreasingZone !=[]: decreasingZones.append(decreasingZone)    
         if nonMonotoneZone !=[]: nonMonotoneZones.append(nonMonotoneZone)
     
     if increasingZones !=[]:
             increasingZones = removeListInList(increasingZones)                
-            reducedIntervals = reduceMonotoneIntervals(increasingZones, reducedIntervals, fx, xSymbolic, 
+            reducedIntervals = reduceMonotoneIntervals(increasingZones, reducedIntervals, fx, 
                                     xBounds, i, bi, dict_options, increasing = True)  
  
     if decreasingZones !=[]:
             decreasingZones = removeListInList(decreasingZones)                
-            reducedIntervals = reduceMonotoneIntervals(decreasingZones, reducedIntervals, fx, xSymbolic, 
+            reducedIntervals = reduceMonotoneIntervals(decreasingZones, reducedIntervals, fx, 
                                     xBounds, i, bi, dict_options, increasing = False)  
        
     if nonMonotoneZones !=[]:
         nonMonotoneZones = removeListInList(nonMonotoneZones)   
         reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
-                                                          fx, xSymbolic, i, xBounds, bi, 
+                                                          fx, i, xBounds, bi, 
                                                           dict_options)
 
     return reducedIntervals
@@ -821,12 +819,11 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, xSymbolic, i, 
 #        return reducedIntervals
 
 
-def getContinuousFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
+def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
     """filters out discontinuities which either have a +/- inf derrivative.
     
     Args:
         :dfdx:                scalar first derivate of function in mpmath.mpi logic
-        :xSymbolic:           symbolic variables
         :i:                   index of differential variable
         :xBounds:             numpy array with variable bounds
         :dict_options:        dictionary with variable and function interval tolerances
@@ -951,7 +948,7 @@ def removeListInList(listInList):
     return newList
 
 
-def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic, 
+def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, 
                                       xBounds, i, bi, dict_options, increasing):
     """ reduces interval sets of one variable by interval nesting
     
@@ -959,7 +956,6 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
         :monotoneZone        list with monotone increasing or decreasing set of intervals
         :reducedIntervals    list with already reduced set of intervals
         :fx:                 symbolic x-depending part of function f
-        :xSymbolic:          list with symbolic variables in sympy logic
         :xBounds:            numpy array with set of variable bounds
         :i:                  integer with current iteration variable index        
         :bi:                 current function residual bounds
@@ -975,8 +971,8 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
     for curMonZone in monotoneZone: #TODO: Parallelizing
         xBounds[i] = curMonZone 
         
-        if increasing: curReducedInterval = monotoneIncreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
-        else: curReducedInterval = monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options)
+        if increasing: curReducedInterval = monotoneIncreasingIntervalNesting(fx, xBounds, i, bi, dict_options)
+        else: curReducedInterval = monotoneDecreasingIntervalNesting(fx, xBounds, i, bi, dict_options)
         
         if curReducedInterval !=[] and reducedIntervals != []:
             reducedIntervals.append(curReducedInterval)
@@ -986,13 +982,12 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx, xSymbolic,
     return reducedIntervals
 
 
-def monotoneIncreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options):
+def monotoneIncreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
     """ reduces variable intervals of monotone increasing functions fx
     by interval nesting
      
         Args: 
             :fx:                 symbolic xi-depending part of function fi
-            :xSymbolic:          list with symbolic variables in sympy logic
             :xBounds:            numpy array with set of variable bounds
             :i:                  integer with current iteration variable index
             :bi:                 current function residual bounds
@@ -1049,13 +1044,12 @@ def monotoneIncreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_option
     return mpmath.mpi(lowerBound, upperBound)
 
 
-def monotoneDecreasingIntervalNesting(fx, xSymbolic, xBounds, i, bi, dict_options):
+def monotoneDecreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
     """ reduces variable intervals of monotone decreasing functions fx
     by interval nesting
      
         Args: 
             :fx:                 symbolic xi-depending part of function fi
-            :xSymbolic:          list with symbolic variables in sympy logic
             :xBounds:            numpy array with set of variable bounds
             :i:                  integer with current iteration variable index
             :bi:                 current function residual bounds
@@ -1219,13 +1213,12 @@ def residualBoundOperator(bi, increasing, lowerXBound):
     if not increasing and not lowerXBound: return bi.a 
 
 
-def getMonotoneFunctionSections(dfdx, xSymbolic, i, xBounds, dict_options):
+def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
     """seperates variable interval into variable interval sets where a function
     with derivative dfdx is monontoneous
     
     Args:
         :dfdx:                scalar function in mpmath.mpi logic
-        :xSymbolic :          symbolic variables in derivative function
         :i:                   index of differential variable
         :xBounds:             numpy array with variable bounds
         :dict_options:        dictionary with function and variable interval 
@@ -1585,7 +1578,7 @@ def checkTolerance(interval, relEpsX):
     return reducedInterval
 
 
-def reduceNonMonotoneIntervals(nonMonotoneZone, reducedIntervals, fx, xSymbolic, i, xBounds, bi, 
+def reduceNonMonotoneIntervals(nonMonotoneZone, reducedIntervals, fx, i, xBounds, bi, 
                                dict_options):
     """ reduces non monotone intervals by simply calculating function values for
     interval segments of a discretized variable interval and keeps those segments
@@ -1595,7 +1588,6 @@ def reduceNonMonotoneIntervals(nonMonotoneZone, reducedIntervals, fx, xSymbolic,
         :nonMonotoneZone:    list with non monotone variable intervals
         :reducedIntervals:   lits with reduced non monotone variable intervals
         :fx:                 variable-dependent function in mpmath.mpi logic 
-        :xSymbolic:          list with symbolic variables in sympy logic
         :i:                  integer with current iteration variable index
         :xBounds:            numpy array with set of variable bounds
         :bi:                 current function residual bounds
