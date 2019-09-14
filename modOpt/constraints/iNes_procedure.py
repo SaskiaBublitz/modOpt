@@ -126,7 +126,8 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
                                 the procedure failed.
                         
     """    
-    
+    absEpsX = dict_options["absTolX"]
+    relEpsX = dict_options["relTolX"]
     output = {}
     xNewBounds = copy.deepcopy(xBounds)
 #    relEpsX = dict_options["relTolX"]
@@ -138,16 +139,16 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
         for n in range(0, blockDim):
             y = [] 
             j = blocks[b][n]
-            
- #           if boundsAlmostEqual[j] == True: 
- #               xNewBounds[j] = [xNewBounds[j]]
- #               continue           
+                     
             if dict_options["Debug-Modus"]: print j
             
+            if checkVariableBound(xBounds[j], relEpsX, absEpsX):
+                        xNewBounds[j] = [xBounds[j]]
+                        continue
+                    
             for m in range(0, blockDim):
                 i = blocks[b][m]
-                if xSymbolic[j] in f[i].free_symbols:
-                    
+                if xSymbolic[j] in f[i].free_symbols:                    
                     if y == []: y = reduceXIntervalByFunction(xBounds, xSymbolic, 
                            f[i], j, dict_options)
                     else: 
@@ -313,6 +314,7 @@ def calculateCurrentBounds(fx, fWithoutX, dfdX, xSymbolic, i, xBounds, dict_opti
     
     fxBounds = lambdifyToMpmathIv(xSymbolic, fx)
     dfdxBounds = lambdifyToMpmathIv(xSymbolic, dfdX)
+
     #df2dxBounds = lambdifyToMpmathIv(xSymbolic, df2dX)
     
     try:
@@ -373,9 +375,31 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     
     """
     
+    if isinstance(f, sympy.Float) and len(str(f)) > 15:
+        return roundValue(f, 16)
     fMpmathIV = lambdifyToMpmathIv(xSymbolic, f)
-    return  mpmath.mpi(str(fMpmathIV(*xBounds)))
+    return  mpmath.mpi(fMpmathIV(*xBounds))
+    #return  mpmath.mpi(str(fMpmathIV(*xBounds)))
             
+def roundValue(val, digits):
+    """ generates tightest interval around value val in accuracy of its last digit
+    so that its actual value is not lost because of round off errors
+    
+    Args:
+        :val:         sympy.Float value
+        :digit:       integer number of digits
+    
+    Return: tightest interval in mpmath.mpi formate
+    
+    """
+
+    rounded_val = round(val, digits)
+    if rounded_val == val:
+        return mpmath.mpi(val)
+    elif rounded_val > val:
+        return mpmath.mpi(rounded_val - 10**(-digits), rounded_val)
+    return mpmath.mpi(rounded_val, rounded_val + 10**(-digits))
+
 
 def reformulateComplexExpressions(f):
     """ to avoid complex intervals this function reformulates arguments of log or
