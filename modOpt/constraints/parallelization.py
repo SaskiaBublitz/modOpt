@@ -263,28 +263,34 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
     """
     y = [] 
     j = blocks[b][n]
-    
+    absEpsX = dict_options["absTolX"]
+    relEpsX = dict_options["relTolX"]    
     #if boundsAlmostEqual[j]: 
     #    xNewBounds[j] = [xNewBounds[j]]
     #    results['%d' % n] = (convertMpiToList(xNewBounds[j]), True)
     #    return True
-    if dict_options["Debug-Modus"]: print j
+    if checkVariableBound(xBounds[j], relEpsX, absEpsX):
+            xNewBounds[j] = [xBounds[j]]
+
+    else:
+    
+        if dict_options["Debug-Modus"]: print j
     
     # Equations Loop
-    for m in range(0, blockDim): #TODO: possilby Parallelizing
-        i = blocks[b][m]
-        if xSymbolic[j] in f[i].free_symbols:
+        for m in range(0, blockDim): #TODO: possilby Parallelizing
+            i = blocks[b][m]
+            if xSymbolic[j] in f[i].free_symbols:
             
-            if y == []: y = iNes_procedure.reduceXIntervalByFunction(xBounds, xSymbolic, 
-                   f[i], j, dict_options)
-            else: 
-                y = iNes_procedure.reduceTwoIVSets(y, iNes_procedure.reduceXIntervalByFunction(xBounds, 
-                                            xSymbolic, f[i], j, dict_options))
-            if y==[] or y==[[]]:
-                results['%d' % n] = ([], FailedSystem(f[i], xSymbolic[j]))
-                return True                
+                if y == []: y = iNes_procedure.reduceXIntervalByFunction(xBounds, xSymbolic, 
+                        f[i], j, dict_options)
+                else: 
+                    y = iNes_procedure.reduceTwoIVSets(y, iNes_procedure.reduceXIntervalByFunction(xBounds, 
+                                                                            xSymbolic, f[i], j, dict_options))
+                if y==[] or y==[[]]:
+                    results['%d' % n] = ([], FailedSystem(f[i], xSymbolic[j]))
+                    return True                
                 
-    xNewBounds[j] = y
+        xNewBounds[j] = y
 
     #if len(xNewBounds[j]) == 1: 
     #    relEpsX = dict_options["relTolX"]
