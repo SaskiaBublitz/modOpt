@@ -876,6 +876,8 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
         timeout = checkTimeout(t0, tmax, timeout)
         
+        if timeout: continuousZone = []
+        
     return continuousZone
 
     
