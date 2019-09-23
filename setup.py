@@ -26,6 +26,7 @@ setup(name='modOpt',
                         'sympy',
                         'mpmath',
                         'casadi',
-						'matplotlib'],
+						'matplotlib',
+                        'pyDOE'],
                         #TODO: What to do with copy, itertools, time, multiprocessing
       zip_safe=False)

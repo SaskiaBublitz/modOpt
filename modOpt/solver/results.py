@@ -41,8 +41,28 @@ def writeResults(dict_options, res_solver):
     writeIterVarValues(res_file,  res_solver["Model"])
 
 
+def writeConvergedSample(sample, i, dict_options, res_solver):
+    """ writes variable values and results of converged samples into files
+    
+    Args:
+        :sample:        instance of class Model with sample iteration variable 
+                        values
+        :i:             number of converged sample as integer
+        :dict_options:  dictionary with user specified settings
+        :res_solver:    dictionary with solver output
+        
+    """
+    
+    fileName = getFileName(dict_options)
+    sample_file = open(''.join([fileName, "_sample_", str(i), ".txt"]), "w")
+    sample_file.write(" ****************** Sample ****************** \n\n")
+    writeIterVarValues(sample_file,  sample)
+    sample_file.write(" ****************** Result ****************** \n\n")
+    writeIterVarValues(sample_file,  res_solver["Model"])
+
+
 def writeResultsAnalytics(dict_options, res_solver):
-    """ writes additional iteration  information to file res_file
+    """ writes additional iteration information to file res_file
     
     Args:
         :dict_options:          dictionary with user specified settings
@@ -77,7 +97,7 @@ def writeSolverSettings(res_file, solv_options):
     res_file.write("Function Residual: %s\n"%(solv_options["FTOL"]))
     res_file.write("Maximum iteration number per Block: %s\n\n"%(solv_options["iterMax"]))
     
-    
+        
 def writeIterVarValues(res_file, model):
     """ writes final iteration variable values to file res_file
     

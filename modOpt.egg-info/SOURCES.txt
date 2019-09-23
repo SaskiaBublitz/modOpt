@@ -40,9 +40,11 @@ modOpt/decomposition/main.pyc
 modOpt/decomposition/results.py
 modOpt/decomposition/results.pyc
 modOpt/initialization/SamplingMethods.py
+modOpt/initialization/SamplingMethods.pyc
 modOpt/initialization/VarListType.py
 modOpt/initialization/VarListType.pyc
 modOpt/initialization/VarType.py
+modOpt/initialization/VarType.pyc
 modOpt/initialization/__init__.py
 modOpt/initialization/__init__.pyc
 modOpt/initialization/arithmeticMean.py

@@ -3,3 +3,4 @@ sympy
 mpmath
 casadi
 matplotlib
+pyDOE

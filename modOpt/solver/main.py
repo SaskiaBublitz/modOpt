@@ -100,11 +100,13 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
                        model, curBlock, dict_equations, dict_variables)
             
         if solv_options["solver"] == 'newton': 
-            doNewton(model, curBlock, b, solv_options, dict_options, res_solver, 
+            doNewton(curBlock, b, solv_options, dict_options, res_solver, 
                      dict_equations, dict_variables)
              
         # TODO: Add other solvers, e.g. ipopt
-    
+
+        if res_solver["Exitflag"][b] < 1: 
+            model.failed = True
     # Write Results:         
     putResultsInDict(curBlock.x_tot, model, res_solver)
 
@@ -171,7 +173,7 @@ def getInitialScaling(dict_options, model, curBlock, dict_equations, dict_variab
             mos.scaleSystem(curBlock, dict_equations, dict_variables, dict_options)   
 
 
-def doNewton(model, curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
     """ starts Newton-Raphson Method
     
     Args:
