@@ -12,6 +12,7 @@ import modOpt.scaling as mos
 import copy
 import results
 import parallelization
+import time
 
 """
 ****************************************************
@@ -38,7 +39,8 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
         :converged:         integer with number of converged runs
        
     """
-        
+    t = -1
+    if dict_options['timer'] == True: tic = time.clock()
     if not solv_options["Parallel"]:
         converged = 0
         for k in range(0, len(sampleData)):
@@ -54,7 +56,10 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
     else:
         converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
                                                          dict_variables, dict_options, solv_options, sampling_option)
-    return converged
+    if dict_options['timer'] == True: 
+        toc = time.clock()
+        t = toc - tic
+    return converged, t
 
 
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
