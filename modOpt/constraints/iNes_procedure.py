@@ -213,7 +213,7 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One fun
     fx, dfdX, bi, fxInterval, dfdxInterval, xBounds = calculateCurrentBounds(fx, 
                     fWithoutX, dfdX_sympy, xSymbolic, i, xBounds, dict_options)
     
-    if bi == [] or dfdxInterval == []: 
+    if bi == [] or fxInterval == [] or dfdxInterval == []: 
         return [xBounds[i]]
     
     #if(df2dxInterval == 0 and fxInterval == dfdxInterval*xBounds[i]): # Linear Case -> solving system directly
@@ -327,26 +327,22 @@ def calculateCurrentBounds(fx, fWithoutX, dfdX, xSymbolic, i, xBounds, dict_opti
       
     try:
        fxInterval = getBoundsOfFunctionExpression(fx, xSymbolic, xBounds)
-        
-    except:
-        newXBounds = reactOnComplexError(fxBounds, xSymbolic, i, xBounds, dict_options)
-        if newXBounds == []: 
-            return fxBounds, dfdxBounds, bi, [], [], xBounds
-        else: 
-            xBounds[i] = newXBounds
-            fxInterval = getBoundsOfFunctionExpression(fx, xSymbolic, xBounds)
-      
+       if type(fxInterval) == mpmath.iv.mpc: fxInterval = []
+       # if type(fxInterval) == mpmath.iv.mpc:
+       #    newXBounds = reactOnComplexError(fxBounds, xSymbolic, i, xBounds, dict_options)
+       #    xBounds[i] = newXBounds
+       #    fxInterval = getBoundsOfFunctionExpression(fx, xSymbolic, xBounds)
+    except: return fxBounds, dfdxBounds, bi, [], [], xBounds
+
     try:
        dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)
-        
-    except:
-        newXBounds = reactOnComplexError(dfdxBounds, xSymbolic, i, xBounds, dict_options)
-        if newXBounds == []: 
-            return fxBounds, dfdxBounds, bi, fxInterval, [], xBounds
-        else: 
-            xBounds[i] = newXBounds
-            dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)            
- 
+       if type(dfdxInterval) == mpmath.iv.mpc: dfdxInterval = []
+       #if type(dfdxInterval) == mpmath.iv.mpc:
+       #    newXBounds = reactOnComplexError(dfdxBounds, xSymbolic, i, xBounds, dict_options)
+       #    xBounds[i] = newXBounds
+       #    dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)
+    except: return fxBounds, dfdxBounds, bi, fxInterval, [], xBounds
+       
     #try:    
     #    df2dxInterval = getBoundsOfFunctionExpression(df2dX, xSymbolic, xBounds)
         
@@ -355,8 +351,6 @@ def calculateCurrentBounds(fx, fWithoutX, dfdX, xSymbolic, i, xBounds, dict_opti
     #    if newXBounds == []: 
     #        return fxBounds, dfdxBounds, [], [], [], [], xBounds
     #    else: 
-            xBounds[i] = newXBounds
-            dfdxInterval = getBoundsOfFunctionExpression(dfdX, xSymbolic, xBounds)
 
     return fxBounds, dfdxBounds, bi, fxInterval, dfdxInterval, xBounds   
     
@@ -875,6 +869,8 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
                
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
         timeout = checkTimeout(t0, tmax, timeout)
+        
+        if timeout: continuousZone = []
         
     return continuousZone
 
