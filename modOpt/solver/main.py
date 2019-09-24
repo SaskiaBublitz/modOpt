@@ -9,12 +9,52 @@ import newton
 import numpy
 import block
 import modOpt.scaling as mos
+import copy
+import results
+import parallelization
+
 """
 ****************************************************
 Main that starts solving procedure in decomposed NLE
 ****************************************************
 """
-__all__ = ['solveSystem_NLE']
+__all__ = ['solveSamples', 'solveSystem_NLE']
+
+def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_option):
+    """ solve samples from array sampleData and returns number of converged samples. The converged
+    samples and their solutions are written into text files.
+
+    Args:
+        :model:             object of class model in modOpt.model that contains all
+                            information of the NLE-evaluation and decomposition
+        :sampleData:        array with samples
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables                            
+        :solv_options:      dictionary with user defined solver settings
+        :sampling_options:  dictionary with sampling options
+        :dict_options:      dictionary with user specified settings
+
+    Return:
+        :converged:         integer with number of converged runs
+       
+    """
+        
+    if not solv_options["Parallel"]:
+        converged = 0
+        for k in range(0, len(sampleData)):
+            curSample = sampleData[k]
+            model.stateVarValues = [curSample]
+            initial_sample = copy.deepcopy(model)
+            res_solver = solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
+
+            # Results:  
+            if not model.failed:
+                converged +=1
+                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_option)
+    else:
+        converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
+                                                         dict_variables, dict_options, solv_options, sampling_option)
+    return converged
 
 
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
