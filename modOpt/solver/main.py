@@ -40,7 +40,7 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
        
     """
     t = -1
-    if dict_options['timer'] == True: tic = time.clock()
+    if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
     if not solv_options["Parallel"]:
         converged = 0
         for k in range(0, len(sampleData)):
@@ -57,7 +57,7 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
         converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
                                                          dict_variables, dict_options, solv_options, sampling_option)
     if dict_options['timer'] == True: 
-        toc = time.clock()
+        toc = time.time() 
         t = toc - tic
     return converged, t
 

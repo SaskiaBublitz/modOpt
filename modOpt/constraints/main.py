@@ -8,7 +8,6 @@ Import packages
 import time
 from modOpt.decomposition.dM  import doDulmageMendelsohn
 import copy
-import numpy
 import parallelization
 import iNes_procedure
 
@@ -49,9 +48,9 @@ def reduceVariableBounds(model, options):
     res_solver["Model"] = model
     
     if options['timer'] == True: 
-        tic = time.clock()
+        tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
         doIntervalNesting(res_solver, options)
-        toc = time.clock()
+        toc = time.time()
         t = toc - tic
         res_solver["time"] = t
         return res_solver

@@ -14,7 +14,7 @@ analysis tools
 ***************************************************
 """
 
-__all__ = ['analyseResults', 'trackErrors', 'calcInitVolume']
+__all__ = ['analyseResults', 'trackErrors']
 
 def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
