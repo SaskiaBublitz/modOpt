@@ -14,7 +14,7 @@ analysis tools
 ***************************************************
 """
 
-__all__ = ['analyseResults', 'trackErrors']
+__all__ = ['analyseResults', 'trackErrors', 'calcInitVolume']
 
 def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
@@ -33,16 +33,18 @@ def analyseResults(dict_options, initialModel, res_solver):
     initVarBounds = initialModel.xBounds[0]
     if modelWithReducedBounds != []:
         reducedVarBounds = modelWithReducedBounds.xBounds
-        boundRatios =getBoundRatios(initVarBounds, reducedVarBounds)
+        boundRatios = getBoundRatios(initVarBounds, reducedVarBounds)
         boundRatioOfVars, solvedVars = getBoundRatioOfVars(boundRatios)
+        initVolume = calcInitVolume(initVarBounds)
         hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
                                                                          (len(varSymbolic)-len(solvedVars)))
         
         hypercubicLFraction = sum(hypercubicLFractions)
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
-        writeAnalysisResults(dict_options["fileName"], varSymbolic, boundRatios, boundRatioOfVars,
-                             hypercubicLFractions, hypercubicLFraction, solvedVars, density, nonLinRatio)
+        writeAnalysisResults(dict_options["fileName"], varSymbolic, boundRatios, 
+                             boundRatioOfVars, initVolume, hypercubicLFractions, 
+                             hypercubicLFraction, solvedVars, density, nonLinRatio)
  
 
 def getDensityOfJacoboan(model):
@@ -82,7 +84,7 @@ def getNonLinearityRatio(model):
     return nonLin / float(model.getJacobian().nnz())            
     
     
-def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
+def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, initVolume,
                          hypercubicLFractions, hypercubicLFraction, solvedVars, density,
                          nonLinRatio):
     """ writes anaylsis results to a textfile  <fileName>_analysis.txt
@@ -94,6 +96,7 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
                                       variable bound ratio (has only one entry if 
                                       one set of variable bounds remains)
         :boundRatioOfVars:            sum of the bound ratios of one variable
+        :initVolume:                  volume of initial variable bound set
         :hypercubicLFractions:        list with fractional length of each sub-hypercube
         :hypercubicLFraction:         If the volumes were hypercubic, the hypercubicLFraction
                                       equals their edge length reduction
@@ -111,9 +114,9 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars,
     res_file.write("System Dimension: \t%s\n"%(len(boundRatios[0]))) 
     res_file.write("Jacobian Nonzero Density: \t%s\n"%(density))
     res_file.write("Jacobian Nonlinearity Ratio: \t%s\n"%(nonLinRatio))
+    res_file.write("Volume of initial set of varibale bounds: \t%s\n"%(initVolume))
     res_file.write("\n") 
     res_file.write("Variables\t") 
-    
     for j in range(0, noOfVarSets):
           res_file.write("VarBounds_%s\t"%(j)) 
     res_file.write("VarBoundFraction\n")
@@ -257,6 +260,23 @@ def calcBoundRatios(initVarBounds, curBoundRatio):
     for j in range(0, len(initVarBounds)):
         curBoundRatio[j] = calcBoundFraction(initVarBounds[j], curBoundRatio[j])
 
+
+def calcInitVolume(initVarBounds):
+    """ calculates volume of initial variable bound set
+    
+    Args:
+        :initVarBounds:     list with initial variable bounds
+    
+    Return:                 float with intiial volume
+    
+    """
+    
+    volume = 1
+    for curBound in initVarBounds:
+        width = curBound.delta
+        volume = volume * width
+    return volume
+        
 
 def calcBoundFraction(initVarBound, curVarBound):
     """ calculates current variable bound ratio
