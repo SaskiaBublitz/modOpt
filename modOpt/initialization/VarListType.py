@@ -12,7 +12,8 @@ TYPE_CONTROL = 'control'
 TYPE_STATE = 'state'
 
 class VarListType:
-    def __init__(self, type=TYPE_VARIABLE, performSampling=False, numberOfSamples=0, samplingMethod='NDS', sampleData=[], time=[], snapshotDict={}):
+    def __init__(self, type=TYPE_VARIABLE, performSampling=False, numberOfSamples=0, samplingMethod='NDS', sampleData=[], time=[], snapshotDict={},
+                 model = None):
         
         if type == 'state':
             self.varlist = []
@@ -28,6 +29,9 @@ class VarListType:
             self.numberOfSamples =numberOfSamples
             self.samplingMethod = samplingMethod
             self.sampleData = sampleData
+        if model != None:
+            self.addVarsFromModel(model)
+            
     
     def __str__(self):
         outputStr = ''
@@ -120,3 +124,10 @@ class VarListType:
                 fullArray = np.asarray(fullArray)
         return fullArray
 
+
+    def addVarsFromModel(self, model):   
+        varNames = model.xSymbolic
+        for glbID in range(0, len(varNames)):
+            self.add(varName = varNames[glbID], 
+                         lowerBound = model.xBounds[0][glbID, 0], 
+                         upperBound = model.xBounds[0][glbID, 1], engUnit='-')

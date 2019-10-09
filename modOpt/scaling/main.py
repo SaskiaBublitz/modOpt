@@ -53,7 +53,7 @@ def scaleSystem(model, dict_eq, dict_var, dict_options):
         colScalingGmean(jacobian, res_scaling)
         jacobian = res_scaling["Matrix"]
         rowScaling(jacobian, F, res_scaling)
-    
+    # TODO: Scaling with Bounds
     model.updateToScaling(res_scaling)
     
     updateDictionaries(dict_eq, dict_var, res_scaling, model)
