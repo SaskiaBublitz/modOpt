@@ -5,7 +5,7 @@ Import packages
 """
 import scipy.optimize
 import numpy
-import sympy
+
 """
 ****************************************************
 Minimization Procedures from scipy.optimization
@@ -72,23 +72,74 @@ def objective(x):
 
 
 def getEqualityConstraint(i, curBlock, getSymbolicFunctions, *args):
-    # TODO: Docu
+    """ returns the ith equation of the NLE as equality constraint of an 
+    optimization problem.
+    
+    Args:
+        :i:                     integer with global index of equation
+        :curBlock:              instance of class block
+        :getSymbolicFunctions:  function defined by the UDLS with equation system
+        :*args:                 flexible arguments that equals here the symbolic
+                                iteration variables
+    Return:
+        :c[i]:                  ith equality constraint
+        
+    """
+    
     c = getSymbolicFunctions(curBlock, *args)
     return c[i]
 
 
 def getConstraintDictionary(i, curBlock, getSymbolicFunctions, *args):
-    # TODO: Docu
+    """ returns equality constraint as dictionary. This formate used in the 
+    scipy.optimize.minimize function.
+    
+    Args:
+        :i:                     integer with global index of equation
+        :curBlock:              instance of class block
+        :getSymbolicFunctions:  function defined by the UDLS with equation system
+        :*args:                 flexible arguments that equals here the symbolic
+                                iteration variables
+                                
+    Return:                     dictionary with equality constraint
+    
+    """
     return {'type': 'eq', 'fun': lambda x: getEqualityConstraint(i, curBlock,
                                                                  getSymbolicFunctions, 
                                                                  x)}
 
+    
 def subscribeXwithIterVars(curBlock, x):
+    """ writes symbolic block iteration variables x to a list of all iteration
+    variables. This needs to be done to create the related equality constraints.
+    
+    Args:
+        :curBlock:              instance of class block
+        :x:                     array in sympy logic with symbolic iteration variables
+    
+    Return:
+        :xWithIterVars:         numpy array with symbolic block iteration variables and
+                                float values of all other iteration varibales
+                                
+    """
+    
     xWithIterVars = numpy.array(curBlock.x_tot, dtype = object)
     xWithIterVars[curBlock.colPerm] = x
     return xWithIterVars    
  
     
 def getSymbolicFunctions(curBlock, x):
+    """ initializes block attribute allConstraints, which is from type function, 
+    with symbolic block iteration variables and float values for all other 
+    iteration variables and parameter.
+                 
+    Args:
+        :curBlock:       instance of class block
+        :x:              array in sympy logic with symbolic iteration variables
+    
+    Return:              symbolic equation system in sympy logic
+                                
+    """
+    
     xWithIterVars = subscribeXwithIterVars(curBlock, x)
     return curBlock.allConstraints(xWithIterVars, curBlock.parameter)    
