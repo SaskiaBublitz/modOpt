@@ -13,6 +13,7 @@ import copy
 import results
 import parallelization
 import time
+import scipyMinimization
 
 """
 ****************************************************
@@ -40,7 +41,7 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
        
     """
     t = -1
-    if dict_options['timer'] == True: tic = time.clock()
+    if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
     if not solv_options["Parallel"]:
         converged = 0
         for k in range(0, len(sampleData)):
@@ -57,7 +58,7 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
         converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
                                                          dict_variables, dict_options, solv_options, sampling_option)
     if dict_options['timer'] == True: 
-        toc = time.clock()
+        toc = time.time() 
         t = toc - tic
     return converged, t
 
@@ -139,7 +140,10 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
     for b in range(len(rBlocks)): 
 
         curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
-                               model.fSymCasadi, model.stateVarValues[0])
+                               model.fSymCasadi, model.stateVarValues[0], 
+                               model.xBounds[0], model.parameter,
+                               model.constraints, model.xSymbolic
+                               )
         
         if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
                        model, curBlock, dict_equations, dict_variables)
@@ -147,7 +151,11 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
         if solv_options["solver"] == 'newton': 
             doNewton(curBlock, b, solv_options, dict_options, res_solver, 
                      dict_equations, dict_variables)
-             
+        
+        if solv_options["solver"] == 'SLSQP' or solv_options["solver"] == 'trust-constr':
+            doScipyOptiMinimize(curBlock, b, solv_options, dict_options, 
+                                res_solver, dict_equations, dict_variables)
+
         # TODO: Add other solvers, e.g. ipopt
 
         if res_solver["Exitflag"][b] < 1: 
@@ -242,6 +250,31 @@ def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1    
+
+
+def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+    """ starts minimization procedure from scipy
+    
+    Args:
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
+        
+    """
+    
+    try: 
+        exitflag, iterNo = scipyMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
+        res_solver["IterNo"][b] = iterNo
+        res_solver["Exitflag"][b] = exitflag
+        
+    except: 
+        print "Error in Block ", b
+        res_solver["IterNo"][b] = 0
+        res_solver["Exitflag"][b] = -1 
     
 
 def putResultsInDict(x, model, res_solver):

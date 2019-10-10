@@ -42,13 +42,13 @@ def reduceMultipleXBounds(xBounds, model, blocks, dimVar,
     """
     
     output = {}
-    CPU_count = dict_options["CPU count"]
+    CPU_count = dict_options["CPU count Branches"]
     jobs = []
     manager = Manager()
     results = manager.dict()
     done = numpy.zeros(len(xBounds))
     started = numpy.zeros(len(xBounds))
-    actNum = 0
+    
     #output["xAlmostEqual"] = False * numpy.ones(len(xBounds), dtype=bool)   
 
     for k in range(0,len(xBounds)):  
@@ -61,7 +61,7 @@ def reduceMultipleXBounds(xBounds, model, blocks, dimVar,
                                                                results))
         jobs.append(p)
         
-    startAndDeleteJobs(actNum, jobs, started, done, len(xBounds), CPU_count)
+    startAndDeleteJobs(jobs, started, done, len(xBounds), CPU_count)
           
     output["newXBounds"], output["xAlmostEqual"] = getReducedXBoundsResults(results, len(xBounds))
      
@@ -126,11 +126,10 @@ def reduceMultipleXBounds_Worker(xBounds, k, model, blocks, dimVar, xSymbolic, p
     return True
 
 
-def startAndDeleteJobs(actNum, jobs, started, done, jobNo, CPU_count):
+def startAndDeleteJobs(jobs, started, done, jobNo, CPU_count):
     """ starts jobs using multiprocessing and deletes finished ones
     
     Args:
-        :actNum:        current number of active jobs
         :jobs:          list with all jobs from process
         :started:       jobNo dimensional numpy array. The entries are binaries 
                         (1 = job started, 0 = job not started)
@@ -140,6 +139,8 @@ def startAndDeleteJobs(actNum, jobs, started, done, jobNo, CPU_count):
         :CPU_count:     number of cores
                            
     """  
+    
+    actNum = 0
     
     while numpy.sum(done) < jobNo:
         for jobId in range(0, jobNo):
@@ -203,7 +204,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options): #boundsAlmostEqu
     
     output = {}
     xNewBounds = copy.deepcopy(xBounds)
-    CPU_count = dict_options["CPU count"] 
+    CPU_count = dict_options["CPU count Variables"] 
     xUnchanged = True
     # Block loop
     for b in range(0, len(blocks)):
@@ -214,12 +215,12 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options): #boundsAlmostEqu
         results = manager.dict()
         done = numpy.zeros (blockDim)
         started = numpy.zeros (blockDim)
-        actNum = 0
+
         for n in range(0, blockDim):
             p = Process(target=reduceXBounds_Worker, args=(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options, n, b, blockDim, results))
             jobs.append(p)        
         
-        startAndDeleteJobs(actNum, jobs, started, done, blockDim, CPU_count)
+        startAndDeleteJobs(jobs, started, done, blockDim, CPU_count)
         
         for n in range(0, blockDim):
             if results['%d' % n][0] != []:
@@ -334,7 +335,7 @@ def addNotStartedJobs(actNum, jobs, started, done, jobId, CPU_count):
                                    
     """   
     
-    if jobs[jobId].is_alive() == False and (started[jobId] == 0) and (actNum < CPU_count):
+    if jobs[jobId].is_alive() == False and (started[jobId] == 0) and (actNum <= CPU_count):
         jobs[jobId].start()
         started[jobId] = 1
         actNum += 1

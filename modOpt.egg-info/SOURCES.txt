@@ -69,5 +69,9 @@ modOpt/solver/main.py
 modOpt/solver/main.pyc
 modOpt/solver/newton.py
 modOpt/solver/newton.pyc
+modOpt/solver/parallelization.py
+modOpt/solver/parallelization.pyc
 modOpt/solver/results.py
 modOpt/solver/results.pyc
+modOpt/solver/scipyMinimization.py
+modOpt/solver/scipyMinimization.pyc

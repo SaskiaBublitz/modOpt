@@ -53,7 +53,7 @@ class Model:
                             
     """
     
-    def __init__(self, X, BOUNDS, XSYMBOLIC, FSYMBOLIC, PARAMS, JACOBIAN, FSYMCASADI = None):
+    def __init__(self, X, BOUNDS, XSYMBOLIC, FSYMBOLIC, PARAMS, JACOBIAN, FSYMCASADI = None, CONSTRAINTS = None):
         """ Initialization method for class model
         
         Args:
@@ -68,6 +68,7 @@ class Model:
             :JACOBIAN:     if used, array with symbolic jacobian            
             :FSYMCASADI:   optional 1D-array with current symbolic functions in
                            global order, default = None
+            :CONSTRAINTS:  optional function that returns list with sympy functions
             
         """
         
@@ -84,6 +85,7 @@ class Model:
         self.rowSca = numpy.ones(len(X))
         self.colSca = numpy.ones(len(X))
         self.failed = False
+        self.constraints = CONSTRAINTS
 
 
     def getBoundsOfPermutedModel(self, xBounds, xSymbolic, parameter):
