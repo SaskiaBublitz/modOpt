@@ -211,7 +211,7 @@ def getFileName(dict_options):
     
     if dict_options["decomp"] =='None': name = ''.join([name, '_org'])
     if dict_options["decomp"] =='DM': name = ''.join([name,'_DM'])
-    if dict_options["decomp"] =='BBTF': name = ''.join([name,'_DM'])
+    if dict_options["decomp"] =='BBTF': name = ''.join([name,'_BBTF'])
     if dict_options["scaling"] =='MC29': name = ''.join([name,'_MC29'])
     if dict_options["scaling"] =='MC77': name = ''.join([name,'_MC77'])
     if dict_options["scaling"] =='Inf RowSca and Mean ColSca': name = ''.join([name,'_InfMean'])

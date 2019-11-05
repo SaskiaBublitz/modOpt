@@ -89,8 +89,14 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
         return res_solver
     
     if dict_options["decomp"] == 'BBTF':
-        #TODO: Add Nested procuedure
-        return []
+        i=0
+        while numpy.linalg.norm(model.getFunctionValues()) > solv_options["FTOL"] and i <= solv_options["iterMax_tear"]:
+            res_solver = solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables)
+            updateToSolver(res_solver, dict_equations, dict_variables)
+            model = res_solver["Model"] 
+            print numpy.linalg.norm(model.getFunctionValues()) 
+            i+=1
+        return res_solver
     
     
 def updateToSolver(res_solver, dict_equations, dict_variables):
