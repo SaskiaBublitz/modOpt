@@ -34,11 +34,11 @@ def writeResults(dict_options, res_solver):
         :res_solver:            dictionary with solver output
         
     """
+    if res_solver != []: 
+        fileName = getFileName(dict_options)
     
-    fileName = getFileName(dict_options)
-    
-    res_file = open(''.join([fileName, "_results.txt"]), "w")
-    writeIterVarValues(res_file,  res_solver["Model"])
+        res_file = open(''.join([fileName, "_results.txt"]), "w")
+        writeIterVarValues(res_file,  res_solver["Model"])
 
 
 def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options):
@@ -73,12 +73,12 @@ def writeResultsAnalytics(dict_options, res_solver):
         :res_solver:            dictionary with solver output
         
     """
-
-    fileName = getFileName(dict_options)
-    res_file = open(''.join([fileName,"_analysis.txt"]), "w")
-    writeSolverOutput(res_file, res_solver)
-    writeFunctionLegend(res_file, res_solver["Model"])
-    writeFunctionTable(res_file, res_solver)
+    if res_solver != []:
+        fileName = getFileName(dict_options)
+        res_file = open(''.join([fileName,"_analysis.txt"]), "w")
+        writeSolverOutput(res_file, res_solver)
+        writeFunctionLegend(res_file, res_solver["Model"])
+        writeFunctionTable(res_file, res_solver)
     
 
 def writeRestructuringSettings(res_file, dict_options):
