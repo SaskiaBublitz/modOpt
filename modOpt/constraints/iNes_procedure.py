@@ -986,7 +986,8 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx,
     """
     
     relEpsX = dict_options["relTolX"]
-    precision = getPrecision(xBounds)
+    absEpsX = dict_options["absTolX"]
+    #precision = getPrecision(xBounds)
 
     for curMonZone in monotoneZone: #TODO: Parallelizing
         xBounds[i] = curMonZone 
@@ -996,7 +997,7 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx,
         
         if curReducedInterval !=[] and reducedIntervals != []:
             reducedIntervals.append(curReducedInterval)
-            reducedIntervals = joinIntervalSet(reducedIntervals, relEpsX, precision)
+            reducedIntervals = joinIntervalSet(reducedIntervals, relEpsX, absEpsX)
         elif curReducedInterval !=[]: reducedIntervals.append(curReducedInterval)
         
     return reducedIntervals
@@ -1538,7 +1539,7 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
                     ivSet.remove(ivSet[i])
                     ivSet.remove(iv)
                     break
-                elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX*1e-5, absEpsX*1e-5): 
+                elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX, absEpsX): 
                     newIvSet.append(mpmath.mpi(iv.a, ivSet[i].b))
                     ivSet.remove(ivSet[i])
                     ivSet.remove(iv)

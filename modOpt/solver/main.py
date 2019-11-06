@@ -271,6 +271,7 @@ def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dic
         res_solver["IterNo"][b] = iterNo
         res_solver["Exitflag"][b] = exitflag
         
+        
     except: 
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0

@@ -154,6 +154,9 @@ def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, dim):
         
     """
     
+    if dim == 0.0:
+        return [0.0]
+    
     hypercubeLengthFractions = []
     n = 1.0 / dim
     
