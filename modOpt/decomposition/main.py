@@ -37,7 +37,7 @@ def decomposeSystem(model, dict_eq, dict_var, dict_options):
     
     if dict_options["decomp"] == 'BBTF':
         res_permutation = MC33.doMC33(jacobian)   
-        blocks = model.rowPerm # TODO: maybe some fancy stuff to indicate the inner blocks
+        blocks = res_permutation["Number of Row Blocks"]
         
     model.updateToPermutation(res_permutation["Row Permutation"], # TODO: input only res_permutation and hasKey()
                              res_permutation["Column Permutation"],

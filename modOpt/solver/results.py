@@ -34,11 +34,11 @@ def writeResults(dict_options, res_solver):
         :res_solver:            dictionary with solver output
         
     """
+    if res_solver != []: 
+        fileName = getFileName(dict_options)
     
-    fileName = getFileName(dict_options)
-    
-    res_file = open(''.join([fileName, "_results.txt"]), "w")
-    writeIterVarValues(res_file,  res_solver["Model"])
+        res_file = open(''.join([fileName, "_results.txt"]), "w")
+        writeIterVarValues(res_file,  res_solver["Model"])
 
 
 def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options):
@@ -73,12 +73,12 @@ def writeResultsAnalytics(dict_options, res_solver):
         :res_solver:            dictionary with solver output
         
     """
-
-    fileName = getFileName(dict_options)
-    res_file = open(''.join([fileName,"_analysis.txt"]), "w")
-    writeSolverOutput(res_file, res_solver)
-    writeFunctionLegend(res_file, res_solver["Model"])
-    writeFunctionTable(res_file, res_solver)
+    if res_solver != []:
+        fileName = getFileName(dict_options)
+        res_file = open(''.join([fileName,"_analysis.txt"]), "w")
+        writeSolverOutput(res_file, res_solver)
+        writeFunctionLegend(res_file, res_solver["Model"])
+        writeFunctionTable(res_file, res_solver)
     
 
 def writeRestructuringSettings(res_file, dict_options):
@@ -211,7 +211,7 @@ def getFileName(dict_options):
     
     if dict_options["decomp"] =='None': name = ''.join([name, '_org'])
     if dict_options["decomp"] =='DM': name = ''.join([name,'_DM'])
-    if dict_options["decomp"] =='BBTF': name = ''.join([name,'_DM'])
+    if dict_options["decomp"] =='BBTF': name = ''.join([name,'_BBTF'])
     if dict_options["scaling"] =='MC29': name = ''.join([name,'_MC29'])
     if dict_options["scaling"] =='MC77': name = ''.join([name,'_MC77'])
     if dict_options["scaling"] =='Inf RowSca and Mean ColSca': name = ''.join([name,'_InfMean'])

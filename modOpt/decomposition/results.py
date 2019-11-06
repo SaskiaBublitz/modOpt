@@ -276,7 +276,7 @@ def plotColoredIncidence(res_solver, dict_options, plot_options):
         :plot_options:      dictionary with user specified plot settings
     
     """
-            
+    if res_solver == []: return False
     J, ex, model = getResults(res_solver) 
     
     incidence = prepareIncidence(J, ex, dict_options)

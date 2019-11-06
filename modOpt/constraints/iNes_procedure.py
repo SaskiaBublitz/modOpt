@@ -158,7 +158,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
                         output["noSolution"] = failedSystem
-                        output["xAlmostEqual"] = False     
+                        output["xAlmostEqual"] = False 
                         return output
 
             xNewBounds[j] = y
