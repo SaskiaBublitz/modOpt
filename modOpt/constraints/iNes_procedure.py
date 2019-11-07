@@ -1481,7 +1481,8 @@ def addIntervaltoZone(newInterval, monotoneZone, dict_options):
     
     absEpsX = dict_options["absTolX"]
     relEpsX = dict_options["relTolX"] 
-        
+    red_disconti = 0.1   # To ensure that interval is not joined when discontinuity is present
+    
     if newInterval != []:
         
         if len(newInterval) > 1:
@@ -1495,7 +1496,7 @@ def addIntervaltoZone(newInterval, monotoneZone, dict_options):
             for i in range(0, len(newInterval)):
                 monotoneZone.append(newInterval[i])
             
-            return joinIntervalSet(monotoneZone, relEpsX, absEpsX)
+            return joinIntervalSet(monotoneZone, relEpsX*red_disconti, absEpsX*red_disconti)
     
     return monotoneZone
 
