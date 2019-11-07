@@ -1255,7 +1255,7 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
     tmax = dict_options["tmax"]
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
-            
+    maxIvNo = dict_options["maxIvNo"]   
     monIncreasingZone = []
     monDecreasingZone = []
     interval = [xBounds[i]] 
@@ -1263,7 +1263,7 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
     timeout = False
     t0 = time.clock()
     
-    while interval != [] and timeout == False: #and dfdXconst == False:  
+    while interval != [] and timeout == False and len(interval) < maxIvNo: #and dfdXconst == False:  
         
         curIntervals = []
                
@@ -1281,11 +1281,13 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
             monDecreasingZone = addIntervaltoZone(newMonDecreasingZone, 
                                                           monDecreasingZone, dict_options)
        
-            curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
-        
+            #curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
+            curIntervals.append(newIntervals)
+        curIntervals = removeListInList(curIntervals)
         #if interval == curIntervals: break
         interval = checkIntervalWidth(curIntervals, absEpsX, relEpsX)       
         timeout = checkTimeout(t0, tmax, timeout)
+        if timeout: interval = joinIntervalSet(interval, relEpsX, absEpsX)
             
     return monIncreasingZone, monDecreasingZone, interval
 
