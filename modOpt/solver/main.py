@@ -14,6 +14,7 @@ import results
 import parallelization
 import time
 import scipyMinimization
+import ipoptMinimization
 
 """
 ****************************************************
@@ -163,6 +164,10 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
         if solv_options["solver"] == 'SLSQP' or solv_options["solver"] == 'trust-constr':
             doScipyOptiMinimize(curBlock, b, solv_options, dict_options, 
                                 res_solver, dict_equations, dict_variables)
+            
+        if solv_options["solver"] == 'ipopt':
+            doipoptMinimize(curBlock, b, solv_options, dict_options, 
+                                res_solver, dict_equations, dict_variables)
 
         # TODO: Add other solvers, e.g. ipopt
 
@@ -284,7 +289,33 @@ def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dic
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1 
+
     
+def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+    """ starts minimization procedure from scipy
+    
+    Args:
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
+        
+    """
+    
+    try: 
+        exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
+        res_solver["IterNo"][b] = iterNo-1
+        res_solver["Exitflag"][b] = exitflag
+        
+        
+    except: 
+        print "Error in Block ", b
+        res_solver["IterNo"][b] = 0
+        res_solver["Exitflag"][b] = -1 
+
 
 def putResultsInDict(x, model, res_solver):
     """ updates model and results dictionary

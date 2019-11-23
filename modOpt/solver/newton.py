@@ -31,7 +31,7 @@ def doNewton(curBlock, solv_options, dict_options, dict_eq, dict_var):
     tol = 1e6
     
     J, x, F = getLinearSystem(dict_options, curBlock)
-    
+
     while tol > FTOL and iterNo < iterMax:
         dx = - numpy.dot(numpy.linalg.inv(J), F)
         x = x + dx

@@ -40,11 +40,8 @@ modOpt/decomposition/main.pyc
 modOpt/decomposition/results.py
 modOpt/decomposition/results.pyc
 modOpt/initialization/SamplingMethods.py
-modOpt/initialization/SamplingMethods.pyc
 modOpt/initialization/VarListType.py
-modOpt/initialization/VarListType.pyc
 modOpt/initialization/VarType.py
-modOpt/initialization/VarType.pyc
 modOpt/initialization/__init__.py
 modOpt/initialization/__init__.pyc
 modOpt/initialization/arithmeticMean.py
@@ -70,8 +67,6 @@ modOpt/solver/main.pyc
 modOpt/solver/newton.py
 modOpt/solver/newton.pyc
 modOpt/solver/parallelization.py
-modOpt/solver/parallelization.pyc
 modOpt/solver/results.py
 modOpt/solver/results.pyc
 modOpt/solver/scipyMinimization.py
-modOpt/solver/scipyMinimization.pyc
