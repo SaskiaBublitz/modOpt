@@ -173,8 +173,12 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
 
         if res_solver["Exitflag"][b] < 1: 
             model.failed = True
-        # Write Results:         
-        putResultsInDict(curBlock.x_tot, model, res_solver)
+            
+        # Update model    
+        model.stateVarValues[0] = curBlock.x_tot   
+    
+    # Write Results:         
+    putResultsInDict(model, res_solver)
 
     return res_solver 
 
@@ -320,13 +324,10 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
 def putResultsInDict(x, model, res_solver):
     """ updates model and results dictionary
     Args:
-        :x:               numpy array with final iteration variable values
         :model:           object of type Model
         :res_solver:      dictionary with results from solver    
         
     """
-    
-    model.stateVarValues[0] = x
     res_solver["Model"] = model
     res_solver["Residual"] = model.getFunctionValuesResidual()
     res_solver["IterNo_tot"] = sum(res_solver["IterNo"])
