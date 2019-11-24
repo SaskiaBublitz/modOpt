@@ -168,8 +168,8 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
 
         if res_solver["Exitflag"][b] < 1: 
             model.failed = True
-    # Write Results:         
-    putResultsInDict(curBlock.x_tot, model, res_solver)
+        # Write Results:         
+        putResultsInDict(curBlock.x_tot, model, res_solver)
 
     return res_solver 
 
