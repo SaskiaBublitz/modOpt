@@ -14,7 +14,7 @@ import results
 import parallelization
 import time
 import scipyMinimization
-import ipoptMinimization
+
 
 """
 ****************************************************
@@ -166,8 +166,8 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
                                 res_solver, dict_equations, dict_variables)
             
         if solv_options["solver"] == 'ipopt':
-            doipoptMinimize(curBlock, b, solv_options, dict_options, 
-                                res_solver, dict_equations, dict_variables)
+                doipoptMinimize(curBlock, b, solv_options, dict_options, 
+                                 res_solver, dict_equations, dict_variables)
 
         # TODO: Add other solvers, e.g. ipopt
 
@@ -309,7 +309,8 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         
     """
     
-    try: 
+    try:
+        import ipoptMinimization
         exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo-1
         res_solver["Exitflag"][b] = exitflag
@@ -321,7 +322,7 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         res_solver["Exitflag"][b] = -1 
 
 
-def putResultsInDict(x, model, res_solver):
+def putResultsInDict(model, res_solver):
     """ updates model and results dictionary
     Args:
         :model:           object of type Model
