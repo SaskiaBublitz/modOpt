@@ -66,6 +66,10 @@ modOpt/solver/__init__.pyc
 modOpt/solver/block.py
 modOpt/solver/block.pyc
 modOpt/solver/ipoptMinimization.py
+<<<<<<< HEAD
+=======
+modOpt/solver/ipoptMinimization.pyc
+>>>>>>> 6ecbdb65258ff16bc7749d2511308ea324f45290
 modOpt/solver/main.py
 modOpt/solver/main.pyc
 modOpt/solver/newton.py
