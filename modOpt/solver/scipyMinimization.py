@@ -50,7 +50,7 @@ def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
                      bounds = xBounds,
                      jac=None, 
                      constraints = cons)
-
+    print res.x
     for i in range(0, len(res.x)):
         curBlock.x_tot[curBlock.colPerm[i]]=res.x[i]
 
