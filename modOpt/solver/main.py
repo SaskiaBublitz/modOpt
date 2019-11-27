@@ -46,7 +46,10 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
     sampleNo = sampling_options['sampleNo_min_resiudal']
     if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
     
-    if len(sampleData) > sampleNo: sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
+    if len(sampleData) > sampleNo: 
+        sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
+        model.stateVarValues = [sampleData[0]]
+        results.writeSampleWIthMinResidual(model, 0, dict_options, sampling_options)
 
     if not solv_options["Parallel"]:
         converged = 0

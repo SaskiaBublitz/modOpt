@@ -41,6 +41,28 @@ def writeResults(dict_options, res_solver):
         writeIterVarValues(res_file,  res_solver["Model"])
 
 
+def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options):
+    """ writes variable values and results of converged samples into files
+    
+    Args:
+        :sample:            instance of class Model with sample iteration variable 
+                            values
+        :i:                 number of converged sample as integer
+        :dict_options:      dictionary with user specified settings
+        :res_solver:        dictionary with solver output
+        :sampling_options:  dictionary with sampling options
+        
+    """
+    
+    fileName = getFileName(dict_options)
+    sample_file = open(''.join([fileName, 
+                                "_sample_minf_", str(i), "_",
+                                sampling_options["sampling method"],
+                                "._txt"]), "w")
+    sample_file.write(" ****************** Sample ****************** \n\n")
+    writeIterVarValues(sample_file,  sample)
+
+    
 def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options):
     """ writes variable values and results of converged samples into files
     
