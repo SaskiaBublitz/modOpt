@@ -46,10 +46,8 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
     sampleNo = sampling_options['sampleNo_min_resiudal']
     if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
     
-    
-    print sampleData
-    sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
-    print sampleData
+    if len(sampleData) > sampleNo: sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
+
     if not solv_options["Parallel"]:
         converged = 0
                 
@@ -90,14 +88,12 @@ def get_samples_with_n_lowest_residuals(model, n, sampleData):
         residuals.append(sum(abs(numpy.array(model.fSymCasadi(*curSample)))))
     
     # Sort samples by minimum residuals
-    print residuals
     sample_index = list(numpy.argsort(numpy.array(residuals)))
     samples_sorted = sampleData[sample_index]
     
     return samples_sorted[0:n]
     
-    
-    
+      
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
     """ solve nonlinear algebraic equation system (NLE)
     
