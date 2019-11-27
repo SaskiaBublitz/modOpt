@@ -23,7 +23,7 @@ Main that starts solving procedure in decomposed NLE
 """
 __all__ = ['solveSamples', 'solveSystem_NLE']
 
-def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_option):
+def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_options):
     """ solve samples from array sampleData and returns number of converged samples. The converged
     samples and their solutions are written into text files.
 
@@ -41,10 +41,18 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
         :converged:         integer with number of converged runs
        
     """
+    
     t = -1
+    sampleNo = sampling_options['sampleNo_min_resiudal']
     if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
+    
+    
+    print sampleData
+    sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
+    print sampleData
     if not solv_options["Parallel"]:
         converged = 0
+                
         for k in range(0, len(sampleData)):
             curSample = sampleData[k]
             model.stateVarValues = [curSample]
@@ -54,16 +62,42 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
             # Results:  
             if not model.failed:
                 converged +=1
-                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_option)
+                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_options)
     else:
         converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
-                                                         dict_variables, dict_options, solv_options, sampling_option)
+                                                         dict_variables, dict_options, solv_options, sampling_options)
     if dict_options['timer'] == True: 
         toc = time.time() 
         t = toc - tic
     return converged, t
 
 
+def get_samples_with_n_lowest_residuals(model, n, sampleData):
+    """ tests the first n samples that have the lowest function residuals from 
+    sampleData
+    
+    Args:
+        :model:             instance of class model
+        :n:                 integer with real number of tested samples
+        :sampleData:        numpy array sampling points 
+    
+    """
+    
+    residuals = []
+    
+    # Calc residuals:
+    for curSample in sampleData:
+        residuals.append(sum(abs(numpy.array(model.fSymCasadi(*curSample)))))
+    
+    # Sort samples by minimum residuals
+    print residuals
+    sample_index = list(numpy.argsort(numpy.array(residuals)))
+    samples_sorted = sampleData[sample_index]
+    
+    return samples_sorted[0:n]
+    
+    
+    
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
     """ solve nonlinear algebraic equation system (NLE)
     
