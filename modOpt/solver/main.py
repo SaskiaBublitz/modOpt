@@ -166,7 +166,7 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
                                 res_solver, dict_equations, dict_variables)
             
         if solv_options["solver"] == 'ipopt':
-                doipoptMinimize(curBlock, b, solv_options, dict_options, 
+            doipoptMinimize(curBlock, b, solv_options, dict_options, 
                                  res_solver, dict_equations, dict_variables)
 
         # TODO: Add other solvers, e.g. ipopt
