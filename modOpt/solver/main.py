@@ -88,10 +88,12 @@ def get_samples_with_n_lowest_residuals(model, n, sampleData):
         residuals.append(sum(abs(numpy.array(model.fSymCasadi(*curSample)))))
     
     # Sort samples by minimum residuals
-    sample_index = list(numpy.argsort(numpy.array(residuals)))
-    samples_sorted = sampleData[sample_index]
+    residuals = numpy.array(residuals)
+    sample_index = numpy.argsort(residuals)
+    residuals = residuals[sample_index]
+    print "Function residuals of sample points:\t", residuals[0:n]
     
-    return samples_sorted[0:n]
+    return sampleData[sample_index][0:n]
     
       
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
