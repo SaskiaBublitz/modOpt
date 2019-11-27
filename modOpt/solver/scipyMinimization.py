@@ -42,21 +42,61 @@ def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
     iterMax = solv_options["iterMax"]
     minMethod = solv_options["solver"]
     
-    res = scipy.optimize.minimize(objective, 
-                     x0, 
-                     method= minMethod, #'trust-constr',
-                     options = {'maxiter': iterMax},
-                     tol =FTOL,
-                     bounds = xBounds,
-                     jac=None, 
-                     constraints = cons)
-    print res.x
+    if solv_options["mode"]==1: 
+        args = (curBlock, 0)
+        res = scipy.optimize.minimize(eval_m, 
+                                      x0,
+                                      args= args,
+                                      jac = eval_grad_m,
+                                      method= minMethod, #'trust-constr',
+                                      options = {'maxiter': iterMax},
+                                      tol =FTOL,
+                                      bounds = xBounds,
+                                      constraints = ())    
+    
+    if solv_options["mode"]==2:
+    
+        res = scipy.optimize.minimize(objective, 
+                                      x0, 
+                                      method= minMethod, #'trust-constr',
+                                      options = {'maxiter': iterMax},
+                                      tol =FTOL,
+                                      bounds = xBounds,
+                                      jac=None, 
+                                      constraints = cons)
+    #print res.x
     for i in range(0, len(res.x)):
         curBlock.x_tot[curBlock.colPerm[i]]=res.x[i]
 
     if not res.success: return 0, res.nit
     
     else: return 1, res.nit   
+
+
+def eval_m(x, *args): 
+    curBlock = args[0]
+    curBlock.x_tot[curBlock.colPerm] = x
+    f = curBlock.getFunctionValues()
+    m = 0
+
+    for fi in f: m += fi**2.0 
+             
+    return m 
+
+
+def eval_grad_m(x, *args): 
+    curBlock = args[0]
+    #curBlock.x_tot[curBlock.colPerm] = x
+    grad_m = numpy.zeros(len(x))
+    
+    f = curBlock.getFunctionValues()
+    jac = curBlock.getPermutedJacobian()
+    
+    for j in range(0, len(x)):
+        for i in range(0, len(f)):
+            grad_m[j] += 2 * f[i] * jac[i, j]
+            
+    return grad_m
 
 
 def getEqualityConstraint(curBlock, i):

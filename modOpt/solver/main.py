@@ -193,7 +193,7 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
             doNewton(curBlock, b, solv_options, dict_options, res_solver, 
                      dict_equations, dict_variables)
         
-        if solv_options["solver"] == 'SLSQP' or solv_options["solver"] == 'trust-constr':
+        if solv_options["solver"] in ['SLSQP', 'trust-constr', 'TNC']:
             doScipyOptiMinimize(curBlock, b, solv_options, dict_options, 
                                 res_solver, dict_equations, dict_variables)
             
