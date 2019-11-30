@@ -49,8 +49,8 @@ def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
                                       args= args,
                                       jac = eval_grad_m,
                                       method= minMethod, #'trust-constr',
-                                      options = {'maxiter': iterMax},
-                                      tol =FTOL,
+                                      options = {'maxiter': iterMax, 'ftol': FTOL, 'disp': True},
+                                      tol = None,
                                       bounds = xBounds,
                                       constraints = ())    
     
@@ -59,8 +59,7 @@ def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
         res = scipy.optimize.minimize(objective, 
                                       x0, 
                                       method= minMethod, #'trust-constr',
-                                      options = {'maxiter': iterMax},
-                                      tol =FTOL,
+                                      ooptions = {'maxiter': iterMax, 'ftol': FTOL},
                                       bounds = xBounds,
                                       jac=None, 
                                       constraints = cons)
