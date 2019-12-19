@@ -210,7 +210,7 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
             model.failed = True
             
         # Update model    
-        model.stateVarValues[0] = curBlock.x_tot   
+        model.stateVarValues[0] = curBlock.x_tot
     
     # Write Results:         
     putResultsInDict(model, res_solver)
@@ -252,6 +252,7 @@ def createSolverResultDictionary(blockNo):
     res_solver = {}
     res_solver["IterNo"] = numpy.zeros(blockNo)
     res_solver["Exitflag"] = numpy.zeros(blockNo)
+    res_solver["CondNo"] = numpy.zeros(blockNo)
     
     return res_solver
 
@@ -274,7 +275,7 @@ def getInitialScaling(dict_options, model, curBlock, dict_equations, dict_variab
     if dict_options["scaling procedure"] =='tot_init': # scaling of complete decomposed system
             curBlock.setScaling(model)
         
-    elif dict_options["scaling procedure"] =='block_init': # blockwise scaling
+    elif dict_options["scaling procedure"] =='block_init' or dict_options["scaling procedure"] =='block_iter': # blockwise scaling
             mos.scaleSystem(curBlock, dict_equations, dict_variables, dict_options)   
 
 
@@ -297,12 +298,14 @@ def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations
         exitflag, iterNo = newton.doNewton(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo
         res_solver["Exitflag"][b] = exitflag
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1    
-
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
 
 def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
     """ starts minimization procedure from scipy
@@ -322,13 +325,14 @@ def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dic
         exitflag, iterNo = scipyMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo
         res_solver["Exitflag"][b] = exitflag
-        
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1 
-
+        res_solver["CondNo"][b] = 'nan'
+        
     
 def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
     """ starts minimization procedure from scipy
@@ -349,12 +353,13 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo-1
         res_solver["Exitflag"][b] = exitflag
-        
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0
-        res_solver["Exitflag"][b] = -1 
+        res_solver["Exitflag"][b] = -1
+        res_solver["CondNo"][b] = 'nan'
 
 
 def putResultsInDict(model, res_solver):
