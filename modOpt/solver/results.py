@@ -19,29 +19,30 @@ def writeInitialSettings(dict_options, solv_options, model):
         
     """
     
-    fileName = getFileName(dict_options)
+    fileName = getFileName(dict_options, solv_options)
     res_file = open(''.join([fileName, "_initial.txt"]), "w") 
     writeRestructuringSettings(res_file, dict_options)
     writeSolverSettings(res_file, solv_options)
     writeIterVarValues(res_file, model)
 
 
-def writeResults(dict_options, res_solver):
+def writeResults(dict_options, solv_options, res_solver):
     """ writes iteration variable results to file res_file
     
     Args:
         :dict_options:          dictionary with user specified settings
+        :solv_options:          dictionary with user specified solver settings
         :res_solver:            dictionary with solver output
         
     """
     if res_solver != []: 
-        fileName = getFileName(dict_options)
+        fileName = getFileName(dict_options, solv_options)
     
         res_file = open(''.join([fileName, "_results.txt"]), "w")
         writeIterVarValues(res_file,  res_solver["Model"])
 
 
-def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options):
+def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options, solv_options):
     """ writes variable values and results of converged samples into files
     
     Args:
@@ -51,10 +52,11 @@ def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options):
         :dict_options:      dictionary with user specified settings
         :res_solver:        dictionary with solver output
         :sampling_options:  dictionary with sampling options
+        :solv_options:      dictionary with user specified solver settings
         
     """
     
-    fileName = getFileName(dict_options)
+    fileName = getFileName(dict_options, solv_options)
     sample_file = open(''.join([fileName, 
                                 "_sample_minf_", str(i), "_",
                                 sampling_options["sampling method"],
@@ -63,7 +65,7 @@ def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options):
     writeIterVarValues(sample_file,  sample)
 
     
-def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options):
+def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options, solv_options):
     """ writes variable values and results of converged samples into files
     
     Args:
@@ -71,12 +73,13 @@ def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options):
                             values
         :i:                 number of converged sample as integer
         :dict_options:      dictionary with user specified settings
+        :solv_options:      dictionary with user specified solver settings
         :res_solver:        dictionary with solver output
         :sampling_options:  dictionary with sampling options
         
     """
     
-    fileName = getFileName(dict_options)
+    fileName = getFileName(dict_options, solv_options)
     sample_file = open(''.join([fileName, 
                                 "_sample_", str(i), "_",
                                 sampling_options["sampling method"],
@@ -87,22 +90,24 @@ def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options):
     writeIterVarValues(sample_file,  res_solver["Model"])
 
 
-def writeResultsAnalytics(dict_options, res_solver):
+def writeResultsAnalytics(dict_options, res_solver, solv_options):
     """ writes additional iteration information to file res_file
     
     Args:
         :dict_options:          dictionary with user specified settings
+        :solv_options:          dictionary with user specified solver settings
         :res_solver:            dictionary with solver output
         
     """
     if res_solver != []:
-        fileName = getFileName(dict_options)
+        fileName = getFileName(dict_options, solv_options)
         res_file = open(''.join([fileName,"_analysis.txt"]), "w")
         writeSolverOutput(res_file, res_solver)
+        
         writeFunctionLegend(res_file, res_solver["Model"])
         writeFunctionTable(res_file, res_solver)
     
-
+    
 def writeRestructuringSettings(res_file, dict_options):
     """ writes Restructuring settings to file res_file
     
@@ -171,16 +176,18 @@ def writeFunctionTable(res_file, res_solver):
     model = res_solver["Model"]
     blockID = model.getBlockID()    
     exitflag = getQuantityForFunction(res_solver["Exitflag"], blockID)
+    condNo = getQuantityForFunction(res_solver["CondNo"], blockID)
     iterNo = getQuantityForFunction(res_solver["IterNo"], blockID)
-    funVal = model.getFunctionValues()
+    funVal = model.getPermutedFunctionValues()
     
     res_file.write(" ****************** Table with Function Results ****************** \n\n") 
-    res_file.write("GLbID  BlockID  Exitflag  IterNo  Residual\n") 
+    res_file.write("GLbID  BlockID  Exitflag  CondNo  IterNo  Residual\n") 
     
     for i in range(0, len(model.fSymbolic)):
-        res_file.write("%s  %s  %s  %s  %s\n"%(i, 
+        res_file.write("%s  %s  %s  %s  %s  %s\n"%(i, 
                                                blockID[i], 
-                                               exitflag[i], 
+                                               exitflag[i],
+                                               condNo[i],
                                                iterNo[i], 
                                                funVal[i]))
 
@@ -215,16 +222,17 @@ def writeSolverOutput(res_file, res_solver):
     
     res_file.write(" ****************** Solver Output ****************** \n\n") 
     res_file.write("Iteration number: %s\n"%(res_solver["IterNo_tot"]))
-    res_file.write("Total Residual: %s\n\n"%(res_solver["Residual"])) 
+    res_file.write("Total Residual: %s\n"%(res_solver["Residual"])) 
+    #res_file.write("Condition Number: %s\n\n"%(res_solver["Model"].getPermutedAndScaledConditionNumber())) 
 
 
-def getFileName(dict_options):
+def getFileName(dict_options, solv_options):
     """ returns file name as string due to the chosen restructuring methods
         by the user stored in dict_options.
     
     Args:
         :dict_options:      dictionary with user specified settings
-     
+        :solv_options:      dictionary with user specified solver settings
     Return:                 string with text file name
     
     """
@@ -238,8 +246,15 @@ def getFileName(dict_options):
     if dict_options["scaling"] =='MC77': name = ''.join([name,'_MC77'])
     if dict_options["scaling"] =='Inf RowSca and Mean ColSca': name = ''.join([name,'_InfMean'])
     if dict_options["scaling"] =='Inf RowSca and gMean ColSca': name = ''.join([name,'_InfgMean'])
-    if dict_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
-    if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
-    if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
+    if dict_options["scaling"] != 'None':
+        if dict_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
+        if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
+        if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
+    if dict_options["decomp"] =='None': name = ''.join([name, '_org'])
+    if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
+    if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', solv_options["mode"]])
+    if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', solv_options["mode"]])
+    if solv_options["solver"]=='TNC': name = ''.join([name,'TNC_', solv_options["mode"]])
+    if solv_options["solver"]=='ipopt': name = ''.join([name,'ipopt_', solv_options["mode"]])
     
     return name
