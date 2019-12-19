@@ -384,7 +384,7 @@ def prepareIncidence(J, ex, dict_options):
                     incidence[col_nz_index,k]=1.5
                 else: 
                     incidence[col_nz_index,k]=0.5
-                    incidence[k,k] = 1
+                    if not incidence[k,k] == 0: incidence[k,k] = 1
             if ex[k]<=0: incidence[col_nz_index,k]=0.5    
             
     return incidence
