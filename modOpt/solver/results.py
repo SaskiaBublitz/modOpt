@@ -250,7 +250,6 @@ def getFileName(dict_options, solv_options):
         if dict_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
         if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
         if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
-    if dict_options["decomp"] =='None': name = ''.join([name, '_org'])
     if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
     if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', solv_options["mode"]])
     if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', solv_options["mode"]])

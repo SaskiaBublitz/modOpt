@@ -21,7 +21,7 @@ Output
 __all__ = ['writeResults', 'plotIncidence', 'plotColoredIncidence']
 
 
-def writeResults(dict_equations, dict_variables, dict_options, res_conditionNumber = None):
+def writeResults(dict_equations, dict_variables, dict_options, solv_options, res_conditionNumber = None):
     """  write results from dictionaries into text files
     
     Args:
@@ -33,7 +33,7 @@ def writeResults(dict_equations, dict_variables, dict_options, res_conditionNumb
               
     """
 
-    fileName = getFileName(dict_options)
+    fileName = getFileName(dict_options, solv_options)
     res_file = open(''.join([fileName,".txt"]), "w") 
     
     writeUserSepcResults(res_file, dict_options, dict_equations, dict_variables, res_conditionNumber)
@@ -123,7 +123,6 @@ def getFileName(dict_options, solv_options):
         if dict_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
         if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
         if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
-    if dict_options["decomp"] =='None': name = ''.join([name, '_org'])
     if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
     if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', solv_options["mode"]])
     if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', solv_options["mode"]])

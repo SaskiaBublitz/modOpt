@@ -29,7 +29,7 @@ def doNewton(curBlock, solv_options, dict_options, dict_eq, dict_var):
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
     tol = numpy.linalg.norm(curBlock.getScaledFunctionValues())
-    #J, x, F = getLinearSystem(dict_options, curBlock)
+    if numpy.isnan(tol): return -1, iterNo # nan
 
     while not tol <= FTOL and iterNo < iterMax:
         J, x, F = getLinearSystem(dict_options, curBlock)
@@ -44,7 +44,7 @@ def doNewton(curBlock, solv_options, dict_options, dict_eq, dict_var):
         if numpy.isnan(tol): return -1, iterNo
         
     if iterNo == iterMax and tol > FTOL: return 0, iterNo
-    if numpy.isnan(tol): return -1, iterNo # nan or inf value
+
     else: return 1, iterNo
 
  
