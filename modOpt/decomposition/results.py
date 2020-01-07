@@ -3,10 +3,10 @@
 Import packages
 ***************************************************
 """
-import platform
-if platform.system() != 'Windows': 
-    import matplotlib
-    matplotlib.use('Agg')
+#import platform
+#if platform.system() != 'Windows': 
+#    import matplotlib
+#    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cl
 import numpy
@@ -21,7 +21,7 @@ Output
 __all__ = ['writeResults', 'plotIncidence', 'plotColoredIncidence']
 
 
-def writeResults(dict_equations, dict_variables, dict_options, res_conditionNumber = None):
+def writeResults(dict_equations, dict_variables, dict_options, solv_options, res_conditionNumber = None):
     """  write results from dictionaries into text files
     
     Args:
@@ -33,7 +33,7 @@ def writeResults(dict_equations, dict_variables, dict_options, res_conditionNumb
               
     """
 
-    fileName = getFileName(dict_options)
+    fileName = getFileName(dict_options, solv_options)
     res_file = open(''.join([fileName,".txt"]), "w") 
     
     writeUserSepcResults(res_file, dict_options, dict_equations, dict_variables, res_conditionNumber)
@@ -99,19 +99,36 @@ def writeUserSepcResults(res_file, dict_options, dict_eq, dict_var, res_condNo=N
         writeCondNo(res_file, res_condNo, dict_options)
 
 
-def getFileName(dict_options):
-    """ creates name for text file
+def getFileName(dict_options, solv_options):
+    """ returns file name as string due to the chosen restructuring methods
+        by the user stored in dict_options.
     
     Args:
-        :dict_options:    dictionary with user specified settings  
+        :dict_options:      dictionary with user specified settings
+        :solv_options:      dictionary with user specified solver settings
+    Return:                 string with text file name
     
-    Return:               file name as string
-        
-    """  
+    """
+    
     name = dict_options["fileName"]
+    
     if dict_options["decomp"] =='None': name = ''.join([name, '_org'])
     if dict_options["decomp"] =='DM': name = ''.join([name,'_DM'])
     if dict_options["decomp"] =='BBTF': name = ''.join([name,'_BBTF'])
+    if dict_options["scaling"] =='MC29': name = ''.join([name,'_MC29'])
+    if dict_options["scaling"] =='MC77': name = ''.join([name,'_MC77'])
+    if dict_options["scaling"] =='Inf RowSca and Mean ColSca': name = ''.join([name,'_InfMean'])
+    if dict_options["scaling"] =='Inf RowSca and gMean ColSca': name = ''.join([name,'_InfgMean'])
+    if dict_options["scaling"] != 'None':
+        if dict_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
+        if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
+        if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
+    if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
+    if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', solv_options["mode"]])
+    if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', solv_options["mode"]])
+    if solv_options["solver"]=='TNC': name = ''.join([name,'TNC_', solv_options["mode"]])
+    if solv_options["solver"]=='ipopt': name = ''.join([name,'ipopt_', solv_options["mode"]])
+    
     return name
 
 
@@ -262,7 +279,7 @@ def plotIncidence(model, dict_options, plot_options):
     plt.savefig(''.join([fileName, "_incidence.pdf"]), bbox_inches='tight',dpi=1000)
 
 
-def plotColoredIncidence(res_solver, dict_options, plot_options):
+def plotColoredIncidence(res_solver, dict_options, plot_options, solv_options):
     """ plot incidence matrix of non linear algebraic system with solver results.
     
     blue  = (sub) system solved
@@ -273,10 +290,11 @@ def plotColoredIncidence(res_solver, dict_options, plot_options):
     Args:
         :res_solver:        dictionary with resutls from solver
         :dict_options:      dictionary with user specified settings
+        :solv_options:      dictionary with user specified solver settings
         :plot_options:      dictionary with user specified plot settings
     
     """
-            
+    if res_solver == []: return False
     J, ex, model = getResults(res_solver) 
     
     incidence = prepareIncidence(J, ex, dict_options)
@@ -286,7 +304,7 @@ def plotColoredIncidence(res_solver, dict_options, plot_options):
     plot_options["lineWidth"] = 0.1
     plot_options["fontSize"] = int(210/J.shape[0])
     
-    plotPDF(incidence, model, dict_options, plot_options)
+    plotPDF(incidence, model, dict_options, plot_options, solv_options)
     
 
 def getResults(res_solver):
@@ -384,13 +402,13 @@ def prepareIncidence(J, ex, dict_options):
                     incidence[col_nz_index,k]=1.5
                 else: 
                     incidence[col_nz_index,k]=0.5
-                    incidence[k,k] = 1
+                    if not incidence[k,k] == 0: incidence[k,k] = 1
             if ex[k]<=0: incidence[col_nz_index,k]=0.5    
             
     return incidence
 
 
-def plotPDF(incidence, model, dict_options, plot_options):
+def plotPDF(incidence, model, dict_options, plot_options, solv_options):
     """ plots colored incidence matrix and stores it in a PDF
     
     Args:
@@ -399,9 +417,10 @@ def plotPDF(incidence, model, dict_options, plot_options):
         :model:             object of type model
         :dict_options:      dictionary with user specificed settings
         :plot_options:      dictionary with plot style settings
+        :solv_options:      dictionary with user specified solver settings
     
     """
-    fileName = getFileName(dict_options)
+    fileName = getFileName(dict_options, solv_options)
     xSymbolicPerm = [model.xSymbolic[i] for i in model.colPerm]
 
     

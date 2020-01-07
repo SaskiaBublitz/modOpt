@@ -28,24 +28,23 @@ def doNewton(curBlock, solv_options, dict_options, dict_eq, dict_var):
     iterNo = 0
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
-    tol = 1e6
-    
-    J, x, F = getLinearSystem(dict_options, curBlock)
-    
-    while tol > FTOL and iterNo < iterMax:
+    tol = numpy.linalg.norm(curBlock.getScaledFunctionValues())
+    if numpy.isnan(tol): return -1, iterNo # nan
+
+    while not tol <= FTOL and iterNo < iterMax:
+        J, x, F = getLinearSystem(dict_options, curBlock)
         dx = - numpy.dot(numpy.linalg.inv(J), F)
         x = x + dx
         
         updateIterVars(dict_options, curBlock, x)
         scaleBlockInIteration(dict_options, curBlock, dict_eq, dict_var)
-        J, x, F = getLinearSystem(dict_options, curBlock)
         
         iterNo = iterNo + 1
-        tol = numpy.linalg.norm(curBlock.getPermutedFunctionValues())
+        tol = numpy.linalg.norm(curBlock.getScaledFunctionValues())
         if numpy.isnan(tol): return -1, iterNo
         
     if iterNo == iterMax and tol > FTOL: return 0, iterNo
-    
+
     else: return 1, iterNo
 
  

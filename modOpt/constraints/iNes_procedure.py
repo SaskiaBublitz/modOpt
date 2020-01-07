@@ -158,7 +158,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
                         output["noSolution"] = failedSystem
-                        output["xAlmostEqual"] = False     
+                        output["xAlmostEqual"] = False 
                         return output
 
             xNewBounds[j] = y
@@ -986,7 +986,8 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx,
     """
     
     relEpsX = dict_options["relTolX"]
-    precision = getPrecision(xBounds)
+    absEpsX = dict_options["absTolX"]
+    #precision = getPrecision(xBounds)
 
     for curMonZone in monotoneZone: #TODO: Parallelizing
         xBounds[i] = curMonZone 
@@ -996,7 +997,7 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx,
         
         if curReducedInterval !=[] and reducedIntervals != []:
             reducedIntervals.append(curReducedInterval)
-            reducedIntervals = joinIntervalSet(reducedIntervals, relEpsX, precision)
+            reducedIntervals = joinIntervalSet(reducedIntervals, relEpsX, absEpsX)
         elif curReducedInterval !=[]: reducedIntervals.append(curReducedInterval)
         
     return reducedIntervals
@@ -1254,7 +1255,7 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
     tmax = dict_options["tmax"]
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
-            
+    maxIvNo = dict_options["maxIvNo"]   
     monIncreasingZone = []
     monDecreasingZone = []
     interval = [xBounds[i]] 
@@ -1262,7 +1263,7 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
     timeout = False
     t0 = time.clock()
     
-    while interval != [] and timeout == False: #and dfdXconst == False:  
+    while interval != [] and timeout == False and len(interval) < maxIvNo: #and dfdXconst == False:  
         
         curIntervals = []
                
@@ -1280,11 +1281,13 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
             monDecreasingZone = addIntervaltoZone(newMonDecreasingZone, 
                                                           monDecreasingZone, dict_options)
        
-            curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
-        
+            #curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
+            curIntervals.append(newIntervals)
+        curIntervals = removeListInList(curIntervals)
         #if interval == curIntervals: break
         interval = checkIntervalWidth(curIntervals, absEpsX, relEpsX)       
         timeout = checkTimeout(t0, tmax, timeout)
+        if timeout: interval = joinIntervalSet(interval, relEpsX, absEpsX)
             
     return monIncreasingZone, monDecreasingZone, interval
 
@@ -1480,7 +1483,8 @@ def addIntervaltoZone(newInterval, monotoneZone, dict_options):
     
     absEpsX = dict_options["absTolX"]
     relEpsX = dict_options["relTolX"] 
-        
+    red_disconti = 0.1   # To ensure that interval is not joined when discontinuity is present
+    
     if newInterval != []:
         
         if len(newInterval) > 1:
@@ -1494,7 +1498,7 @@ def addIntervaltoZone(newInterval, monotoneZone, dict_options):
             for i in range(0, len(newInterval)):
                 monotoneZone.append(newInterval[i])
             
-            return joinIntervalSet(monotoneZone, relEpsX, absEpsX)
+            return joinIntervalSet(monotoneZone, relEpsX*red_disconti, absEpsX*red_disconti)
     
     return monotoneZone
 
@@ -1538,7 +1542,7 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
                     ivSet.remove(ivSet[i])
                     ivSet.remove(iv)
                     break
-                elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX*1e-5, absEpsX*1e-5): 
+                elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX, absEpsX): 
                     newIvSet.append(mpmath.mpi(iv.a, ivSet[i].b))
                     ivSet.remove(ivSet[i])
                     ivSet.remove(iv)

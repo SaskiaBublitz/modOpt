@@ -28,30 +28,42 @@ def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
     """
     # TODO: Add scaling
     #if dict_options["scaling"] != 'None': 
-    #    x = curBlock.getScaledIterVarValues()
+    #    x0 = curBlock.getScaledIterVarValues()
     #    xBounds = curBlock.getScaledIterVarBoundValues()
     #else: 
     x0 = curBlock.getIterVarValues()
-    xSym = curBlock.getSymbolicVariablesOfBlock()
     xBounds = curBlock.getIterVarBoundValues()
     cons = []
     
     for glbID in curBlock.rowPerm:
-        cons.append(getConstraintDictionary(glbID, curBlock, getSymbolicFunctions, xSym))
+        cons.append({'type': 'eq', 'fun': getEqualityConstraint(curBlock, glbID)})
         
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
     minMethod = solv_options["solver"]
     
-    res = scipy.optimize.minimize(objective, 
-                     x0, 
-                     method= minMethod, #'trust-constr',
-                     options = {'maxiter': iterMax},
-                     tol =FTOL,
-                     bounds = xBounds,
-                     jac=None, 
-                     constraints = cons)
-
+    if solv_options["mode"]==1: 
+        args = (curBlock, 0)
+        res = scipy.optimize.minimize(eval_m, 
+                                      x0,
+                                      args= args,
+                                      jac = eval_grad_m,
+                                      method= minMethod, #'trust-constr',
+                                      options = {'maxiter': iterMax, 'ftol': FTOL, 'disp': True},
+                                      tol = None,
+                                      bounds = xBounds,
+                                      constraints = ())    
+    
+    if solv_options["mode"]==2:
+    
+        res = scipy.optimize.minimize(objective, 
+                                      x0, 
+                                      method= minMethod, #'trust-constr',
+                                      ooptions = {'maxiter': iterMax, 'ftol': FTOL},
+                                      bounds = xBounds,
+                                      jac=None, 
+                                      constraints = cons)
+    #print res.x
     for i in range(0, len(res.x)):
         curBlock.x_tot[curBlock.colPerm[i]]=res.x[i]
 
@@ -59,6 +71,46 @@ def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
     
     else: return 1, res.nit   
 
+
+def eval_m(x, *args): 
+    curBlock = args[0]
+    curBlock.x_tot[curBlock.colPerm] = x
+    f = curBlock.getFunctionValues()
+    m = 0
+
+    for fi in f: m += fi**2.0 
+             
+    return m 
+
+
+def eval_grad_m(x, *args): 
+    curBlock = args[0]
+    #curBlock.x_tot[curBlock.colPerm] = x
+    grad_m = numpy.zeros(len(x))
+    
+    f = curBlock.getFunctionValues()
+    jac = curBlock.getPermutedJacobian()
+    
+    for j in range(0, len(x)):
+        for i in range(0, len(f)):
+            grad_m[j] += 2 * f[i] * jac[i, j]
+            
+    return grad_m
+
+
+def getEqualityConstraint(curBlock, i):
+    """ returns the ith equation of the NLE as equality constraint of an 
+    optimization problem.
+      
+        Args:
+        :curBlock:        instance of class block
+        :i:               integer with global index of current equation
+        
+        Return:     lambda function with ith equality constraint
+        
+    """
+    return lambda x: getSymbolicFunctions(x, curBlock, i)
+    
     
 def objective(x):
     """ Pseudo objective to solve NLE
@@ -70,52 +122,14 @@ def objective(x):
     
     return 0.0    
 
-
-def getEqualityConstraint(i, curBlock, getSymbolicFunctions, *args):
-    """ returns the ith equation of the NLE as equality constraint of an 
-    optimization problem.
-    
-    Args:
-        :i:                     integer with global index of equation
-        :curBlock:              instance of class block
-        :getSymbolicFunctions:  function defined by the UDLS with equation system
-        :*args:                 flexible arguments that equals here the symbolic
-                                iteration variables
-    Return:
-        :c[i]:                  ith equality constraint
-        
-    """
-    
-    c = getSymbolicFunctions(curBlock, *args)
-    return c[i]
-
-
-def getConstraintDictionary(i, curBlock, getSymbolicFunctions, *args):
-    """ returns equality constraint as dictionary. This formate used in the 
-    scipy.optimize.minimize function.
-    
-    Args:
-        :i:                     integer with global index of equation
-        :curBlock:              instance of class block
-        :getSymbolicFunctions:  function defined by the UDLS with equation system
-        :*args:                 flexible arguments that equals here the symbolic
-                                iteration variables
-                                
-    Return:                     dictionary with equality constraint
-    
-    """
-    return {'type': 'eq', 'fun': lambda x: getEqualityConstraint(i, curBlock,
-                                                                 getSymbolicFunctions, 
-                                                                 x)}
-
-    
-def subscribeXwithIterVars(curBlock, x):
-    """ writes symbolic block iteration variables x to a list of all iteration
+   
+def subscribeXwithIterVars(x, curBlock):
+    """ writes lambda block iteration variables x to a list of all iteration
     variables. This needs to be done to create the related equality constraints.
     
     Args:
         :curBlock:              instance of class block
-        :x:                     array in sympy logic with symbolic iteration variables
+        :x:                     vector with iteration variables from lambda function
     
     Return:
         :xWithIterVars:         numpy array with symbolic block iteration variables and
@@ -128,18 +142,20 @@ def subscribeXwithIterVars(curBlock, x):
     return xWithIterVars    
  
     
-def getSymbolicFunctions(curBlock, x):
+def getSymbolicFunctions(x, curBlock, i):
     """ initializes block attribute allConstraints, which is from type function, 
     with symbolic block iteration variables and float values for all other 
     iteration variables and parameter.
                  
     Args:
         :curBlock:       instance of class block
-        :x:              array in sympy logic with symbolic iteration variables
+        :x:              vector with iteration variables from lambda function
+        :i:              global id of current equation
     
-    Return:              symbolic equation system in sympy logic
+    Return:              ith equation for lambda function
                                 
     """
+
+    xWithIterVars = subscribeXwithIterVars(x, curBlock)
     
-    xWithIterVars = subscribeXwithIterVars(curBlock, x)
-    return curBlock.allConstraints(xWithIterVars, curBlock.parameter)    
+    return curBlock.allConstraints(xWithIterVars, curBlock.parameter)[i]  

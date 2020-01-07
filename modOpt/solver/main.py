@@ -15,6 +15,7 @@ import parallelization
 import time
 import scipyMinimization
 
+
 """
 ****************************************************
 Main that starts solving procedure in decomposed NLE
@@ -22,7 +23,7 @@ Main that starts solving procedure in decomposed NLE
 """
 __all__ = ['solveSamples', 'solveSystem_NLE']
 
-def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_option):
+def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_options):
     """ solve samples from array sampleData and returns number of converged samples. The converged
     samples and their solutions are written into text files.
 
@@ -40,10 +41,19 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
         :converged:         integer with number of converged runs
        
     """
+    
     t = -1
+    sampleNo = sampling_options['sampleNo_min_resiudal']
     if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
+    
+    if len(sampleData) > sampleNo: 
+        sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
+        model.stateVarValues = [sampleData[0]]
+        results.writeSampleWIthMinResidual(model, 0, dict_options, sampling_options)
+
     if not solv_options["Parallel"]:
         converged = 0
+                
         for k in range(0, len(sampleData)):
             curSample = sampleData[k]
             model.stateVarValues = [curSample]
@@ -53,16 +63,42 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
             # Results:  
             if not model.failed:
                 converged +=1
-                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_option)
+                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_options)
     else:
         converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
-                                                         dict_variables, dict_options, solv_options, sampling_option)
+                                                         dict_variables, dict_options, solv_options, sampling_options)
     if dict_options['timer'] == True: 
         toc = time.time() 
         t = toc - tic
     return converged, t
 
 
+def get_samples_with_n_lowest_residuals(model, n, sampleData):
+    """ tests the first n samples that have the lowest function residuals from 
+    sampleData
+    
+    Args:
+        :model:             instance of class model
+        :n:                 integer with real number of tested samples
+        :sampleData:        numpy array sampling points 
+    
+    """
+    
+    residuals = []
+    
+    # Calc residuals:
+    for curSample in sampleData:
+        residuals.append(sum(abs(numpy.array(model.fSymCasadi(*curSample)))))
+    
+    # Sort samples by minimum residuals
+    residuals = numpy.array(residuals)
+    sample_index = numpy.argsort(residuals)
+    residuals = residuals[sample_index]
+    print "Function residuals of sample points:\t", residuals[0:n]
+    
+    return sampleData[sample_index][0:n]
+    
+      
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
     """ solve nonlinear algebraic equation system (NLE)
     
@@ -89,8 +125,16 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
         return res_solver
     
     if dict_options["decomp"] == 'BBTF':
-        #TODO: Add Nested procuedure
-        return []
+        i=0
+        res_solver=[]
+
+        while not numpy.linalg.norm(model.getFunctionValues()) <= solv_options["FTOL"] and i <= solv_options["iterMax_tear"]:
+            res_solver = solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables)
+            updateToSolver(res_solver, dict_equations, dict_variables)
+            model = res_solver["Model"] 
+            print numpy.linalg.norm(model.getFunctionValues()) 
+            i+=1
+        return res_solver
     
     
 def updateToSolver(res_solver, dict_equations, dict_variables):
@@ -152,16 +196,24 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
             doNewton(curBlock, b, solv_options, dict_options, res_solver, 
                      dict_equations, dict_variables)
         
-        if solv_options["solver"] == 'SLSQP' or solv_options["solver"] == 'trust-constr':
+        if solv_options["solver"] in ['SLSQP', 'trust-constr', 'TNC']:
             doScipyOptiMinimize(curBlock, b, solv_options, dict_options, 
                                 res_solver, dict_equations, dict_variables)
+            
+        if solv_options["solver"] == 'ipopt':
+            doipoptMinimize(curBlock, b, solv_options, dict_options, 
+                                 res_solver, dict_equations, dict_variables)
 
         # TODO: Add other solvers, e.g. ipopt
 
         if res_solver["Exitflag"][b] < 1: 
             model.failed = True
+            
+        # Update model    
+        model.stateVarValues[0] = curBlock.x_tot
+    
     # Write Results:         
-    putResultsInDict(curBlock.x_tot, model, res_solver)
+    putResultsInDict(model, res_solver)
 
     return res_solver 
 
@@ -200,6 +252,7 @@ def createSolverResultDictionary(blockNo):
     res_solver = {}
     res_solver["IterNo"] = numpy.zeros(blockNo)
     res_solver["Exitflag"] = numpy.zeros(blockNo)
+    res_solver["CondNo"] = numpy.zeros(blockNo)
     
     return res_solver
 
@@ -222,7 +275,7 @@ def getInitialScaling(dict_options, model, curBlock, dict_equations, dict_variab
     if dict_options["scaling procedure"] =='tot_init': # scaling of complete decomposed system
             curBlock.setScaling(model)
         
-    elif dict_options["scaling procedure"] =='block_init': # blockwise scaling
+    elif dict_options["scaling procedure"] =='block_init' or dict_options["scaling procedure"] =='block_iter': # blockwise scaling
             mos.scaleSystem(curBlock, dict_equations, dict_variables, dict_options)   
 
 
@@ -245,12 +298,14 @@ def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations
         exitflag, iterNo = newton.doNewton(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo
         res_solver["Exitflag"][b] = exitflag
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1    
-
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
 
 def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
     """ starts minimization procedure from scipy
@@ -270,23 +325,50 @@ def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dic
         exitflag, iterNo = scipyMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo
         res_solver["Exitflag"][b] = exitflag
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
         print "Error in Block ", b
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1 
+        res_solver["CondNo"][b] = 'nan'
+        
     
+def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+    """ starts minimization procedure from scipy
+    
+    Args:
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
+        
+    """
+    
+    try:
+        import ipoptMinimization
+        exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
+        res_solver["IterNo"][b] = iterNo-1
+        res_solver["Exitflag"][b] = exitflag
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
+    except: 
+        print "Error in Block ", b
+        res_solver["IterNo"][b] = 0
+        res_solver["Exitflag"][b] = -1
+        res_solver["CondNo"][b] = 'nan'
 
-def putResultsInDict(x, model, res_solver):
+
+def putResultsInDict(model, res_solver):
     """ updates model and results dictionary
     Args:
-        :x:               numpy array with final iteration variable values
         :model:           object of type Model
         :res_solver:      dictionary with results from solver    
         
     """
-    
-    model.stateVarValues[0] = x
     res_solver["Model"] = model
     res_solver["Residual"] = model.getFunctionValuesResidual()
     res_solver["IterNo_tot"] = sum(res_solver["IterNo"])

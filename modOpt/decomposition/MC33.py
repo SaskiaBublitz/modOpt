@@ -35,12 +35,14 @@ def doMC33(A, itype=None):
     
     # Invoke MC33:   
     nd, rowPermFortran, colPermFortran, blocks, [nzRows,nzCols,borderWidth], ierr = MC33AD.mc33ad(m,n,nzi,a,irn,jcn,itype)
-    
+    blocks = list(blocks)
+    blocks = getBlockBorders(m, blocks, borderWidth)
+
     # Create Dictionary 
-    output = createDict([blocks, rowPermFortran - 1, colPermFortran - 1,
+    output = createDict([blocks, list(rowPermFortran - 1), list(colPermFortran - 1),
                        borderWidth, A[rowPermFortran - 1,  colPermFortran - 1],
                        nd, nzRows, nzCols, itype, ierr], [
-            'Block Borders',
+            'Number of Row Blocks',
             'Row Permutation',
             'Column Permutation',
             'Border Width',
@@ -53,6 +55,16 @@ def doMC33(A, itype=None):
             ])
     
     return output
+
+def getBlockBorders(dim, blocks, borderWidth):
+    
+    blockborders = list(set(blocks[0:len(blocks)-borderWidth]))
+    blockborders.insert(0,0)
+
+    blockborders.append(max(blockborders)+borderWidth)
+
+    return blockborders
+        
 
 
 def createDict(X, LABEL):
