@@ -251,9 +251,9 @@ def getFileName(dict_options, solv_options):
         if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
         if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
     if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
-    if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', solv_options["mode"]])
-    if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', solv_options["mode"]])
-    if solv_options["solver"]=='TNC': name = ''.join([name,'TNC_', solv_options["mode"]])
-    if solv_options["solver"]=='ipopt': name = ''.join([name,'ipopt_', solv_options["mode"]])
+    if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', str(solv_options["mode"])])
+    if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', str(solv_options["mode"])])
+    if solv_options["solver"]=='TNC': name = ''.join([name,'TNC_', str(solv_options["mode"])])
+    if solv_options["solver"]=='ipopt': name = ''.join([name,'ipopt_', str(solv_options["mode"])])
     
     return name

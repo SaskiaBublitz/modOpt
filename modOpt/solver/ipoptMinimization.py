@@ -66,9 +66,9 @@ def minimize(curBlock, solv_options, dict_options, dict_equations, dict_variable
     pyipopt.set_loglevel(0)
     
     nlp.str_option('print_user_options', 'no')
-    nlp.int_option('print_level', 4)    
+    nlp.int_option('print_level', 5)    
     nlp.str_option('warm_start_init_point','yes') # try: yes
-    nlp.str_option('linear_solver', 'ma97')     # ma57 oder ma77, ma86, ma97, mumps
+    nlp.str_option('linear_solver', 'ma57')     # ma57 oder ma77, ma86, ma97, mumps
     nlp.int_option('ma57_pivot_order', 4)
     nlp.str_option('ma57_automatic_scaling', 'yes')
     nlp.num_option('mu_init', 1e-10)    # 1e-10
