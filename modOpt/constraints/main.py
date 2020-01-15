@@ -6,7 +6,6 @@ Import packages
 ***************************************************
 """
 import time
-from modOpt.decomposition.dM  import doDulmageMendelsohn
 import copy
 import parallelization
 import iNes_procedure
@@ -36,16 +35,8 @@ def reduceVariableBounds(model, options):
     
     res_solver = {}
     
-    if options['method'] == 'complete':
-        model.blocks = [range(0, len(model.xSymbolic))]       
-    if options['method'] == 'partial':
-        # Decomposition:
-        jacobian = model.getJacobian()
-        dict_permutation = doDulmageMendelsohn(jacobian)
-        model.updateToPermutation(dict_permutation["Row Permutation"],
-                                     dict_permutation["Column Permutation"],
-                                     dict_permutation["Number of Row Blocks"])
-    res_solver["Model"] = model
+    model.blocks = [range(0, len(model.xSymbolic))]       
+    res_solver["Model"] = copy.deepcopy(model)
     
     if options['timer'] == True: 
         tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
@@ -137,12 +128,12 @@ def doIntervalNestingNew(res_solver, dict_options):
     
     model = res_solver["Model"]
     iterNo = 0
-    xBounds = model.xBounds
-    xSymbolic = model.xSymbolic
-    parameter = model.parameter
-    blocks = model.blocks
+    #xBounds = model.xBounds
+    #xSymbolic = model.xSymbolic
+    #parameter = model.parameter
+    #blocks = model.blocks
     newModel = copy.deepcopy(model)
-    dimVar = len(xSymbolic)
+    #dimVar = len(xSymbolic)
     #boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
     functions = []
     
@@ -157,20 +148,21 @@ def doIntervalNestingNew(res_solver, dict_options):
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
-            output = parallelization.reduceMultipleXBounds(xBounds, model, blocks, dimVar,
-                                        xSymbolic, parameter, dict_options)
-               
+           # output = parallelization.reduceMultipleXBounds(xBounds, model, blocks, dimVar,
+           #                             xSymbolic, parameter, dict_options)
+           print "aff"
+           
         else: 
-            output = iNes_procedure.reduceIntervals(functions, xBounds[0], dict_options)
+            output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_options)
             #output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
             #                                              model, dimVar, blocks, dict_options)
         
         xAlmostEqual = output["xAlmostEqual"]
-        newXBounds = output["newXBounds"]
+        #newXBounds = output["newXBounds"]
         
         if output.has_key("noSolution"):
                        
-            newModel.setXBounds(xBounds)
+            newModel.setXBounds(model.xBounds)
             newModel.failed = True
  
             res_solver["Model"] = newModel
@@ -179,16 +171,16 @@ def doIntervalNestingNew(res_solver, dict_options):
             return True
         
         elif xAlmostEqual.all():
-            newModel.setXBounds(xBounds)
+            newModel.setXBounds(model.xBounds)
             res_solver["Model"] = newModel
             res_solver["iterNo"] = iterNo
             
             return True
           
-        else: xBounds = newXBounds
+        else: continue
         
     # Terminates with reaching iterMax:
-    newModel.setXBounds(xBounds)
+    newModel.setXBounds(model.xBounds)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
     
