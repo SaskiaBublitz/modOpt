@@ -47,7 +47,7 @@ def reduceVariableBounds(model, options):
         return res_solver
         
     else:
-        doIntervalNesting(res_solver, options)
+        doIntervalNestingNew(res_solver, options)
         res_solver["time"] = []
         return res_solver
 

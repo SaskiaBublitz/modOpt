@@ -48,14 +48,15 @@ def reduceMultipleXBounds(model, functions, dict_options):
 
     for k in range(0, len(model.xBounds)):
         
-        if not dict_options["Parallel Variables"]:
-            if dict_options['method'] == 'b_tight':
-                output = reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)    
-            else:
+        if dict_options['method'] == 'b_tight':
+            output = reduceXbounds_b_tight(functions, model.xBounds[k], dict_options) # TODO: Parallelize
+
+        else:
+            if not dict_options["Parallel Variables"]:
                 output = reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
                                   model.blocks, dict_options)
-        else: 
-            output = parallelization.reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
+            else: 
+                output = parallelization.reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
                                   model.blocks, dict_options)
         
         intervalsPerm = output["intervalsPerm"]
@@ -70,10 +71,13 @@ def reduceMultipleXBounds(model, functions, dict_options):
             x[model.colPerm]  = numpy.array(intervalsPerm[m])           
             newXBounds.append(x)
               
-    model.xBounds = newXBounds
+    
     
     if newXBounds == []: 
         results["noSolution"] = saveFailedIntervalSet
+    
+    else:
+        model.xBounds = newXBounds    
         
     results["xAlmostEqual"] = xAlmostEqual
     return results
@@ -96,11 +100,13 @@ def reduceXbounds_b_tight(functions, xBounds, dict_options):
     
     varBounds = {}
             
-    for k in range(0, len(functions)):
+    for k in range(0, len(functions)): #TODO: Parallel
         f = functions[k]
         if dict_options["Debug-Modus"]: print k
-
-        reduceXBounds_byFunction(f, xBounds[f. glb_ID], dict_options, varBounds)
+        if not dict_options["Parallel Variables"]:
+            reduceXBounds_byFunction(f, xBounds[f.glb_ID], dict_options, varBounds)
+        else:
+            parallelization.reduceXBounds_byFunction(f, xBounds[f.glb_ID], dict_options, varBounds)
         
         if varBounds.has_key('Failed_xID'):
             return get_failed_output(f, varBounds)
@@ -168,9 +174,13 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
                         
     """    
     
-    for x_id in range(0, len(f.glb_ID)): # get g(x) and b(x),y
+    for x_id in range(0, len(f.glb_ID)): # get g(x) and b(x),y 
         
-        b = get_tight_bBounds(f, x_id, xBounds, dict_options)
+        if dict_options["Parallel b's"]:
+            b = parallelization.get_tight_bBounds(f, x_id, xBounds, dict_options)
+            
+        else:    
+            b = get_tight_bBounds(f, x_id, xBounds, dict_options) # TODO: Parallel
             
         if b == []: reduced_xBounds = [xBounds[x_id]]
         else:
@@ -210,6 +220,7 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     
     Args:
         :f:                 instance of class function
+        :xBounds:           list with variable bonunds in mpmath.mpi formate
         :x_id:              index (integer) of current variable bound that is reduced
         :dict_options:      dictionary with tolerance options
         
@@ -232,9 +243,9 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
         add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
                       copy.deepcopy(xBounds), b_min, b_max)
         
-        if b_min !=[] and b_max != []:
-            return mpmath.mpi(max(b_min), min(b_max))
-        else: return []
+    if b_min !=[] and b_max != []:
+        return mpmath.mpi(max(b_min), min(b_max))
+    else: return []
 
 
 def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_min, b_max):

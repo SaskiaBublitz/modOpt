@@ -11,13 +11,150 @@ import itertools
 from multiprocessing import Manager, Process #cpu_count
 from FailedSystem import FailedSystem
 
-__all__ = ['reduceMultipleXBounds', 'reduceXBounds']
+__all__ = ['reduceMultipleXBounds', 'reduceXBounds', 'get_tight_bBounds',
+           'reduceXBounds_byFunction']
 
 """
 ***************************************************
 Algorithm for parallelization in iNes procedure
 ***************************************************
 """
+def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
+    """ reduces all n bounds of variables (xBounds) that occur in a certain 
+    function f and stores it in varBounds.
+    
+    Args:
+        :f:             instance of class function
+        :xBounds:       list with n variable bounds
+        :varBounds:     dictionary with n reduced variable bounds. The key 
+                        'Failed_xID' is used to store a variable's global ID in
+                        case  a reduced interval is empty.
+                        
+    """    
+    CPU_count = dict_options["CPU count Variables"]
+    jobs = []
+    manager = Manager()
+    results = manager.dict()
+    done = numpy.zeros(len(f.glb_ID))
+    started = numpy.zeros(len(f.glb_ID))
+    
+    for x_id in range(0, len(f.glb_ID)): # get g(x) and b(x),y 
+        p = Process(target=reduceXBounds_byFunction_Worker, args=(f, x_id,
+                                                               xBounds,
+                                                               dict_options,
+                                                               results))
+        jobs.append(p)
+
+    startAndDeleteJobs(jobs, started, done, len(f.glb_ID), CPU_count)
+        
+    for x_id in results.keys():
+        iNes_procedure.store_reduced_xBounds(f, int(x_id), convertListToMpi(results[x_id]), varBounds)
+   
+     
+def reduceXBounds_byFunction_Worker(f, x_id, xBounds, dict_options, results):
+    """ contains work that can be done in parallel during the reduction of the 
+    each variable in a function
+    
+    Args:
+        :f:                 instance of class function
+        :x_id:              index (integer) of current variable bound that is 
+                            reduced
+        :xBounds:           list with variable bonunds in mpmath.mpi formate
+        :dict_options:      dictionary with tolerance options
+        :results:           dictionary that contains list with reduced variable bounds
+        
+    """     
+    
+    if dict_options["Parallel b's"]:
+        b = get_tight_bBounds(f, x_id, xBounds, dict_options)
+        
+    else:    
+        b = iNes_procedure.get_tight_bBounds(f, x_id, xBounds, dict_options)
+        
+    if b == []: 
+        results['%d' %x_id] = convertMpiToList(xBounds[x_id])
+    else:
+        intervals = iNes_procedure.reduce_x_by_gb(f.g_sym[x_id], f.dgdx_sym[x_id],
+                                                 b, f.x_sym, x_id,
+                                                 copy.deepcopy(xBounds),
+                                                 dict_options)            
+        results['%d' %x_id] = convertMpiToList(intervals)
+        
+    return True                                            
+                                 
+    
+def get_tight_bBounds(f, x_id, xBounds, dict_options):
+    """ returns tight b bound interval based on all variables y that are evaluated
+    separatly for all other y intervals beeing constant.
+    
+    Args:
+        :f:                 instance of class function
+        :x_id:              index (integer) of current variable bound that is reduced
+        :xBounds:           list with variable bonunds in mpmath.mpi formate
+        :dict_options:      dictionary with tolerance options
+        
+    Return:
+        b interval in mpmath.mpi formate and [] if error occured (check for complex b) 
+    
+    """
+    CPU_count = dict_options["CPU count b's"]
+    jobs = []
+    manager = Manager()
+    b_min = manager.dict()
+    b_max = manager.dict()
+    done = numpy.zeros(len(f.glb_ID))
+    started = numpy.zeros(len(f.glb_ID))
+
+    for y_id in range(0, len(f.glb_ID)): # get b(y)
+        p = Process(target=get_tight_bBounds_Worker, args=(f, y_id, x_id,
+                                                               xBounds,
+                                                               dict_options,
+                                                               b_min,
+                                                               b_max))
+        jobs.append(p)
+
+    startAndDeleteJobs(jobs, started, done, len(f.glb_ID), CPU_count)
+    
+    try: 
+        return mpmath.mpi(max(max([x for x in b_min.values() if x!=[]])), min(min([x for x in b_max.values() if x!=[]])))
+         
+    except:
+        return []
+
+
+def get_tight_bBounds_Worker(f, y_id, x_id, xBounds, dict_options, b_min, b_max):
+    """ contains work that can be done in parallel during the reduction of the 
+    bounds of b
+    
+    Args:
+        :f:                 instance of class function
+        :x_id:              index (integer) of current variable bound that is 
+                            reduced
+        :y_id:              index (integer) of current variable bound that is not
+                            constant and b is evaluated at.
+        :xBounds:           list with variable bonunds in mpmath.mpi formate
+        :dict_options:      dictionary with tolerance options
+        :b_min:             dictionary for lower bounds of b(y)
+        :b_max:             dictionary forupper bounds bof b(y)
+        
+    """ 
+    
+    cur_b_min = []
+    cur_b_max = []
+    if f.dbdx_sym[x_id][y_id] == 0: return False
+    incr_zone, decr_zone, nonmon_zone = iNes_procedure.get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
+                                                                     f.x_sym, 
+                                                                     y_id, 
+                                                                     copy.deepcopy(xBounds), 
+                                                                     dict_options)    
+    iNes_procedure.add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
+                  copy.deepcopy(xBounds), cur_b_min, cur_b_max)
+    
+    b_min['%d' %y_id] = cur_b_min
+    b_max['%d' %y_id] = cur_b_max
+    
+    return True
+
 
 def reduceMultipleXBounds(xBounds, model, blocks, dimVar,
                                         xSymbolic, parameter, dict_options):
