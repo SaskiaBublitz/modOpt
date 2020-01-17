@@ -204,12 +204,15 @@ def store_reduced_xBounds(f, x_id, reduced_interval, varBounds):
                             case  a reduced interval is empty.
                             
     """
+    
+    
     if not varBounds.has_key('%d' % f.glb_ID[x_id]): 
         varBounds['%d' % f.glb_ID[x_id]] = reduced_interval
     else: 
+        if f.glb_ID[x_id] == 33: print varBounds['%d' % f.glb_ID[x_id]]
         varBounds['%d' % f.glb_ID[x_id]] = reduceTwoIVSets(varBounds['%d' % f.glb_ID[x_id]],
                  reduced_interval)
-            
+    
     if varBounds['%d' % f.glb_ID[x_id]] == [] or varBounds['%d' % f.glb_ID[x_id]] == [[]]: 
                 varBounds['Failed_xID'] = x_id
                 
@@ -353,15 +356,19 @@ def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_max, b_min):
         :b_max:         list with maximun values of b(y) for different y of b(x,y)
         
     """
-    
+    cur_max = []
+    cur_min = []
     for interval in nonmon_zone:
         xBounds[i] = interval
         b_bounds = getBoundsOfFunctionExpression(b_sym, x_sym, xBounds)   
         
         if type(b_bounds) == mpmath.iv.mpc: continue        
-        
-        b_max.append(float(mpmath.mpf(b_bounds.b)))
-        b_min.append(float(mpmath.mpf(b_bounds.a)))
+        cur_max.append(float(mpmath.mpf(b_bounds.b)))
+        cur_min.append(float(mpmath.mpf(b_bounds.a)))
+    
+    if cur_max != []: b_max.append(max(cur_max))
+    if cur_min != []: b_min.append(min(cur_min))
+    
 
 
 def reduceMultipleXBounds_old(xBounds, xSymbolic, parameter, model, dimVar, blocks,
