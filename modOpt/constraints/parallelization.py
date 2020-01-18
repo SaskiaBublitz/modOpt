@@ -72,7 +72,7 @@ def reduceXBounds_byFunction_Worker(f, x_id, xBounds, dict_options, results):
         b = iNes_procedure.get_tight_bBounds(f, x_id, xBounds, dict_options)
         
     if b == []: 
-        results['%d' %x_id] = convertMpiToList(xBounds[x_id])
+        results['%d' %x_id] = convertMpiToList([xBounds[x_id]])
     else:
         intervals = iNes_procedure.reduce_x_by_gb(f.g_sym[x_id], f.dgdx_sym[x_id],
                                                  b, f.x_sym, x_id,
@@ -141,12 +141,16 @@ def get_tight_bBounds_Worker(f, y_id, x_id, xBounds, dict_options, b_min, b_max)
     
     cur_b_min = []
     cur_b_max = []
-    if f.dbdx_sym[x_id][y_id] == 0: return False
-    incr_zone, decr_zone, nonmon_zone = iNes_procedure.get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
-                                                                     f.x_sym, 
-                                                                     y_id, 
-                                                                     copy.deepcopy(xBounds), 
-                                                                     dict_options)    
+    if f.dbdx_sym[x_id][y_id] == 0:
+        incr_zone = []
+        decr_zone = []
+        nonmon_zone = [xBounds[y_id]]
+    else:
+        incr_zone, decr_zone, nonmon_zone = iNes_procedure.get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
+                                                                                        f.x_sym, 
+                                                                                        y_id, 
+                                                                                        copy.deepcopy(xBounds), 
+                                                                                        dict_options)    
     iNes_procedure.add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
                   copy.deepcopy(xBounds), cur_b_min, cur_b_max)
     

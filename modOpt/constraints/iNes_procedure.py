@@ -234,14 +234,19 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     b_max = []
     b_min = []
     
+    
     for y_id in range(0, len(f.glb_ID)): # get b(y)
-        if f.dbdx_sym[x_id][y_id] == 0: continue
-                
-        incr_zone, decr_zone, nonmon_zone = get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
-                                                                         f.x_sym, 
-                                                                         y_id, 
-                                                                         copy.deepcopy(xBounds), 
-                                                                         dict_options)
+        if f.dbdx_sym[x_id][y_id] == 0:  
+            nonmon_zone = [xBounds[y_id]]
+            incr_zone = []
+            decr_zone = []
+            
+        else:        
+            incr_zone, decr_zone, nonmon_zone = get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
+                                                                             f.x_sym, 
+                                                                             y_id, 
+                                                                             copy.deepcopy(xBounds), 
+                                                                             dict_options)
                                 
         add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
                       copy.deepcopy(xBounds), b_min, b_max)
