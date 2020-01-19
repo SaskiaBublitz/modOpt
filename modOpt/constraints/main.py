@@ -148,15 +148,13 @@ def doIntervalNestingNew(res_solver, dict_options):
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
-           # output = parallelization.reduceMultipleXBounds(xBounds, model, blocks, dimVar,
-           #                             xSymbolic, parameter, dict_options)
-           print "aff"
-           
+            output = parallelization.reduceMultipleXBounds(model, functions, dict_options)
+        
         else: 
             output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_options)
             #output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
             #                                              model, dimVar, blocks, dict_options)
-        
+
         xAlmostEqual = output["xAlmostEqual"]
         #newXBounds = output["newXBounds"]
         

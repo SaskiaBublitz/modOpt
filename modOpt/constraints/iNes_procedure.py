@@ -49,7 +49,7 @@ def reduceMultipleXBounds(model, functions, dict_options):
     for k in range(0, len(model.xBounds)):
         
         if dict_options['method'] == 'b_tight':
-            output = reduceXbounds_b_tight(functions, model.xBounds[k], dict_options) # TODO: Parallelize
+            output = reduceXbounds_b_tight(functions, model.xBounds[k], dict_options) 
 
         else:
             if not dict_options["Parallel Variables"]:
@@ -103,10 +103,12 @@ def reduceXbounds_b_tight(functions, xBounds, dict_options):
     for k in range(0, len(functions)): #TODO: Parallel
         f = functions[k]
         if dict_options["Debug-Modus"]: print k
+        
         if not dict_options["Parallel Variables"]:
-            reduceXBounds_byFunction(f, xBounds[f.glb_ID], dict_options, varBounds)
+            reduceXBounds_byFunction(f, numpy.array(xBounds, dtype=None)[f.glb_ID], dict_options, varBounds)
+            #if varBounds.has_key('3'): print varBounds['3']
         else:
-            parallelization.reduceXBounds_byFunction(f, xBounds[f.glb_ID], dict_options, varBounds)
+            parallelization.reduceXBounds_byFunction(f, numpy.array(xBounds, dtype=None)[f.glb_ID], dict_options, varBounds)
         
         if varBounds.has_key('Failed_xID'):
             return get_failed_output(f, varBounds)
@@ -175,7 +177,9 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
     """    
     
     for x_id in range(0, len(f.glb_ID)): # get g(x) and b(x),y 
-        
+        if xBounds[x_id].delta == 0: 
+            store_reduced_xBounds(f, x_id, [xBounds[x_id]], varBounds)
+            continue
         if dict_options["Parallel b's"]:
             b = parallelization.get_tight_bBounds(f, x_id, xBounds, dict_options)
             
@@ -209,7 +213,6 @@ def store_reduced_xBounds(f, x_id, reduced_interval, varBounds):
     if not varBounds.has_key('%d' % f.glb_ID[x_id]): 
         varBounds['%d' % f.glb_ID[x_id]] = reduced_interval
     else: 
-        if f.glb_ID[x_id] == 33: print varBounds['%d' % f.glb_ID[x_id]]
         varBounds['%d' % f.glb_ID[x_id]] = reduceTwoIVSets(varBounds['%d' % f.glb_ID[x_id]],
                  reduced_interval)
     
@@ -236,24 +239,41 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     
     
     for y_id in range(0, len(f.glb_ID)): # get b(y)
-        if f.dbdx_sym[x_id][y_id] == 0:  
-            nonmon_zone = [xBounds[y_id]]
-            incr_zone = []
-            decr_zone = []
-            
-        else:        
-            incr_zone, decr_zone, nonmon_zone = get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
-                                                                             f.x_sym, 
-                                                                             y_id, 
-                                                                             copy.deepcopy(xBounds), 
-                                                                             dict_options)
-                                
-        add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
-                      copy.deepcopy(xBounds), b_min, b_max)
+        get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options)
         
     if b_min !=[] and b_max != []:
         return mpmath.mpi(max(b_min), min(b_max))
     else: return []
+
+
+def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
+    """ reduces bounds of b as function of y. 
+
+    Args:
+        :f:                 instance of class function
+        :x_id:              index (integer) of current x variable bound that is reduced
+        :y_id:              index (integer) of current y variable bound that is reduced
+        :xBounds:           list with variable bonunds in mpmath.mpi formate        
+        :b_min:             list with minimum values of b
+        :b_max:             list with maximum values of b
+        :dict_options:      dictionary with tolerance options       
+        
+    """
+        
+    if f.dbdx_sym[x_id][y_id] == 0:
+        nonmon_zone = [xBounds[y_id]]
+        incr_zone = []
+        decr_zone = []
+        
+    else:        
+        incr_zone, decr_zone, nonmon_zone = get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
+                                                                         f.x_sym, 
+                                                                         y_id, 
+                                                                         copy.deepcopy(xBounds), 
+                                                                         dict_options)    
+    add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
+                  copy.deepcopy(xBounds), b_min, b_max)    
+    
 
 
 def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_min, b_max):
@@ -317,13 +337,16 @@ def get_bounds_incr_zone(b_sym, x_sym, i, xBounds, incr_zone, b_max, b_min):
         :b_max:         list with maximun values of b(y) for different y of b(x,y)
         
     """
-    
+    cur_max = []
+    cur_min = []    
     for interval in incr_zone:
         xBounds[i] = mpmath.mpi(interval.b)
-        b_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).b)))
+        cur_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).b)))
         xBounds[i] = mpmath.mpi(interval.a)
-        b_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))
-
+        cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))
+    if cur_max != []: b_max.append(max(cur_max))
+    if cur_min != []: b_min.append(min(cur_min))
+    
 
 def get_bounds_decr_zone(b_sym, x_sym, i, xBounds, decr_zone, b_max, b_min):
     """ stores maximum and minimum value of b(y) in b_max and b_min for an 
@@ -340,13 +363,16 @@ def get_bounds_decr_zone(b_sym, x_sym, i, xBounds, decr_zone, b_max, b_min):
         :b_max:         list with maximun values of b(y) for different y of b(x,y)
         
     """
-    
+    cur_max = []
+    cur_min = []    
     for interval in decr_zone:
         xBounds[i] = mpmath.mpi(interval.a)
-        b_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).b)))
+        cur_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).b)))
         xBounds[i] = mpmath.mpi(interval.b)
-        b_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))    
-
+        cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))    
+    if cur_max != []: b_max.append(max(cur_max))
+    if cur_min != []: b_min.append(min(cur_min))
+    
 
 def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_max, b_min):
     """ stores maximum and minimum value of b(y) in b_max and b_min for an 
@@ -374,7 +400,6 @@ def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_max, b_min):
     if cur_max != []: b_max.append(max(cur_max))
     if cur_min != []: b_min.append(min(cur_min))
     
-
 
 def reduceMultipleXBounds_old(xBounds, xSymbolic, parameter, model, dimVar, blocks,
                           dict_options):
@@ -1208,7 +1233,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
         reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
                                                           fx, i, xBounds, bi, 
                                                           dict_options)
-
+    #reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
     return reducedIntervals
 
     
