@@ -142,7 +142,7 @@ class Function:
         #    else: return 0, f
     
         else: 
-            print "Problems occured during function parsing"
+            print("Problems occured during function parsing")
             return 0, 0
 
 

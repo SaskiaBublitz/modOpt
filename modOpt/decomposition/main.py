@@ -5,8 +5,8 @@
 Import packages
 ***************************************************
 """
-import dM
-import MC33
+from modOpt.decomposition import dM
+#from modOpt.decomposition import MC33
 import numpy
 
 """
@@ -36,7 +36,7 @@ def decomposeSystem(model, dict_eq, dict_var, dict_options):
         blocks = res_permutation["Number of Row Blocks"]
     
     if dict_options["decomp"] == 'BBTF':
-        res_permutation = MC33.doMC33(jacobian)   
+#        res_permutation = MC33.doMC33(jacobian)   
         blocks = res_permutation["Number of Row Blocks"]
         
     model.updateToPermutation(res_permutation["Row Permutation"], # TODO: input only res_permutation and hasKey()

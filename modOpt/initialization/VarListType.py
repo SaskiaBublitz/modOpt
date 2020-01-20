@@ -5,7 +5,7 @@ Created on Aug 17, 2018
 '''
 from numpy import float
 import numpy as np
-import VarType
+from modOpt.initialization import VarType
 
 TYPE_VARIABLE = 'variable'
 TYPE_CONTROL = 'control'
@@ -60,7 +60,7 @@ class VarListType:
                 for i in range(0,len(currTimeValues)):
                     if currTimeValues[i] == requestedTime['values']:
                         return currValues[i]
-        print "ERROR: There is no applicable value for your requested time."
+        print ("ERROR: There is no applicable value for your requested time.")
         return None
        
     def getValueAtIndex(self,requestedVarName,requestedIndex):
@@ -83,7 +83,7 @@ class VarListType:
             listItem = VarType.StateType(self.globalID,varName,value,modelVarID,engUnit)
             self.varlist.append(listItem)
         else:
-            print 'ERROR in VarListType: Unknown Type'
+            print ('ERROR in VarListType: Unknown Type')
     
     def getLowerBound(self,globalID):
         for listItem in self.varlist:
@@ -103,7 +103,7 @@ class VarListType:
             runID: integer with ID of snapshot run
         '''
         if self.type != 'state':
-            print "ERROR: method only valid for variable type 'state'"
+            print ("ERROR: method only valid for variable type 'state'")
             exit()
         else:
             if stateID == None:

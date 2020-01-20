@@ -6,10 +6,10 @@ Import packages
 import copy
 import numpy
 import mpmath
-import iNes_procedure
+from modOpt.constraints import iNes_procedure
 import itertools
 from multiprocessing import Manager, Process #cpu_count
-from FailedSystem import FailedSystem
+from modOpt.constraints.FailedSystem import FailedSystem
 
 __all__ = ['reduceMultipleXBounds', 'reduceXBounds', 'get_tight_bBounds',
            'reduceXBounds_byFunction']
@@ -65,9 +65,11 @@ def reduceXBounds_byFunction_Worker(f, x_id, xBounds, dict_options, results):
         :results:           dictionary that contains list with reduced variable bounds
         
     """     
-    if xBounds[x_id].delta == 0: 
-             results['%d' %x_id] = convertMpiToList([xBounds[x_id]])
-             return True
+    if mpmath.almosteq(xBounds[x_id].a, xBounds[x_id].b, 
+                       dict_options["absTolX"],
+                       dict_options["relTolX"]):  
+        results['%d' %x_id] = convertMpiToList([xBounds[x_id]])
+        return True
              
     if dict_options["Parallel b's"]:
         b = get_tight_bBounds(f, x_id, xBounds, dict_options)
@@ -250,7 +252,7 @@ def reduceMultipleXBounds_Worker(k, model, functions, dimVar, dict_options, resu
         x[model.colPerm]  = numpy.array(intervalsPerm[m])           
         newXBounds.append(convertMpiToList(x))
 
-    if output.has_key("noSolution"):
+    if output.__contains__("noSolution"):
         results["noSolution"] = output["noSolution"]
     else:
         model.xBounds = newXBounds
@@ -407,7 +409,7 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
 
     else:
     
-        if dict_options["Debug-Modus"]: print j
+        if dict_options["Debug-Modus"]: print(j)
     
     # Equations Loop
         for m in range(0, blockDim): #TODO: possilby Parallelizing
