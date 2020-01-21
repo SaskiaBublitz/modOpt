@@ -5,8 +5,7 @@ Import packages
 """
 import copy
 import numpy
-import main
-import results
+from modOpt.solver import main, results
 from multiprocessing import Manager, Process #cpu_count
 
 __all__ = ['solveMultipleSamples']
