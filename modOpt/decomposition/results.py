@@ -141,7 +141,7 @@ def writeDict(res_file, DICT):
         
     """
     
-    for i in DICT.keys():
+    for i in list(DICT.keys()):
         res_file.write("%s = %s\n"%(i, DICT[i]))
 
 
@@ -161,10 +161,10 @@ def writeBBTFResults(res_file, rowperm, colperm, borderWidth, info):
     res_file.write("Row Permutation: %s\n"%(rowperm))
     res_file.write("Column Perumtation: %s\n"%(colperm))
     res_file.write("Border Width: %s\n"%(borderWidth))
-    res_file.write("Number of Nonzero Rows: %s\n"%(info.values()[0]))
-    res_file.write("Number of Nonzero Columns: %s\n"%(info.values()[1]))
-    res_file.write("Error Message: %s\n"%(info.values()[2]))
-    res_file.write("Number of Duplicates: %s\n"%(info.values()[3]))
+    res_file.write("Number of Nonzero Rows: %s\n"%(list(info.values())[0]))
+    res_file.write("Number of Nonzero Columns: %s\n"%(list(info.values())[1]))
+    res_file.write("Error Message: %s\n"%(list(info.values()[2])))
+    res_file.write("Number of Duplicates: %s\n"%(list(info.values()[3])))
 
 
 def writePermutation(res_file, dict_eq, dict_var):
@@ -178,13 +178,13 @@ def writePermutation(res_file, dict_eq, dict_var):
     """
     
     res_file.write("*****Equation Index after Permutation*****\n\n")
-    for eq in dict_eq.keys():
+    for eq in list(dict_eq.keys()):
           res_file.write("EQ_PERM_%s %s\n"%(dict_eq[eq][1], dict_eq[eq][2]))
     res_file.write("\n")
 
 
     res_file.write("\n*****Variable Index after Permutation*****\n\n")
-    for var in dict_var.keys():
+    for var in list(dict_var.keys()):
         res_file.write("%s_PERM %s\n"%(var,dict_var[var][2]))
     res_file.write("\n")
 
@@ -198,7 +198,7 @@ def writeEqScaling(res_file, dict_eq):
     
     """
          
-    for eq in dict_eq.keys():
+    for eq in list(dict_eq.keys()):
         res_file.write("EQ_SCA_%s %s\n"%(dict_eq[eq][1], dict_eq[eq][3]))
     res_file.write("\n")
 
@@ -212,7 +212,7 @@ def writeScaledVarAndVarScaling(res_file, dict_var):
     
     """
     
-    for var in dict_var.keys():
+    for var in list(dict_var.keys()):
         res_file.write("%s_SCA %s %s\n"%(var,dict_var[var][0], dict_var[var][3]))
     res_file.write("\n")
 

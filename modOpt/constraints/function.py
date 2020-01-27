@@ -243,8 +243,8 @@ class Function:
         
        # self.jValues[self.rowPerm, self.colPerm] = res_scaling["Matrix"]
         
-        if res_scaling.has_key("Equations"): 
+        if res_scaling.__contains__("Equations"): 
             self.rowSca = res_scaling["Equations"]
         
-        if res_scaling.has_key("Variables"):
+        if res_scaling.__contains__("Variables"):
             self.colSca = res_scaling["Variables"]

@@ -48,7 +48,7 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
 
     startAndDeleteJobs(jobs, started, done, len(f.glb_ID), CPU_count)
       
-    for x_id in results.keys():
+    for x_id in list(results.keys()):
         iNes_procedure.store_reduced_xBounds(f, int(x_id), convertListToMpi(results[x_id]), varBounds)
    
      
