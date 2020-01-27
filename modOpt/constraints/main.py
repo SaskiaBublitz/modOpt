@@ -6,10 +6,10 @@ Import packages
 ***************************************************
 """
 import time
-from modOpt.decomposition.dM  import doDulmageMendelsohn
 import copy
 import parallelization
 import iNes_procedure
+from modOpt.constraints.function import Function
 
 
 """
@@ -35,28 +35,19 @@ def reduceVariableBounds(model, options):
     
     res_solver = {}
     
-    if options['method'] == 'complete':
-        model.blocks = [range(0, len(model.xSymbolic))]
-            
-    if options['method'] == 'partial':
-        # Decomposition:
-        jacobian = model.getJacobian()
-        dict_permutation = doDulmageMendelsohn(jacobian)
-        model.updateToPermutation(dict_permutation["Row Permutation"],
-                                     dict_permutation["Column Permutation"],
-                                     dict_permutation["Number of Row Blocks"])
-    res_solver["Model"] = model
+    model.blocks = [range(0, len(model.xSymbolic))]       
+    res_solver["Model"] = copy.deepcopy(model)
     
     if options['timer'] == True: 
         tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
-        doIntervalNesting(res_solver, options)
+        doIntervalNestingNew(res_solver, options)
         toc = time.time()
         t = toc - tic
         res_solver["time"] = t
         return res_solver
         
     else:
-        doIntervalNesting(res_solver, options)
+        doIntervalNestingNew(res_solver, options)
         res_solver["time"] = []
         return res_solver
 
@@ -118,6 +109,76 @@ def doIntervalNesting(res_solver, dict_options):
         
     # Terminates with reaching iterMax:
     newModel.setXBounds(xBounds)
+    res_solver["Model"] = newModel
+    res_solver["iterNo"] = iterNo
+    
+    return True
+
+
+
+def doIntervalNestingNew(res_solver, dict_options):
+    """ iterates the state variable intervals related to model using the
+    Gauss-Seidel Operator combined with an interval nesting strategy
+    
+    Args:
+        :res_solver:      dictionary for storing procedure output
+        :dict_options:    dictionary with solver options
+            
+    """
+    
+    model = res_solver["Model"]
+    iterNo = 0
+    #xBounds = model.xBounds
+    #xSymbolic = model.xSymbolic
+    #parameter = model.parameter
+    #blocks = model.blocks
+    newModel = copy.deepcopy(model)
+    #dimVar = len(xSymbolic)
+    #boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
+    functions = []
+    
+    for f in model.fSymbolic:    
+        functions.append(Function(f, model.xSymbolic))
+    
+    
+    
+    
+    for l in range(0, dict_options["iterMaxNewton"]): 
+         
+        iterNo = l + 1
+       
+        if dict_options["Parallel Branches"]:
+            output = parallelization.reduceMultipleXBounds(model, functions, dict_options)
+        
+        else: 
+            output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_options)
+            #output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
+            #                                              model, dimVar, blocks, dict_options)
+
+        xAlmostEqual = output["xAlmostEqual"]
+        #newXBounds = output["newXBounds"]
+        
+        if output.has_key("noSolution"):
+                       
+            newModel.setXBounds(model.xBounds)
+            newModel.failed = True
+ 
+            res_solver["Model"] = newModel
+            res_solver["iterNo"] = iterNo
+            res_solver["noSolution"] = output["noSolution"]
+            return True
+        
+        elif xAlmostEqual.all():
+            newModel.setXBounds(model.xBounds)
+            res_solver["Model"] = newModel
+            res_solver["iterNo"] = iterNo
+            
+            return True
+          
+        else: continue
+        
+    # Terminates with reaching iterMax:
+    newModel.setXBounds(model.xBounds)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
     

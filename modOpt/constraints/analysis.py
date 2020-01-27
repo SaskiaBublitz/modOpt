@@ -166,7 +166,7 @@ def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, dim):
         
         for i in range(0, len(boundRatios[0])):
             
-            if boundRatios[j][i] != 'solved':
+            if type(boundRatios[j][i]) == float:
                 curFraction = curFraction * (boundRatios[j][i])**n
 
         hypercubeLengthFractions.append(curFraction)
@@ -220,7 +220,7 @@ def getBoundRatioOfVars(boundRatios):
         
         for j in range(0, len(boundRatios)):
             
-            if boundRatios[j][i] != 'solved':
+            if type(boundRatios[j][i]) == float:
                 sumOfBoundRatios = sumOfBoundRatios + boundRatios[j][i]    
             else:
                 solvedVars.append([j, i])   
@@ -291,8 +291,10 @@ def calcBoundFraction(initVarBound, curVarBound):
     Return:                   current variable bound ratio as float value
     
     """
-    
-    bratio = float(mpmath.mpf(curVarBound.delta)) / float(mpmath.mpf(initVarBound.delta))
+    if float(mpmath.mpf(initVarBound.delta)) != 0.0:
+        bratio = float(mpmath.mpf(curVarBound.delta)) / float(mpmath.mpf(initVarBound.delta))
+    else: 
+        return "Warning: Initial interval with zero width"
     if bratio == 0: return 'solved'
     return bratio
 

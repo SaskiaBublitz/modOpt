@@ -31,6 +31,7 @@ def updateDictToModel(dict_variables, res_solver):
     xValues = model.stateVarValues
     xBounds = model.xBounds
 
+    
     for i in range(0, len(dict_variables)):
         glbIdx = dict_variables[dict_variables.keys()[i]][3]
         curXValues = []
