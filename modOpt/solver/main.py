@@ -49,7 +49,7 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
     if len(sampleData) > sampleNo: 
         sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
         model.stateVarValues = [sampleData[0]]
-        results.writeSampleWIthMinResidual(model, 0, dict_options, sampling_options)
+        results.writeSampleWIthMinResidual(model, 0, dict_options, sampling_options, solv_options)
 
     if not solv_options["Parallel"]:
         converged = 0
