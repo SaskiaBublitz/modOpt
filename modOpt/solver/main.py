@@ -346,7 +346,7 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
     """
     
     try:
-        import ipoptMinimization
+        from modOpt.solver import ipoptMinimization
         exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo-1
         res_solver["Exitflag"][b] = exitflag
