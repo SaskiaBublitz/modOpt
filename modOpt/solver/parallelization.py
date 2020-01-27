@@ -90,7 +90,7 @@ def solveMultipleSamples_Worker(sampleData, k, model, dict_equations, dict_varia
     # Results:  
     if not model.failed:
         res['%d' %k] = 1
-        results.writeConvergedSample(initial_sample, k, dict_options, res_solver, sampling_options)
+        results.writeConvergedSample(initial_sample, k, dict_options, res_solver, sampling_options, solv_options)
     
     else: res['%d' %k] = 0
     
