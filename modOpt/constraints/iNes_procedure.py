@@ -8,9 +8,9 @@ import numpy
 import sympy
 import mpmath
 import itertools
-import parallelization
+from modOpt.constraints import parallelization
 import time
-from FailedSystem import FailedSystem
+from modOpt.constraints.FailedSystem import FailedSystem
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
            'checkWidths', 'getPrecision']
@@ -62,7 +62,7 @@ def reduceMultipleXBounds(model, functions, dict_options):
         intervalsPerm = output["intervalsPerm"]
         xAlmostEqual[k] = output["xAlmostEqual"]
         
-        if output.has_key("noSolution") :
+        if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             break
         
@@ -100,17 +100,17 @@ def reduceXbounds_b_tight(functions, xBounds, dict_options):
     
     varBounds = {}
             
-    for k in range(0, len(functions)): #TODO: Parallel
+    for k in range(0, len(functions)):
         f = functions[k]
-        if dict_options["Debug-Modus"]: print k
+        if dict_options["Debug-Modus"]: print(k)
         
         if not dict_options["Parallel Variables"]:
             reduceXBounds_byFunction(f, numpy.array(xBounds, dtype=None)[f.glb_ID], dict_options, varBounds)
-            #if varBounds.has_key('3'): print varBounds['3']
+            #if varBounds.__contains__('3'): print(varBounds['3'])
         else:
             parallelization.reduceXBounds_byFunction(f, numpy.array(xBounds, dtype=None)[f.glb_ID], dict_options, varBounds)
         
-        if varBounds.has_key('Failed_xID'):
+        if varBounds.__contains__('Failed_xID'):
             return get_failed_output(f, varBounds)
                   
     return get_newXBounds(varBounds, xBounds)
@@ -177,7 +177,9 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
     """    
     
     for x_id in range(0, len(f.glb_ID)): # get g(x) and b(x),y 
-        if xBounds[x_id].delta == 0: 
+        if mpmath.almosteq(xBounds[x_id].a, xBounds[x_id].b, 
+                           dict_options["absTolX"],
+                           dict_options["relTolX"]): 
             store_reduced_xBounds(f, x_id, [xBounds[x_id]], varBounds)
             continue
         if dict_options["Parallel b's"]:
@@ -192,7 +194,7 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
                                                      b, f.x_sym, x_id,
                                                      copy.deepcopy(xBounds),
                                                      dict_options)                                                     
-                                     
+                          
         store_reduced_xBounds(f, x_id, reduced_xBounds, varBounds)
 
 
@@ -210,7 +212,7 @@ def store_reduced_xBounds(f, x_id, reduced_interval, varBounds):
     """
     
     
-    if not varBounds.has_key('%d' % f.glb_ID[x_id]): 
+    if not varBounds.__contains__('%d' % f.glb_ID[x_id]): 
         varBounds['%d' % f.glb_ID[x_id]] = reduced_interval
     else: 
         varBounds['%d' % f.glb_ID[x_id]] = reduceTwoIVSets(varBounds['%d' % f.glb_ID[x_id]],
@@ -444,7 +446,7 @@ def reduceMultipleXBounds_old(xBounds, xSymbolic, parameter, model, dimVar, bloc
         intervalsPerm = output["intervalsPerm"]
         xAlmostEqual[k] = output["xAlmostEqual"]
         
-        if output.has_key("noSolution") :
+        if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             break
         
@@ -520,7 +522,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
             y = [] 
             j = blocks[b][n]
                      
-            if dict_options["Debug-Modus"]: print j
+            if dict_options["Debug-Modus"]: print(j)
             
             if checkVariableBound(xBounds[j], relEpsX, absEpsX):
                         xNewBounds[j] = [xBounds[j]]
@@ -683,7 +685,7 @@ def splitFunctionByVariableDependency(f, x):
     #    else: return 0, f
 
     else: 
-        print "Problems occured during function parsing"
+        print("Problems occured during function parsing")
         return 0, 0
 
 
@@ -913,7 +915,7 @@ def checkTimeout(t0, tmax, timeout):
     
     if (tf-t0) > tmax: 
         timeout = True
-        print "Warning: Timeout of process."
+        print("Warning: Timeout of process.")
     return timeout
 
 def checkIntervalWidth(interval, absEpsX, relEpsX):
@@ -1044,8 +1046,8 @@ def checkAndRemoveComplexPart(interval):
     """
     
     if interval.imag != 0:
-        print "Warning: A complex interval: ", interval.imag," occured.\n",
-        "For further calculations only the real part: ", interval.real, " is used."
+        print("Warning: A complex interval: ", interval.imag," occured.\n",
+        "For further calculations only the real part: ", interval.real, " is used.")
         interval = interval.real
         
 
@@ -1233,7 +1235,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
         reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
                                                           fx, i, xBounds, bi, 
                                                           dict_options)
-    #reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
+    reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
     return reducedIntervals
 
     

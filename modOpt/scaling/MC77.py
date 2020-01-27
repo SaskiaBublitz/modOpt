@@ -3,7 +3,7 @@
 Imported Packages
 ***************************************************
 """
-import MC77D
+from modOpt.scaling import MC77D
 import numpy
 import casadi
 

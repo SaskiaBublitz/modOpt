@@ -5,7 +5,7 @@ Import packages
 """
 import mpmath
 import copy
-import modOpt.decomposition as mod
+from modOpt.decomposition import dM
 import sympy
 
 """
@@ -57,7 +57,7 @@ def getDensityOfJacoboan(model):
     
     """
     
-    model.jacobian, f = mod.getCasadiJandF(model.xSymbolic, model.fSymbolic)
+    model.jacobian, f = dM.getCasadiJandF(model.xSymbolic, model.fSymbolic)
     return float(model.getJacobian().nnz()) / model.getModelDimension()**2
     
 

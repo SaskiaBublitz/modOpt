@@ -31,8 +31,8 @@ def writeResults(dict_options, dict_variables, res_solver):
     iterNo = res_solver["iterNo"]
     fileName = dict_options["fileName"] 
     
-    if dict_variables[dict_variables.keys()[0]][0] != []:
-        initKey = dict_variables.keys()[0]
+    if dict_variables[list(dict_variables)[0]][0] != []:
+        initKey = list(dict_variables)[0]
     
     
         for i in range(0, len(dict_variables[initKey][0])):
@@ -42,7 +42,7 @@ def writeResults(dict_options, dict_variables, res_solver):
             if res_solver["Model"].failed:
                 res_file.write("!!! Caution: Variable Reduction failed !!! \n Output equals the last reducable interval set.\n\n")
                 
-            for var in dict_variables.keys():
+            for var in list(dict_variables):
                 res_file.write("%s %s %s %s\n"%(var,
                                                 dict_variables[var][0][i], 
                                                 dict_variables[var][1][i],

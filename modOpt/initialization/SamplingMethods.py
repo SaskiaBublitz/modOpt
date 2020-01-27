@@ -29,11 +29,11 @@ class SamplingMethods:
         '''
         if not inputSpace.performSampling:
             samplingMethod = 'value'
-            print 'Sampling deactivated: expected values used'
+            print ('Sampling deactivated: expected values used')
 
         self.samples = []
         if samplingMethod in SamplingMethodList:
-            print "Selected sampling method: ", samplingMethod
+            print ("Selected sampling method: ", samplingMethod)
             
             if samplingMethod == 'LHS':
                 lh_data = lhs(inputSpace.globalID+1, numberOfSamples, 'center')
@@ -109,7 +109,7 @@ class SamplingMethods:
                 self.samples = currentSamples
 
         else:
-            print "ERROR: Select a valid sampling method!"
+            print ("ERROR: Select a valid sampling method!")
             exit()
             
     def getSamples(self):
@@ -200,14 +200,14 @@ class controlSamplingMethods:
         '''
         for i in range(inputSpace.globalID+1):
             if time['engUnit'] != inputSpace.varlist[i].time['engUnit']:
-                print 'ERROR: time unit of control', inputSpace.varlist[i].varName, 'is not equal to unit of overall time unit'
+                print ('ERROR: time unit of control', inputSpace.varlist[i].varName, 'is not equal to unit of overall time unit')
                 exit()
             if inputSpace.varlist[i].time['values'][0] > 0.0:
-                print 'ERROR: No control value at time 0.0 in',inputSpace.varlist[i].varName
+                print ('ERROR: No control value at time 0.0 in',inputSpace.varlist[i].varName)
                 exit()
 
         if not inputSpace.performSampling:
-            print "No sampling for controls performed"
+            print ("No sampling for controls performed")
             self.sampleTime = []
             for i in range(inputSpace.globalID+1):
                 self.sampleTime = numpy.concatenate((self.sampleTime, inputSpace.varlist[i].time['values']))
@@ -225,7 +225,7 @@ class controlSamplingMethods:
             return
 
         if samplingMethod in ControlSamplingMethodList:
-            print "Selected control sampling method: ", samplingMethod
+            print ("Selected control sampling method: ", samplingMethod)
             
             self.sampleTime = {'values': numpy.linspace(time['values'][0],time['values'][-1],numberOfSamples+1), 'engUnit':time['engUnit']}
             self.time = {'values': numpy.unique(numpy.concatenate((time['values'], self.sampleTime['values']))), 'engUnit':time['engUnit']}
@@ -293,7 +293,7 @@ class controlSamplingMethods:
 
 
         else:
-            print "ERROR: Select a valid control sampling method!"
+            print ("ERROR: Select a valid control sampling method!")
             exit()
 
     def plotSamples(self, sample=0, plotHistogram=False):

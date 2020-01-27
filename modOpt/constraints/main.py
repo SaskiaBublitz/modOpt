@@ -7,8 +7,7 @@ Import packages
 """
 import time
 import copy
-import parallelization
-import iNes_procedure
+from modOpt.constraints import iNes_procedure, parallelization 
 from modOpt.constraints.function import Function
 
 
@@ -88,7 +87,7 @@ def doIntervalNesting(res_solver, dict_options):
         xAlmostEqual = output["xAlmostEqual"]
         newXBounds = output["newXBounds"]
         
-        if output.has_key("noSolution"):
+        if output.__contains__("noSolution"):
                        
             newModel.setXBounds(xBounds)
             newModel.failed = True
@@ -158,7 +157,7 @@ def doIntervalNestingNew(res_solver, dict_options):
         xAlmostEqual = output["xAlmostEqual"]
         #newXBounds = output["newXBounds"]
         
-        if output.has_key("noSolution"):
+        if output.__contains__("noSolution"):
                        
             newModel.setXBounds(model.xBounds)
             newModel.failed = True

@@ -63,8 +63,8 @@ def writeResults(fileName, dict_variables):
                                  lower and upper bounds
         
     """
-    if dict_variables[dict_variables.keys()[0]][0] != []:
-        initKey = dict_variables.keys()[0]
+    if dict_variables[list(dict_variables.keys())[0]][0] != []:
+        initKey = list(dict_variables.keys())[0]
     
     
         for i in range(0, len(dict_variables[initKey][0])):
@@ -72,7 +72,7 @@ def writeResults(fileName, dict_variables):
             
             res_file.write("***** %s th Set of Initial Values and Bounds*****\n\n"%(i+1))
     
-            for var in dict_variables.keys():
+            for var in list(dict_variables.keys()):
                 res_file.write("%s %s %s %s\n"%(var,
                                                 dict_variables[var][0][i], 
                                                 dict_variables[var][1][i],

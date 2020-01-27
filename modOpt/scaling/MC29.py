@@ -3,7 +3,7 @@
 Imported Packages
 ***************************************************
 """
-import MC29AD
+from modOpt.scaling import MC29AD
 import numpy
 import casadi
 

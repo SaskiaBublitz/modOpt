@@ -5,8 +5,8 @@
 Import packages
 ***************************************************
 """
-import dM
-import MC33
+from modOpt.decomposition import dM
+from modOpt.decomposition import MC33
 import numpy
 
 """
@@ -91,5 +91,5 @@ def setValuesByGlobalId(dictionary, column, newValues):
     """
     
     for i in range(0,len(dictionary)):
-        glbID = dictionary.values()[i][1]
-        dictionary.values()[i][column] = newValues[glbID]
+        glbID = list(dictionary.values())[i][1]
+        list(dictionary.values())[i][column] = newValues[glbID]

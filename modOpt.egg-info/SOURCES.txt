@@ -11,12 +11,15 @@ modOpt.egg-info/dependency_links.txt
 modOpt.egg-info/not-zip-safe
 modOpt.egg-info/requires.txt
 modOpt.egg-info/top_level.txt
+modOpt/__pycache__/__init__.cpython-36.pyc
 modOpt/constraints/FailedSystem.py
 modOpt/constraints/FailedSystem.pyc
 modOpt/constraints/__init__.py
 modOpt/constraints/__init__.pyc
 modOpt/constraints/analysis.py
 modOpt/constraints/analysis.pyc
+modOpt/constraints/function.py
+modOpt/constraints/function.pyc
 modOpt/constraints/iNes_procedure.py
 modOpt/constraints/iNes_procedure.pyc
 modOpt/constraints/main.py
@@ -39,6 +42,11 @@ modOpt/decomposition/main.py
 modOpt/decomposition/main.pyc
 modOpt/decomposition/results.py
 modOpt/decomposition/results.pyc
+modOpt/decomposition/__pycache__/MC33.cpython-36.pyc
+modOpt/decomposition/__pycache__/__init__.cpython-36.pyc
+modOpt/decomposition/__pycache__/dM.cpython-36.pyc
+modOpt/decomposition/__pycache__/main.cpython-36.pyc
+modOpt/decomposition/__pycache__/results.cpython-36.pyc
 modOpt/initialization/SamplingMethods.py
 modOpt/initialization/SamplingMethods.pyc
 modOpt/initialization/VarListType.py
@@ -61,15 +69,15 @@ modOpt/scaling/__init__.py
 modOpt/scaling/__init__.pyc
 modOpt/scaling/main.py
 modOpt/scaling/main.pyc
+modOpt/scaling/__pycache__/MC29.cpython-36.pyc
+modOpt/scaling/__pycache__/__init__.cpython-36.pyc
+modOpt/scaling/__pycache__/main.cpython-36.pyc
 modOpt/solver/__init__.py
 modOpt/solver/__init__.pyc
 modOpt/solver/block.py
 modOpt/solver/block.pyc
 modOpt/solver/ipoptMinimization.py
-<<<<<<< HEAD
-=======
 modOpt/solver/ipoptMinimization.pyc
->>>>>>> 6ecbdb65258ff16bc7749d2511308ea324f45290
 modOpt/solver/main.py
 modOpt/solver/main.pyc
 modOpt/solver/newton.py
@@ -80,3 +88,6 @@ modOpt/solver/results.py
 modOpt/solver/results.pyc
 modOpt/solver/scipyMinimization.py
 modOpt/solver/scipyMinimization.pyc
+modOpt/solver/__pycache__/__init__.cpython-36.pyc
+modOpt/solver/__pycache__/main.cpython-36.pyc
+modOpt/solver/__pycache__/newton.cpython-36.pyc
