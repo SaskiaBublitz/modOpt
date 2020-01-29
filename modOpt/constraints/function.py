@@ -124,7 +124,9 @@ class Function:
         allArgumentsWithVariable = []
         allArgumentsWithoutVariable = []
         
-        if f.func.class_key()[2]=='Mul':f = f + numpy.finfo(numpy.float).eps/2
+        if f.func.class_key()[2] in ['Mul', 'sin', 'cos', 'exp', 'log', 'Pow'] :
+            #f = f + numpy.finfo(numpy.float).eps/2
+            return f, 0.0
     
         if f.func.class_key()[2]=='Add':
                 
@@ -136,10 +138,7 @@ class Function:
             fvar = sympy.Add(*allArgumentsWithVariable)
             fWithoutVar = sympy.Add(*allArgumentsWithoutVariable)
             return fvar, -fWithoutVar
-        
-        #if f.func.class_key()[2]=='Mul':
-        #    if x in f.free_symbols: return f, 0
-        #    else: return 0, f
+
     
         else: 
             print("Problems occured during function parsing")
