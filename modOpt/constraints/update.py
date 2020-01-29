@@ -31,8 +31,9 @@ def updateDictToModel(dict_variables, res_solver):
     xValues = model.stateVarValues
     xBounds = model.xBounds
 
+    
     for i in range(0, len(dict_variables)):
-        glbIdx = dict_variables[dict_variables.keys()[i]][3]
+        glbIdx = dict_variables[list(dict_variables)[i]][3]
         curXValues = []
         curXLowerBounds = []
         curXUpperBounds = []
@@ -42,6 +43,6 @@ def updateDictToModel(dict_variables, res_solver):
             curXLowerBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].a)))
             curXUpperBounds.append(float(mpmath.mpf(xBounds[j][glbIdx].b)))
         
-        dict_variables[dict_variables.keys()[i]][0] = curXValues
-        dict_variables[dict_variables.keys()[i]][1] = curXLowerBounds
-        dict_variables[dict_variables.keys()[i]][2] = curXUpperBounds
+        dict_variables[list(dict_variables)[i]][0] = curXValues
+        dict_variables[list(dict_variables)[i]][1] = curXLowerBounds
+        dict_variables[list(dict_variables)[i]][2] = curXUpperBounds

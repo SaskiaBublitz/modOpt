@@ -5,16 +5,12 @@
 Import packages
 ***************************************************
 """
-import newton
 import numpy
-import block
+from modOpt.solver import (newton, results, scipyMinimization, 
+parallelization, block)
 import modOpt.scaling as mos
 import copy
-import results
-import parallelization
 import time
-import scipyMinimization
-
 
 """
 ****************************************************
@@ -48,8 +44,9 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
     
     if len(sampleData) > sampleNo: 
         sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
-        model.stateVarValues = [sampleData[0]]
-        results.writeSampleWIthMinResidual(model, 0, dict_options, sampling_options)
+        for i in range(0, len(sampleData)):
+            model.stateVarValues = [sampleData[i]]
+            results.writeSampleWIthMinResidual(model, i, dict_options, sampling_options, solv_options)
 
     if not solv_options["Parallel"]:
         converged = 0
@@ -63,7 +60,7 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
             # Results:  
             if not model.failed:
                 converged +=1
-                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_options)
+                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_options, solv_options)
     else:
         converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
                                                          dict_variables, dict_options, solv_options, sampling_options)
@@ -94,7 +91,7 @@ def get_samples_with_n_lowest_residuals(model, n, sampleData):
     residuals = numpy.array(residuals)
     sample_index = numpy.argsort(residuals)
     residuals = residuals[sample_index]
-    print "Function residuals of sample points:\t", residuals[0:n]
+    print ("Function residuals of sample points:\t", residuals[0:n])
     
     return sampleData[sample_index][0:n]
     
@@ -132,7 +129,7 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
             res_solver = solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables)
             updateToSolver(res_solver, dict_equations, dict_variables)
             model = res_solver["Model"] 
-            print numpy.linalg.norm(model.getFunctionValues()) 
+            print (numpy.linalg.norm(model.getFunctionValues())) 
             i+=1
         return res_solver
     
@@ -301,7 +298,7 @@ def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations
         res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
-        print "Error in Block ", b
+        print ("Error in Block ", b)
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1    
         res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
@@ -328,7 +325,7 @@ def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dic
         res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
-        print "Error in Block ", b
+        print ("Error in Block ", b)
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1 
         res_solver["CondNo"][b] = 'nan'
@@ -349,14 +346,14 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
     """
     
     try:
-        import ipoptMinimization
+        from modOpt.solver import ipoptMinimization
         exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         res_solver["IterNo"][b] = iterNo-1
         res_solver["Exitflag"][b] = exitflag
         res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
     except: 
-        print "Error in Block ", b
+        print ("Error in Block ", b)
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1
         res_solver["CondNo"][b] = 'nan'

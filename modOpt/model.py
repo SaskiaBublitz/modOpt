@@ -256,10 +256,10 @@ class Model:
         
         """ 
         
-        if res_scaling.has_key("Equations"): 
+        if res_scaling.__contains__("Equations"): 
             self.rowSca[self.rowPerm] = res_scaling["Equations"]
         
-        if res_scaling.has_key("Variables"):
+        if res_scaling.__contains__("Variables"):
             self.colSca[self.colPerm] = res_scaling["Variables"]
 
                         

@@ -5,8 +5,7 @@ Import packages
 """
 import copy
 import numpy
-import main
-import results
+from modOpt.solver import main, results
 from multiprocessing import Manager, Process #cpu_count
 
 __all__ = ['solveMultipleSamples']
@@ -91,7 +90,7 @@ def solveMultipleSamples_Worker(sampleData, k, model, dict_equations, dict_varia
     # Results:  
     if not model.failed:
         res['%d' %k] = 1
-        results.writeConvergedSample(initial_sample, k, dict_options, res_solver, sampling_options)
+        results.writeConvergedSample(initial_sample, k, dict_options, res_solver, sampling_options, solv_options)
     
     else: res['%d' %k] = 0
     

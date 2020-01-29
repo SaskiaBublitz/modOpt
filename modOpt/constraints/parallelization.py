@@ -6,21 +6,159 @@ Import packages
 import copy
 import numpy
 import mpmath
-import iNes_procedure
+from modOpt.constraints import iNes_procedure
 import itertools
 from multiprocessing import Manager, Process #cpu_count
-from FailedSystem import FailedSystem
+from modOpt.constraints.FailedSystem import FailedSystem
 
-__all__ = ['reduceMultipleXBounds', 'reduceXBounds']
+__all__ = ['reduceMultipleXBounds', 'reduceXBounds', 'get_tight_bBounds',
+           'reduceXBounds_byFunction']
 
 """
 ***************************************************
 Algorithm for parallelization in iNes procedure
 ***************************************************
 """
+def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
+    """ reduces all n bounds of variables (xBounds) that occur in a certain 
+    function f and stores it in varBounds.
+    
+    Args:
+        :f:             instance of class function
+        :xBounds:       list with n variable bounds
+        :varBounds:     dictionary with n reduced variable bounds. The key 
+                        'Failed_xID' is used to store a variable's global ID in
+                        case  a reduced interval is empty.
+                        
+    """    
 
-def reduceMultipleXBounds(xBounds, model, blocks, dimVar,
-                                        xSymbolic, parameter, dict_options):
+    CPU_count = dict_options["CPU count Variables"]
+    jobs = []
+    manager = Manager()
+    results = manager.dict()
+    done = numpy.zeros(len(f.glb_ID))
+    started = numpy.zeros(len(f.glb_ID))
+    
+    for x_id in range(0, len(f.glb_ID)): # get g(x) and b(x),y 
+        p = Process(target=reduceXBounds_byFunction_Worker, args=(f, x_id,
+                                                               xBounds,
+                                                               dict_options,
+                                                               results))
+        jobs.append(p)
+
+    startAndDeleteJobs(jobs, started, done, len(f.glb_ID), CPU_count)
+      
+    for x_id in list(results.keys()):
+        iNes_procedure.store_reduced_xBounds(f, int(x_id), convertListToMpi(results[x_id]), varBounds)
+   
+     
+def reduceXBounds_byFunction_Worker(f, x_id, xBounds, dict_options, results):
+    """ contains work that can be done in parallel during the reduction of the 
+    each variable in a function
+    
+    Args:
+        :f:                 instance of class function
+        :x_id:              index (integer) of current variable bound that is 
+                            reduced
+        :xBounds:           list with variable bonunds in mpmath.mpi formate
+        :dict_options:      dictionary with tolerance options
+        :results:           dictionary that contains list with reduced variable bounds
+        
+    """     
+    if mpmath.almosteq(xBounds[x_id].a, xBounds[x_id].b, 
+                       dict_options["absTolX"],
+                       dict_options["relTolX"]):  
+        results['%d' %x_id] = convertMpiToList([xBounds[x_id]])
+        return True
+             
+    if dict_options["Parallel b's"]:
+        b = get_tight_bBounds(f, x_id, xBounds, dict_options)
+        
+    else:    
+        b = iNes_procedure.get_tight_bBounds(f, x_id, xBounds, dict_options)
+        
+    if b == []: 
+        results['%d' %x_id] = convertMpiToList([xBounds[x_id]])
+        return True
+    
+    else:
+        intervals = iNes_procedure.reduce_x_by_gb(f.g_sym[x_id], f.dgdx_sym[x_id],
+                                                 b, f.x_sym, x_id,
+                                                 copy.deepcopy(xBounds),
+                                                 dict_options)            
+        results['%d' %x_id] = convertMpiToList(intervals)
+        
+    return True                                            
+                                 
+    
+def get_tight_bBounds(f, x_id, xBounds, dict_options):
+    """ returns tight b bound interval based on all variables y that are evaluated
+    separatly for all other y intervals beeing constant.
+    
+    Args:
+        :f:                 instance of class function
+        :x_id:              index (integer) of current variable bound that is reduced
+        :xBounds:           list with variable bonunds in mpmath.mpi formate
+        :dict_options:      dictionary with tolerance options
+        
+    Return:
+        b interval in mpmath.mpi formate and [] if error occured (check for complex b) 
+    
+    """
+    CPU_count = dict_options["CPU count b's"]
+    jobs = []
+    manager = Manager()
+    b_min = manager.dict()
+    b_max = manager.dict()
+    done = numpy.zeros(len(f.glb_ID))
+    started = numpy.zeros(len(f.glb_ID))
+
+    for y_id in range(0, len(f.glb_ID)): # get b(y)
+        p = Process(target=get_tight_bBounds_Worker, args=(f, y_id, x_id,
+                                                               xBounds,
+                                                               dict_options,
+                                                               b_min,
+                                                               b_max))
+        jobs.append(p)
+
+    startAndDeleteJobs(jobs, started, done, len(f.glb_ID), CPU_count)
+    
+    try: 
+        return mpmath.mpi(max(max([x for x in b_min.values() if x!=[]])), min(min([x for x in b_max.values() if x!=[]])))
+         
+    except:
+        return []
+
+
+def get_tight_bBounds_Worker(f, y_id, x_id, xBounds, dict_options, b_min, b_max):
+    """ contains work that can be done in parallel during the reduction of the 
+    bounds of b
+    
+    Args:
+        :f:                 instance of class function
+        :x_id:              index (integer) of current variable bound that is 
+                            reduced
+        :y_id:              index (integer) of current variable bound that is not
+                            constant and b is evaluated at.
+        :xBounds:           list with variable bonunds in mpmath.mpi formate
+        :dict_options:      dictionary with tolerance options
+        :b_min:             dictionary for lower bounds of b(y)
+        :b_max:             dictionary forupper bounds bof b(y)
+        
+    """ 
+    
+    cur_b_min = []
+    cur_b_max = []
+    
+    iNes_procedure.get_tight_bBounds_y(f, x_id, y_id, xBounds, cur_b_min, cur_b_max, dict_options)
+        
+    b_min['%d' %y_id] = cur_b_min
+    b_max['%d' %y_id] = cur_b_max
+    
+    return True
+
+
+def reduceMultipleXBounds(model, functions, dict_options):
     """ reduction of multiple solution interval sets
     
     Args:
@@ -40,51 +178,50 @@ def reduceMultipleXBounds(xBounds, model, blocks, dimVar,
                                 analysis.
             
     """
+    dimVar = len(model.xBounds[0])
+    #results = {}
+    #newXBounds = []
+    #xAlmostEqual = False * numpy.ones(len(model.xBounds), dtype=bool)
     
     output = {}
     CPU_count = dict_options["CPU count Branches"]
     jobs = []
     manager = Manager()
     results = manager.dict()
-    done = numpy.zeros(len(xBounds))
-    started = numpy.zeros(len(xBounds))
+    done = numpy.zeros(len(model.xBounds))
+    started = numpy.zeros(len(model.xBounds))
     
-    #output["xAlmostEqual"] = False * numpy.ones(len(xBounds), dtype=bool)   
+    output["xAlmostEqual"] = False * numpy.ones(len(model.xBounds), dtype=bool)   
 
-    for k in range(0,len(xBounds)):  
-        p = Process(target=reduceMultipleXBounds_Worker, args=(xBounds, k,
-                                                               model,
-                                                               blocks, dimVar,
-                                                               xSymbolic, 
-                                                               parameter,
+    for k in range(0,len(model.xBounds)):  
+        p = Process(target=reduceMultipleXBounds_Worker, args=(k, model,
+                                                               functions, dimVar,
                                                                dict_options,
                                                                results))
         jobs.append(p)
         
-    startAndDeleteJobs(jobs, started, done, len(xBounds), CPU_count)
+    startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
           
-    output["newXBounds"], output["xAlmostEqual"] = getReducedXBoundsResults(results, len(xBounds))
+    output["newXBounds"], output["xAlmostEqual"] = getReducedXBoundsResults(results, len(model.xBounds))
      
     
     if output["newXBounds"] == []:
         output["noSolution"] = results["noSolution"]
-        
+    else:
+        model.xBounds = output["newXBounds"] 
     return output
 
 
-def reduceMultipleXBounds_Worker(xBounds, k, model, blocks, dimVar, xSymbolic, parameter, dict_options, results):
+def reduceMultipleXBounds_Worker(k, model, functions, dimVar, dict_options, results):
     """ contains work that can be done in parallel during the reduction of multiple 
     solution interval sets stored in xBounds. The package multiprocessing is used 
     for parallelization.
     
     Args:
-        :xBounds:               list with list of interval sets in mpmath.mpi logic
         :k:                     index of current job
         :model:                 object of type model
-        :blocks:                list with block indices of equation system
+        :functions:             list with instances of class Function
         :dimVar:                integer that equals iteration variable dimension
-        :xSymbolic:             list with symbolic iteration variables in sympy logic
-        :parameter:             list with parameter values of equation system
         :dict_options:          dictionary with user specified algorithm settings
         :results:               dictionary from multiprocessing where results are stored
                                 after a job is done    
@@ -93,35 +230,33 @@ def reduceMultipleXBounds_Worker(xBounds, k, model, blocks, dimVar, xSymbolic, p
     """
     
     newXBounds = []
-    FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
-                                                                              xSymbolic, 
-                                                                              parameter)
-    dict_options["precision"] = iNes_procedure.getPrecision(xBoundsPerm)
 
-    if dict_options["Parallel Variables"]:
-        output = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                         blocks, dict_options)
-    
+    #dict_options["precision"] = iNes_procedure.getPrecision(model.xBounds[k])
+
+    if dict_options['method'] == 'b_tight':
+        output = iNes_procedure.reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)
+            
     else:
-        output = iNes_procedure.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                         blocks, dict_options)   
+        if not dict_options["Parallel Variables"]:
+            output = iNes_procedure.reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
+                                  model.blocks, dict_options)
+        else: 
+            output = reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
+                                  model.blocks, dict_options)            
+     
     intervalsPerm = output["intervalsPerm"]
-        
-    if output.has_key("noSolution"):
-        results["noSolution"] = output["noSolution"]
-    
+                
     for m in range(0, len(intervalsPerm)):
         
         x = numpy.empty(dimVar, dtype=object)     
         x[model.colPerm]  = numpy.array(intervalsPerm[m])           
         newXBounds.append(convertMpiToList(x))
-        
-#        if iNes_procedure.checkWidths(xBounds[k], x, dict_options["relTolX"], 
-#                       dict_options["absTolX"]): 
 
-#            results['%d' %k] = ([convertMpiToList(x)], True, boundsAlmostEqual)
-#            return True
-    
+    if output.__contains__("noSolution"):
+        results["noSolution"] = output["noSolution"]
+    else:
+        model.xBounds = newXBounds
+            
     results['%d' %k] = (newXBounds, output["xAlmostEqual"])
     return True
 
@@ -177,8 +312,7 @@ def getReducedXBoundsResults(results, noOfxBounds):
                 
         xAlmostEqual[k] = (results['%d' %k][1])   
     
-        #boundsAlmostEqual = results['%d' %k][2]
-        
+        #boundsAlmostEqual = results['%d' %k][2] 
     return newXBounds, xAlmostEqual
     
 
@@ -275,7 +409,7 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
 
     else:
     
-        if dict_options["Debug-Modus"]: print j
+        if dict_options["Debug-Modus"]: print(j)
     
     # Equations Loop
         for m in range(0, blockDim): #TODO: possilby Parallelizing

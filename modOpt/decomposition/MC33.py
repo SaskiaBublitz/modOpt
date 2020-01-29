@@ -4,7 +4,7 @@ Imported Packages
 ***************************************************
 """
 import numpy
-import MC33AD
+from modOpt.decomposition import MC33AD
 
 """
 ***************************************************

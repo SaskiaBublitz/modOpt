@@ -5,9 +5,7 @@
 Import packages
 ***************************************************
 """
-
-import MC29
-import MC77
+from modOpt.scaling import MC29, MC77
 import numpy
 import casadi
 
@@ -73,11 +71,11 @@ def updateDictionaries(dict_eq, dict_var,res_scaling, model):
     """
   
 
-    if res_scaling.has_key("Equations"):
+    if res_scaling.__contains__("Equations"):
         dict_eq = setDictionary(dict_eq, model.rowPerm, 3, model.rowSca)
         
     
-    if res_scaling.has_key("Variables"):
+    if res_scaling.__contains__("Variables"):
         dict_var = setDictionary(dict_var, model.colPerm, 3 , model.colSca)  
 
 
