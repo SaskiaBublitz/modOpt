@@ -105,6 +105,13 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
         b interval in mpmath.mpi formate and [] if error occured (check for complex b) 
     
     """
+    b = iNes_procedure.getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
+    if mpmath.almosteq(b.a, b.b, dict_options["relTolX"], dict_options["absTolX"]):
+        return b
+    
+    if len(f.glb_ID)==1: # this is import if b is interval but there is only one variable in f (for design var intervals in future)
+        return b
+        
     CPU_count = dict_options["CPU count b's"]
     jobs = []
     manager = Manager()

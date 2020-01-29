@@ -239,9 +239,17 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     b_max = []
     b_min = []
     
+    b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
+    if mpmath.almosteq(b.a, b.b, dict_options["relTolX"], dict_options["absTolX"]):
+        return b
+    
+    if len(f.glb_ID)==1: # this is import if b is interval but there is only one variable in f (for design var intervals in future)
+        return b
     
     for y_id in range(0, len(f.glb_ID)): # get b(y)
-        get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options)
+          
+        if  x_id != y_id:
+            get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options)
         
     if b_min !=[] and b_max != []:
         return mpmath.mpi(max(b_min), min(b_max))
@@ -263,9 +271,9 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
     """
         
     if f.dbdx_sym[x_id][y_id] == 0:
-        nonmon_zone = [xBounds[y_id]]
-        incr_zone = []
-        decr_zone = []
+        b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
+        b_min.append(b.a)
+        b_max.append(b.b)
         
     else:        
         incr_zone, decr_zone, nonmon_zone = get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
@@ -273,8 +281,8 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
                                                                          y_id, 
                                                                          copy.deepcopy(xBounds), 
                                                                          dict_options)    
-    add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
-                  copy.deepcopy(xBounds), b_min, b_max)    
+        add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
+                      copy.deepcopy(xBounds), b_min, b_max)    
     
 
 
@@ -667,7 +675,9 @@ def splitFunctionByVariableDependency(f, x):
     allArgumentsWithVariable = []
     allArgumentsWithoutVariable = []
     
-    if f.func.class_key()[2]=='Mul':f = f + numpy.finfo(numpy.float).eps/2
+    if f.func.class_key()[2] in ['Mul', 'sin', 'cos', 'exp', 'log', 'Pow'] :
+        #f = f + numpy.finfo(numpy.float).eps/2
+        return f, 0.0
 
     if f.func.class_key()[2]=='Add':
             
