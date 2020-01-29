@@ -281,8 +281,8 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
                                                                          y_id, 
                                                                          copy.deepcopy(xBounds), 
                                                                          dict_options)    
-    add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
-                  copy.deepcopy(xBounds), b_min, b_max)    
+        add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
+                      copy.deepcopy(xBounds), b_min, b_max)    
     
 
 
