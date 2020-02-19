@@ -1474,7 +1474,6 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, fx,
     
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
-    #precision = getPrecision(xBounds)
 
     for curMonZone in monotoneZone: #TODO: Parallelizing
         xBounds[i] = curMonZone 
@@ -1508,9 +1507,6 @@ def monotoneIncreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
     
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
-    relEpsF = dict_options["relTolF"]
-    absEpsF = dict_options["absTolF"]
-    
     
     fxInterval = fx(*xBounds)
     curInterval = xBounds[i]
@@ -1522,11 +1518,10 @@ def monotoneIncreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
         
     # Otherwise, iterate each bound of bi:
     fIntervalxLow, fIntervalxUp = getFIntervalsFromXBounds(fx, curInterval, xBounds, i)
-    #if fIntervalxLow.b > bi.b:
         
     if fIntervalxLow.b < bi.a:   
-         while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(bi.a), 
-                                   relEpsF, absEpsF) and not mpmath.almosteq(curInterval.a, 
+         while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(fxInterval.b), 
+                                   relEpsX, absEpsX) and not mpmath.almosteq(curInterval.a, 
                                                  curInterval.b, relEpsX, absEpsX):
                          curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = True, 
@@ -1536,11 +1531,10 @@ def monotoneIncreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
     lowerBound = curInterval.a
     curInterval  = xBounds[i]    
     
-    #if fIntervalxUp.a < bi.a: return []
     if fIntervalxUp.a > bi.b:
         
-        while not mpmath.almosteq(mpmath.mpf(fxInterval.b), mpmath.mpf(bi.b), 
-                                  relEpsF, absEpsF) and not mpmath.almosteq(curInterval.a, 
+        while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(fxInterval.b), 
+                                  relEpsX, absEpsX) and not mpmath.almosteq(curInterval.a, 
                                                 curInterval.b, relEpsX, absEpsX):
             
             curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
@@ -1570,8 +1564,6 @@ def monotoneDecreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
     
     relEpsX = dict_options["relTolX"]
     absEpsX = dict_options["absTolX"]
-    relEpsF = dict_options["relTolF"]
-    absEpsF = dict_options["absTolF"]
     
     fxInterval = fx(*xBounds)
     curInterval = xBounds[i]
@@ -1584,11 +1576,10 @@ def monotoneDecreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
     # Otherwise, iterate each bound of bi:
     fIntervalxLow, fIntervalxUp = getFIntervalsFromXBounds(fx, curInterval, xBounds, i)
     
-    #if fIntervalxLow.a < bi.a: return []
     
     if fIntervalxLow.a > bi.b:   
-         while not mpmath.almosteq(mpmath.mpf(fxInterval.b), mpmath.mpf(bi.b), 
-                                   relEpsF, absEpsF) and not mpmath.almosteq(curInterval.a, 
+         while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(fxInterval.b), 
+                                   relEpsX, absEpsX) and not mpmath.almosteq(curInterval.a, 
                                                  curInterval.b, relEpsX, absEpsX):
                          curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
                                                 increasing = False, 
@@ -1597,11 +1588,11 @@ def monotoneDecreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
         
     lowerBound = curInterval.a  
     curInterval  = xBounds[i]        
-    #if fIntervalxUp.b > bi.b: return []
+
     if fIntervalxUp.b < bi.a:
         
-        while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(bi.a), 
-                                  relEpsF, absEpsF) and not mpmath.almosteq(curInterval.a, 
+        while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(fxInterval.b), 
+                                  relEpsX, absEpsX) and not mpmath.almosteq(curInterval.a, 
                                                 curInterval.b, relEpsX, absEpsX):
             
             curInterval, fxInterval = iteratefBound(fx, curInterval, xBounds, i, bi, 
