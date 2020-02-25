@@ -74,9 +74,7 @@ def reduceMultipleXBounds(model, functions, dict_options):
             x = numpy.empty(dimVar, dtype=object)     
             x[model.colPerm]  = numpy.array(intervalsPerm[m])           
             newXBounds.append(x)
-        
-        #dict_options["boxNo"] = len(newXBounds)
-        
+                
         if  dict_options["boxNo"]  >= dict_options["maxBoxNo"]:
             break
                
@@ -1300,16 +1298,17 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
     
     """
 
-    tmax = dict_options["tmax"]
+    #tmax = dict_options["tmax"]
+    maxIvNo = dict_options["resolution"]
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]   
     continuousZone = []
     
     interval = [xBounds[i]] 
-    timeout = False
-    t0 = time.clock()
+    #timeout = False
+    #t0 = time.clock()
       
-    while interval != [] and timeout == False:    
+    while interval != [] and len(interval) <= maxIvNo:#timeout == False:    
         discontinuousZone = []
                
         for curInterval in interval:
@@ -1317,9 +1316,10 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
             continuousZone = addIntervaltoZone(newContinuousZone, continuousZone, dict_options)  
                
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
-        timeout = checkTimeout(t0, tmax, timeout)
+        #timeout = checkTimeout(t0, tmax, timeout)
         
-        if timeout: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
+        #if timeout: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
+        if not len(interval) <= maxIvNo: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
         
     return continuousZone, []
 
@@ -1692,18 +1692,18 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
                               reduced to monotone increasing or decreasing section
     
     """
-    tmax = dict_options["tmax"]
+    #tmax = dict_options["tmax"]
     relEpsX = dict_options["relTol"]
     absEpsX = dict_options["absTol"]
-    #maxIvNo = dict_options["maxIvNo"]   
+    maxIvNo = dict_options["resolution"]   
     monIncreasingZone = []
     monDecreasingZone = []
     interval = [xBounds[i]] 
     
-    timeout = False
-    t0 = time.clock()
+   #timeout = False
+    #t0 = time.clock()
     
-    while interval != [] and timeout == False: #and len(interval) < maxIvNo: #and dfdXconst == False:  
+    while interval != [] and len(interval) < maxIvNo: #and timeout == False: # #and dfdXconst == False:  
         
         curIntervals = []
                
@@ -1724,11 +1724,16 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
             #curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
             curIntervals.append(newIntervals)
         curIntervals = removeListInList(curIntervals)
+
+        if curIntervals ==interval: 
+            break
         #if interval == curIntervals: break
+         # true monotone intervals
         interval = checkIntervalWidth(curIntervals, absEpsX, relEpsX)       
-        timeout = checkTimeout(t0, tmax, timeout)
-        if timeout: interval = joinIntervalSet(interval, relEpsX, absEpsX)
-            
+        #timeout = checkTimeout(t0, tmax, timeout)
+        #if timeout: interval = joinIntervalSet(interval, relEpsX, absEpsX)
+    if not len(interval) <= maxIvNo: interval = joinIntervalSet(interval, relEpsX, absEpsX)
+        
     return monIncreasingZone, monDecreasingZone, interval
 
 
@@ -1789,7 +1794,7 @@ def discretizeAndEvaluataInterval(dfdX, xBounds, i, interval, newIntervals,
 
     """
     
-    resolution = dict_options["resolution"]
+    resolution = dict_options["resolution"]*2
     
     intervalBounds = convertIntervalBoundsToFloatValues(interval)
     intervalPoints = numpy.linspace(intervalBounds[0], intervalBounds[1], resolution)
