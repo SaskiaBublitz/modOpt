@@ -46,7 +46,10 @@ def reduceMultipleXBounds(model, functions, dict_options):
     newXBounds = []
     xAlmostEqual = False * numpy.ones(len(model.xBounds), dtype=bool)
 
+    dict_options["boxNo"]=len(model.xBounds)
+    
     for k in range(0, len(model.xBounds)):
+
         
         if dict_options['method'] == 'b_tight':
             output = reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)
@@ -71,9 +74,12 @@ def reduceMultipleXBounds(model, functions, dict_options):
             x = numpy.empty(dimVar, dtype=object)     
             x[model.colPerm]  = numpy.array(intervalsPerm[m])           
             newXBounds.append(x)
-              
-    
-    
+        
+        #dict_options["boxNo"] = len(newXBounds)
+        
+        if  dict_options["boxNo"]  >= dict_options["maxBoxNo"]:
+            break
+               
     if newXBounds == []: 
         results["noSolution"] = saveFailedIntervalSet
     
@@ -523,16 +529,21 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
                                 eventually an instance of class failedSystem if
                                 the procedure failed.
                         
-    """    
+    """  
+    maxBoxNo = dict_options["maxBoxNo"]
+    #boxNo = dict_options["boxNo"]
+    boxNo = 1
+    
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]
     output = {}
     xNewBounds = copy.deepcopy(xBounds)
     xUnchanged = True
     
-    for b in range(0, len(blocks)):
+    for b in range(0, len(blocks)):    
         blockDim = len(blocks[b])
         for n in range(0, blockDim):
+            intervalNo = 1
             y = [] 
             j = blocks[b][n]
                      
@@ -556,7 +567,18 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
                         output["noSolution"] = failedSystem
                         output["xAlmostEqual"] = False 
                         return output
+                    
 
+                    if boxNo * len(y) > maxBoxNo:
+                        for restj in range(j,blockDim):
+                            xNewBounds[restj] = [xBounds[restj]]
+                        output["xAlmostEqual"] = xUnchanged     
+                        output["intervalsPerm"] = list(itertools.product(*xNewBounds))
+                        dict_options["boxNo"] = boxNo * len(y)
+                        return output
+            
+            boxNo = boxNo * len(y)  
+            dict_options["boxNo"] = boxNo 
             xNewBounds[j] = y
 
 #            if len(xNewBounds[j]) == 1: 

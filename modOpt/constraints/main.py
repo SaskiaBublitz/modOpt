@@ -126,6 +126,7 @@ def doIntervalNestingNew(res_solver, dict_options):
     """
     
     model = res_solver["Model"]
+    dict_options["maxBoxNo"] = 100 + int((len(model.xBounds[0]))**0.5)
     iterNo = 0
     #xBounds = model.xBounds
     #xSymbolic = model.xSymbolic
@@ -139,11 +140,9 @@ def doIntervalNestingNew(res_solver, dict_options):
     for f in model.fSymbolic:    
         functions.append(Function(f, model.xSymbolic))
     
-    
-    
-    
+     
     for l in range(0, dict_options["iterMaxNewton"]): 
-         
+        
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
@@ -155,28 +154,23 @@ def doIntervalNestingNew(res_solver, dict_options):
             #                                              model, dimVar, blocks, dict_options)
 
         xAlmostEqual = output["xAlmostEqual"]
-        #newXBounds = output["newXBounds"]
+
+        if dict_options["boxNo"] >= dict_options["maxBoxNo"]:
+            print("Warning: Maximum number of boxes reached!")
+            break      
         
         if output.__contains__("noSolution"):
-                       
-            newModel.setXBounds(model.xBounds)
+
             newModel.failed = True
- 
-            res_solver["Model"] = newModel
-            res_solver["iterNo"] = iterNo
             res_solver["noSolution"] = output["noSolution"]
-            return True
+            break
         
         elif xAlmostEqual.all():
-            newModel.setXBounds(model.xBounds)
-            res_solver["Model"] = newModel
-            res_solver["iterNo"] = iterNo
-            
-            return True
-          
+            break
+        
         else: continue
         
-    # Terminates with reaching iterMax:
+    # Updating model:
     newModel.setXBounds(model.xBounds)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
