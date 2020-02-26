@@ -323,7 +323,7 @@ def getReducedXBoundsResults(results, noOfxBounds):
     return newXBounds, xAlmostEqual
     
 
-def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options): #boundsAlmostEqual):
+def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options): #boundsAlmostEqual):
     """ Solves an equation system blockwise. For block dimensions > 1 each 
     iteration variable interval of the block is reduced sequentially by all 
     equations of the block. The narrowest bounds from this procedure are taken
@@ -335,6 +335,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options): #boundsAlmostEqu
             :f:                  list with symbolic equation system in sympy logic
             :blocks:             List with blocklists, whereas the blocklists contain
                                  the block elements with index after permutation
+            :boxNo:              number of boxes as integer
             :dict_options:       dictionary with solving settings
         Returns:
             :output:            dictionary with new interval sets(s) in a list and

@@ -46,8 +46,8 @@ def reduceMultipleXBounds(model, functions, dict_options):
     newXBounds = []
     xAlmostEqual = False * numpy.ones(len(model.xBounds), dtype=bool)
 
-    dict_options["boxNo"]=len(model.xBounds)
-    
+    boxNo = len(model.xBounds)
+    nl = len(model.xBounds)
     for k in range(0, len(model.xBounds)):
 
         
@@ -58,10 +58,10 @@ def reduceMultipleXBounds(model, functions, dict_options):
         else:
             if not dict_options["Parallel Variables"]:
                 output = reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
-                                  model.blocks, dict_options)
+                                  model.blocks, boxNo, dict_options)
             else: 
                 output = parallelization.reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
-                                  model.blocks, dict_options)
+                                  model.blocks, boxNo, dict_options)
         
         intervalsPerm = output["intervalsPerm"]
         xAlmostEqual[k] = output["xAlmostEqual"]
@@ -75,9 +75,10 @@ def reduceMultipleXBounds(model, functions, dict_options):
             x[model.colPerm]  = numpy.array(intervalsPerm[m])           
             newXBounds.append(x)
                 
-        if  dict_options["boxNo"]  >= dict_options["maxBoxNo"]:
-            break
-               
+        #if  dict_options["boxNo"]  >= dict_options["maxBoxNo"]:
+        #    break
+        boxNo = len(newXBounds) + (nl - (k+1))
+        
     if newXBounds == []: 
         results["noSolution"] = saveFailedIntervalSet
     
@@ -509,19 +510,21 @@ def getPrecision(xBounds):
     return 5*10**(numpy.floor(numpy.log10(minValue))-2)
 
 
-def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
+def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options):
     """ solves an equation system blockwise. For block dimensions > 1 each 
     iteration variable interval of the block is reduced sequentially by all 
     equations of the block. The narrowest bounds from this procedure are taken
     over.
      
         Args: 
-            xBounds:            One set of variable interavls as numpy array
-            xSymbolic:          list with symbolic variables in sympy logic
-            f:                  list with symbolic equation system in sympy logic
-            blocks:             List with blocklists, whereas the blocklists contain
-                                the block elements with index after permutation
-            dict_options:       dictionary with solving settings
+            :xBounds:            One set of variable interavls as numpy array
+            :xSymbolic:          list with symbolic variables in sympy logic
+            :f:                  list with symbolic equation system in sympy logic
+            :blocks:             List with blocklists, whereas the blocklists contain
+                                 the block elements with index after permutation
+            :boxNo:              number of boxes as integer                              
+            :dict_options:       dictionary with solving settings
+            
         Returns:
             :output:            dictionary with new interval sets(s) in a list and
                                 eventually an instance of class failedSystem if
@@ -530,7 +533,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
     """  
     maxBoxNo = dict_options["maxBoxNo"]
     #boxNo = dict_options["boxNo"]
-    boxNo = 1
+    subBoxNo = 1
     
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]
@@ -541,7 +544,6 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
     for b in range(0, len(blocks)):    
         blockDim = len(blocks[b])
         for n in range(0, blockDim):
-            intervalNo = 1
             y = [] 
             j = blocks[b][n]
                      
@@ -567,16 +569,16 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options):
                         return output
                     
 
-                    if boxNo * len(y) > maxBoxNo:
+                    if ((boxNo-1) + subBoxNo * len(y)) > maxBoxNo:
                         for restj in range(j,blockDim):
                             xNewBounds[restj] = [xBounds[restj]]
                         output["xAlmostEqual"] = xUnchanged     
                         output["intervalsPerm"] = list(itertools.product(*xNewBounds))
-                        dict_options["boxNo"] = boxNo * len(y)
+                        #dict_options["boxNo"] = boxNo * len(y)
                         return output
             
-            boxNo = boxNo * len(y)  
-            dict_options["boxNo"] = boxNo 
+            subBoxNo = subBoxNo * len(y)  
+            #dict_options["boxNo"] = boxNo 
             xNewBounds[j] = y
 
 #            if len(xNewBounds[j]) == 1: 
@@ -1725,7 +1727,8 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
             curIntervals.append(newIntervals)
         curIntervals = removeListInList(curIntervals)
 
-        if curIntervals ==interval: 
+        if curIntervals == interval: 
+            interval = joinIntervalSet(interval, relEpsX, absEpsX)
             break
         #if interval == curIntervals: break
          # true monotone intervals
@@ -1987,16 +1990,16 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
                     ivSet.remove(ivSet[i])
                     ivSet.remove(iv)
                     break
-                elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX, absEpsX): 
-                    newIvSet.append(mpmath.mpi(iv.a, ivSet[i].b))
-                    ivSet.remove(ivSet[i])
-                    ivSet.remove(iv)
-                    break
-                elif mpmath.almosteq(iv.a, ivSet[i].b, relEpsX, absEpsX): 
-                    newIvSet.append(mpmath.mpi(ivSet[i].a, iv.b))
-                    ivSet.remove(ivSet[i])
-                    ivSet.remove(iv)
-                    break
+                # elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX, absEpsX): 
+                #     newIvSet.append(mpmath.mpi(iv.a, ivSet[i].b))
+                #     ivSet.remove(ivSet[i])
+                #     ivSet.remove(iv)
+                #     break
+                # elif mpmath.almosteq(iv.a, ivSet[i].b, relEpsX, absEpsX): 
+                #     newIvSet.append(mpmath.mpi(ivSet[i].a, iv.b))
+                #     ivSet.remove(ivSet[i])
+                #     ivSet.remove(iv)
+                #     break
                 elif ivIntersection(iv, ivSet[i])!=[]:
                     newIvSet.append(mpmath.mpi(min(ivSet[i].a, iv.a), max(ivSet[i].b, iv.b)))
                     ivSet.remove(ivSet[i])

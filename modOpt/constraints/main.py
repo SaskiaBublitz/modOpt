@@ -155,9 +155,9 @@ def doIntervalNestingNew(res_solver, dict_options):
 
         xAlmostEqual = output["xAlmostEqual"]
 
-        if dict_options["boxNo"] >= dict_options["maxBoxNo"]:
-            print("Warning: Maximum number of boxes reached!")
-            break      
+        #if dict_options["boxNo"] >= dict_options["maxBoxNo"]:
+        #    print("Warning: Maximum number of boxes reached!")
+        #    break      
         
         if output.__contains__("noSolution"):
 
