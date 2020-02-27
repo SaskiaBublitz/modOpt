@@ -66,8 +66,8 @@ def reduceXBounds_byFunction_Worker(f, x_id, xBounds, dict_options, results):
         
     """     
     if mpmath.almosteq(xBounds[x_id].a, xBounds[x_id].b, 
-                       dict_options["absTolX"],
-                       dict_options["relTolX"]):  
+                       dict_options["absTol"],
+                       dict_options["relTol"]):  
         results['%d' %x_id] = convertMpiToList([xBounds[x_id]])
         return True
              
@@ -106,7 +106,7 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     
     """
     b = iNes_procedure.getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
-    if mpmath.almosteq(b.a, b.b, dict_options["relTolX"], dict_options["absTolX"]):
+    if mpmath.almosteq(b.a, b.b, dict_options["relTol"], dict_options["absTol"]):
         return b
     
     if len(f.glb_ID)==1: # this is import if b is interval but there is only one variable in f (for design var intervals in future)
@@ -323,7 +323,7 @@ def getReducedXBoundsResults(results, noOfxBounds):
     return newXBounds, xAlmostEqual
     
 
-def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options): #boundsAlmostEqual):
+def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options): #boundsAlmostEqual):
     """ Solves an equation system blockwise. For block dimensions > 1 each 
     iteration variable interval of the block is reduced sequentially by all 
     equations of the block. The narrowest bounds from this procedure are taken
@@ -335,6 +335,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, dict_options): #boundsAlmostEqu
             :f:                  list with symbolic equation system in sympy logic
             :blocks:             List with blocklists, whereas the blocklists contain
                                  the block elements with index after permutation
+            :boxNo:              number of boxes as integer
             :dict_options:       dictionary with solving settings
         Returns:
             :output:            dictionary with new interval sets(s) in a list and
@@ -405,12 +406,9 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
     """
     y = [] 
     j = blocks[b][n]
-    absEpsX = dict_options["absTolX"]
-    relEpsX = dict_options["relTolX"]    
-    #if boundsAlmostEqual[j]: 
-    #    xNewBounds[j] = [xNewBounds[j]]
-    #    results['%d' % n] = (convertMpiToList(xNewBounds[j]), True)
-    #    return True
+    absEpsX = dict_options["absTol"]
+    relEpsX = dict_options["relTol"]    
+
     if checkVariableBound(xBounds[j], relEpsX, absEpsX):
             xNewBounds[j] = [xBounds[j]]
 
@@ -433,11 +431,6 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
                     return True                
                 
         xNewBounds[j] = y
-
-    #if len(xNewBounds[j]) == 1: 
-    #    relEpsX = dict_options["relTolX"]
-    #    absEpsX = dict_options["absTolX"]
-    #    boundsAlmostEqual[j] = checkVariableBound(xNewBounds[j][0], relEpsX, absEpsX)
 
     results['%d' % n] = (convertMpiToList(xNewBounds[j]),[])#, boundsAlmostEqual[j])
     return True
