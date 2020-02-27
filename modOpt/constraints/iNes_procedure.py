@@ -78,6 +78,12 @@ def reduceMultipleXBounds(model, functions, dict_options):
         #if  dict_options["boxNo"]  >= dict_options["maxBoxNo"]:
         #    break
         boxNo = len(newXBounds) + (nl - (k+1))
+        if boxNo >= dict_options["maxBoxNo"]:
+            print("Note: Algorithm stops because the current number of boxes is ", 
+                  boxNo,
+                  "and exceeds the maximum number of boxes that is ",  
+                  dict_options["maxBoxNo"], "." )
+            break
         
     if newXBounds == []: 
         results["noSolution"] = saveFailedIntervalSet
@@ -532,12 +538,11 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options):
                         
     """  
     maxBoxNo = dict_options["maxBoxNo"]
-    #boxNo = dict_options["boxNo"]
-    subBoxNo = 1
-    
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]
-    output = {}
+    subBoxNo = 1
+    output = {}    
+        
     xNewBounds = copy.deepcopy(xBounds)
     xUnchanged = True
     
@@ -574,11 +579,10 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options):
                             xNewBounds[restj] = [xBounds[restj]]
                         output["xAlmostEqual"] = xUnchanged     
                         output["intervalsPerm"] = list(itertools.product(*xNewBounds))
-                        #dict_options["boxNo"] = boxNo * len(y)
                         return output
             
             subBoxNo = subBoxNo * len(y)  
-            #dict_options["boxNo"] = boxNo 
+
             xNewBounds[j] = y
 
 #            if len(xNewBounds[j]) == 1: 

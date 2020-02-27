@@ -206,16 +206,25 @@ def reduceMultipleXBounds(model, functions, dict_options):
                                                                dict_options,
                                                                results))
         jobs.append(p)
-        
+    # TODO: Check current boxNo = len(newXBounds) + (nl - (k+1))
+    
     startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
           
     output["newXBounds"], output["xAlmostEqual"] = getReducedXBoundsResults(results, len(model.xBounds))
-     
+    
+    boxNo = len(output["newXBounds"])
+    if boxNo >= dict_options["maxBoxNo"]:
+        print("Note: Algorithm stops because the current number of boxes is ", 
+        boxNo,
+        "and exceeds the maximum number of boxes that is ",  
+        dict_options["maxBoxNo"], "." )
+        output["xAlmostEqual"] = True * numpy.ones(len(output["newXBounds"]), dtype=bool) 
     
     if output["newXBounds"] == []:
         output["noSolution"] = results["noSolution"]
     else:
         model.xBounds = output["newXBounds"] 
+        
     return output
 
 
@@ -342,9 +351,11 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options): #boundsAl
                                 eventually an instance of class failedSystem if
                                 the procedure failed.
                         
-    """    
-    
+    """        
     output = {}
+    
+    # TODO: Shared memory needs to be used to stop when the number of sub boxes exceeds maxBoxNo now it only stops the next iteration
+    
     xNewBounds = copy.deepcopy(xBounds)
     CPU_count = dict_options["CPU count Variables"] 
     xUnchanged = True
@@ -376,8 +387,10 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options): #boundsAl
                 output["noSolution"] = results['%d' % n][1] 
                 output["xAlmostEqual"] = False
                 return output
+            
     output["xAlmostEqual"] = xUnchanged
     output["intervalsPerm"] = list(itertools.product(*xNewBounds))
+    
     return output
 
 

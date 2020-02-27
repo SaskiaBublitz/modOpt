@@ -128,13 +128,7 @@ def doIntervalNestingNew(res_solver, dict_options):
     model = res_solver["Model"]
     dict_options["maxBoxNo"] = 100 + int((len(model.xBounds[0]))**0.5)
     iterNo = 0
-    #xBounds = model.xBounds
-    #xSymbolic = model.xSymbolic
-    #parameter = model.parameter
-    #blocks = model.blocks
     newModel = copy.deepcopy(model)
-    #dimVar = len(xSymbolic)
-    #boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
     functions = []
     
     for f in model.fSymbolic:    
@@ -150,15 +144,10 @@ def doIntervalNestingNew(res_solver, dict_options):
         
         else: 
             output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_options)
-            #output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
-            #                                              model, dimVar, blocks, dict_options)
 
         xAlmostEqual = output["xAlmostEqual"]
 
-        #if dict_options["boxNo"] >= dict_options["maxBoxNo"]:
-        #    print("Warning: Maximum number of boxes reached!")
-        #    break      
-        
+              
         if output.__contains__("noSolution"):
 
             newModel.failed = True
