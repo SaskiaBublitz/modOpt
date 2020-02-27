@@ -52,7 +52,7 @@ def reduceMultipleXBounds(model, functions, dict_options):
 
         
         if dict_options['method'] == 'b_tight':
-            output = reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)
+            output = reduceXbounds_b_tight(functions, model.xBounds[k], boxNo, dict_options)
 
 
         else:
@@ -95,12 +95,13 @@ def reduceMultipleXBounds(model, functions, dict_options):
     return results
 
 
-def reduceXbounds_b_tight(functions, xBounds, dict_options):
+def reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options):
     """ main function to reduce all variable bounds with all equations
     
     Args:
         :functions:         list with instances of class function
         :xBounds:           list with variable bounds in mpmath.mpi formate
+        :boxNo:             number of current boxes        
         :dict_options:      dictionary with tolerance options
         
     Return:
@@ -124,8 +125,16 @@ def reduceXbounds_b_tight(functions, xBounds, dict_options):
         
         if varBounds.__contains__('Failed_xID'):
             return get_failed_output(f, varBounds)
-                  
-    return get_newXBounds(varBounds, xBounds)
+    output = get_newXBounds(varBounds, xBounds)              
+    
+    if len(output["intervalsPerm"]) > dict_options["maxBoxNo"]:
+        print("Note: Algorithm stops because the current number of boxes is ", 
+        len(output["intervalsPerm"]),
+        "and exceeds the maximum number of boxes that is ",  
+        dict_options["maxBoxNo"], "." )        
+        output["xAlmostEqual"] = True
+      
+    return output
 
 
 def get_failed_output(f, varBounds):
@@ -1193,7 +1202,6 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
     increasingZones = []
     decreasingZones = []
     nonMonotoneZones = []
-    #old_xiBounds = xBounds[i]
     cur_xiBounds = [xBounds[i]]
     
     dfdx = getBoundsOfFunctionExpression(dfdx_sym, x_sym, xBounds)
@@ -1204,9 +1212,7 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
     
     if '-inf' in dfdx or '+inf' in dfdx: 
         cur_xiBounds, nonMonotoneZones = getContinuousFunctionSections(dfdx_sym, i, xBounds, dict_options)
-        #if nonMonotoneZones !=[]: print(nonMonotoneZones)
-        #if other !=[]: nonMonotoneZones.append(other)
-        #if cur_xiBounds == []: return [], [], [old_xiBounds]
+
     if  cur_xiBounds != [] :
            
         for curInterval in cur_xiBounds:
@@ -1220,9 +1226,7 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
                 for interval in decreasingZone:
                     decreasingZones.append(interval)   
             if nonMonotoneZone !=[]:
-                nonMonotoneZones = addIntervaltoZone(nonMonotoneZone, nonMonotoneZones, dict_options) 
-                #for interval in nonMonotoneZone:
-                             
+                nonMonotoneZones = addIntervaltoZone(nonMonotoneZone, nonMonotoneZones, dict_options)                              
     
     return increasingZones, decreasingZones, nonMonotoneZones
 
@@ -1257,8 +1261,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
     
     if '-inf' in dfdXInterval or '+inf' in dfdXInterval: # condition for discontinuities
         curXiBounds, nonMonotoneZones = getContinuousFunctionSections(dfdX, i, xBounds, dict_options)
-        #if other !=[]: nonMonotoneZones.append(other)
-        #if curXiBounds == []: return orgXiBounds
+
     if curXiBounds != []:
         for curInterval in curXiBounds:
             xBounds[i] = curInterval
@@ -1280,15 +1283,13 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
             reducedIntervals = reduceMonotoneIntervals(decreasingZones, reducedIntervals, fx, 
                                     xBounds, i, bi, dict_options, increasing = False)  
        
-    if nonMonotoneZones !=[]:
-        #nonMonotoneZones = removeListInList(nonMonotoneZones)   
+    if nonMonotoneZones !=[]:  
         reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
                                                           fx, i, xBounds, bi, 
                                                           dict_options)
     reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
     return reducedIntervals
 
-    
 
 def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
     """filters out discontinuities which either have a +/- inf derrivative.
@@ -1304,17 +1305,14 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
     
     """
 
-    #tmax = dict_options["tmax"]
     maxIvNo = dict_options["resolution"]
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]   
     continuousZone = []
     
     interval = [xBounds[i]] 
-    #timeout = False
-    #t0 = time.clock()
       
-    while interval != [] and len(interval) <= maxIvNo:#timeout == False:    
+    while interval != [] and len(interval) <= maxIvNo: 
         discontinuousZone = []
                
         for curInterval in interval:
@@ -1322,9 +1320,7 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
             continuousZone = addIntervaltoZone(newContinuousZone, continuousZone, dict_options)  
                
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
-        #timeout = checkTimeout(t0, tmax, timeout)
-        
-        #if timeout: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
+
         if not len(interval) <= maxIvNo: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
         
     return continuousZone, []
