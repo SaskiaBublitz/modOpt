@@ -162,7 +162,7 @@ def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, dim):
     
     for j in range(0, len(boundRatios)):
         
-        curFraction = 1
+        curFraction = 1.0
         
         for i in range(0, len(boundRatios[0])):
             

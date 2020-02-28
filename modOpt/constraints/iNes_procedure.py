@@ -68,7 +68,8 @@ def reduceMultipleXBounds(model, functions, dict_options):
         
         if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
-            break
+            boxNo = len(newXBounds) + (nl - (k+1))
+            continue
         
         for m in range(0, len(intervalsPerm)):          
             x = numpy.empty(dimVar, dtype=object)     
@@ -78,6 +79,7 @@ def reduceMultipleXBounds(model, functions, dict_options):
         #if  dict_options["boxNo"]  >= dict_options["maxBoxNo"]:
         #    break
         boxNo = len(newXBounds) + (nl - (k+1))
+  
         if boxNo >= dict_options["maxBoxNo"]:
             print("Note: Algorithm stops because the current number of boxes is ", 
                   boxNo,
@@ -980,11 +982,12 @@ def checkIntervalWidth(interval, absEpsX, relEpsX):
     Return:
         :interval:    set of intervals with a higher width than absEps 
     """
-    
+    reduced_interval = []
     for curInterval in interval:
-        if mpmath.almosteq(curInterval.a, curInterval.b, absEpsX, relEpsX):
-                interval.remove(curInterval)
-    return interval
+        if not mpmath.almosteq(curInterval.a, curInterval.b, absEpsX, relEpsX):
+            reduced_interval.append(curInterval)    
+            #interval.remove(curInterval)
+    return reduced_interval
                 
     
 def checkAbsoluteTolerance(interval, absEpsX):
@@ -1198,7 +1201,8 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
                             mpmath.mpi formate
                             
     """
-    
+    relEpsX = dict_options["relTol"]
+    absEpsX = dict_options["absTol"]
     increasingZones = []
     decreasingZones = []
     nonMonotoneZones = []
@@ -1225,9 +1229,10 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
             if decreasingZone !=[]: 
                 for interval in decreasingZone:
                     decreasingZones.append(interval)   
-            if nonMonotoneZone !=[]:
-                nonMonotoneZones = addIntervaltoZone(nonMonotoneZone, nonMonotoneZones, dict_options)                              
-    
+            if nonMonotoneZone !=[]: 
+                for interval in nonMonotoneZone:
+                    nonMonotoneZones.append(interval)
+                nonMonotoneZones = joinIntervalSet(nonMonotoneZones, relEpsX, absEpsX)    
     return increasingZones, decreasingZones, nonMonotoneZones
 
 
@@ -1726,13 +1731,17 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
             #curIntervals = addIntervaltoZone(newIntervals, curIntervals, dict_options)
             curIntervals.append(newIntervals)
         curIntervals = removeListInList(curIntervals)
-
-        if curIntervals == interval: 
+        
+        
+        if checkIntervalWidth(curIntervals, absEpsX, relEpsX) == interval: 
             interval = joinIntervalSet(interval, relEpsX, absEpsX)
             break
+        
+        interval = checkIntervalWidth(curIntervals, absEpsX, relEpsX) 
+        
         #if interval == curIntervals: break
          # true monotone intervals
-        interval = checkIntervalWidth(curIntervals, absEpsX, relEpsX)       
+              
         #timeout = checkTimeout(t0, tmax, timeout)
         #if timeout: interval = joinIntervalSet(interval, relEpsX, absEpsX)
     if not len(interval) <= maxIvNo: interval = joinIntervalSet(interval, relEpsX, absEpsX)
