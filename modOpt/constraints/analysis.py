@@ -3,6 +3,7 @@
 Import packages
 ***************************************************
 """
+import numpy
 import mpmath
 import copy
 from modOpt.decomposition import dM
@@ -34,10 +35,10 @@ def analyseResults(dict_options, initialModel, res_solver):
     if modelWithReducedBounds != []:
         reducedVarBounds = modelWithReducedBounds.xBounds
         boundRatios = getBoundRatios(initVarBounds, reducedVarBounds)
-        boundRatioOfVars, solvedVars = getBoundRatioOfVars(boundRatios)
+        boundRatioOfVars, solvedVars, solvedPerBox = getBoundRatioOfVars(boundRatios)
         initVolume = calcInitVolume(initVarBounds)
         hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
-                                                                         (len(varSymbolic)-len(solvedVars)))
+                                                                         solvedPerBox)
         
         hypercubicLFraction = sum(hypercubicLFractions)
         density = getDensityOfJacoboan(modelWithReducedBounds)
@@ -139,7 +140,7 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
             res_file.write("%s (VarBound_%s)\n" %(varSymbolic[solvedVar[1]], 
                                                                solvedVar[0]))
 
-def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, dim):
+def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, solvedVarNo):
     """ calculates edge fraction of each sub-hypercube that result from multiple
     solution interval sets
     
@@ -147,21 +148,23 @@ def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, dim):
         :boundRatios:      list with reduced variable bound tp initial variable 
                            bound ratio (has only one entry if one set of variable 
                            bounds remains) 
-        :dim:              number of remaining iteration variable intervals
+        :solvedVarNo:      list with number of solved variables per box
         
     Return:
         :hypercubeLengthFractions: list with sub-hypercubic length fractions
         
     """
     
-    if dim == 0.0:
-        return [0.0]
-    
     hypercubeLengthFractions = []
-    n = 1.0 / dim
+    
     
     for j in range(0, len(boundRatios)):
+        dim = len(boundRatios) - solvedVarNo[j]
+        if dim == 0.0:
+            hypercubeLengthFractions.append(0.0)
+            continue
         
+        n = 1.0 / dim
         curFraction = 1.0
         
         for i in range(0, len(boundRatios[0])):
@@ -189,7 +192,7 @@ def getBoundRatioOfVarBoundSet(boundRatios):
     
     for j in range(0, len(boundRatios)):
         
-        productOfBoundRatios = 1
+        productOfBoundRatios = 1.0
         
         for i in range(0, len(boundRatios[0])):
             
@@ -213,23 +216,25 @@ def getBoundRatioOfVars(boundRatios):
     
     boundRatioOfVars = []
     solvedVars = []
+    solvedPerBox = numpy.zeros(len(boundRatios))
     
     for i in range(0, len(boundRatios[0])):
         
-        sumOfBoundRatios = 0
+        sumOfBoundRatios = 0.0
         
         for j in range(0, len(boundRatios)):
             
             if type(boundRatios[j][i]) == float:
                 sumOfBoundRatios = sumOfBoundRatios + boundRatios[j][i]    
             else:
-                solvedVars.append([j, i])   
                 
-        if sumOfBoundRatios != 0:
+                solvedVars.append([j,i])
+                
+        if sumOfBoundRatios != 0.0:
             boundRatioOfVars.append(sumOfBoundRatios)
         else: boundRatioOfVars.append('solved')
     
-    return boundRatioOfVars, solvedVars
+    return boundRatioOfVars, solvedVars, solvedPerBox
             
     
 def getBoundRatios(initVarBounds, reducedVarBounds):
