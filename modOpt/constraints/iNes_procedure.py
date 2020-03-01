@@ -263,6 +263,9 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     b_min = []
     
     b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
+    
+    if b == []: return []
+    
     if mpmath.almosteq(b.a, b.b, dict_options["relTol"], dict_options["absTol"]):
         return b
     
@@ -295,8 +298,9 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
         
     if f.dbdx_sym[x_id][y_id] == 0:
         b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
-        b_min.append(b.a)
-        b_max.append(b.b)
+        if not b == []:
+            b_min.append(b.a)
+            b_max.append(b.b)
         
     else:        
         incr_zone, decr_zone, nonmon_zone = get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
@@ -382,8 +386,8 @@ def get_bounds_incr_zone(b_sym, x_sym, i, xBounds, incr_zone, b_min, b_max):
         xBounds[i] = mpmath.mpi(interval.a)
         cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))
             
-    b_max.append(max(cur_max))
-    b_min.append(max(cur_min))
+    if cur_max != []: b_max.append(max(cur_max))
+    if cur_min != []: b_min.append(max(cur_min))
 
     
 
@@ -410,8 +414,8 @@ def get_bounds_decr_zone(b_sym, x_sym, i, xBounds, decr_zone, b_min, b_max):
         xBounds[i] = mpmath.mpi(interval.b)
         cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))    
     
-    b_max.append(max(cur_max))
-    b_min.append(max(cur_min))
+    if cur_max != []: b_max.append(max(cur_max))
+    if cur_min != []: b_min.append(max(cur_min))
     
 
 def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_min, b_max):
@@ -437,8 +441,8 @@ def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_min, b_max):
         cur_max.append(float(mpmath.mpf(b_bounds.b)))
         cur_min.append(float(mpmath.mpf(b_bounds.a)))
     
-    b_max.append(max(cur_max))
-    b_min.append(max(cur_min))
+    if cur_max != []: b_max.append(max(cur_max))
+    if cur_min != []: b_min.append(max(cur_min))
     
 
 def reduceMultipleXBounds_old(xBounds, xSymbolic, parameter, model, dimVar, blocks,
@@ -647,7 +651,7 @@ def reduce_x_by_gb(g_sym, dgdx_sym, b, x_sym, i, xBounds, dict_options):
     
     g_sym = lambdifyToMpmathIv(x_sym, g_sym)
 
-    if type(g) == mpmath.iv.mpc or type(dgdx) == mpmath.iv.mpc: return [xBounds[i]] # TODO: Complex case
+    if isinstance(g, mpmath.iv.mpc) or isinstance(dgdx, mpmath.iv.mpc) or g==[] or dgdx==[]: return [xBounds[i]] # TODO: Complex case
     
     if not x_sym[i] in dgdx_sym.free_symbols and g == dgdx*xBounds[i]: # Linear Case -> solving system directly
         dgdx_sym = lambdifyToMpmathIv(x_sym, dgdx_sym)
@@ -847,7 +851,9 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     if isinstance(f, sympy.Float) and len(str(f)) > 15:
         return roundValue(f, 16)
     fMpmathIV = lambdifyToMpmathIv(xSymbolic, f)
-    return  mpmath.mpi(fMpmathIV(*xBounds))
+    try: return mpmath.mpi(fMpmathIV(*xBounds))
+    except:
+        return []
     #return  mpmath.mpi(str(fMpmathIV(*xBounds)))
             
 def roundValue(val, digits):
@@ -1210,7 +1216,7 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
     
     dfdx = getBoundsOfFunctionExpression(dfdx_sym, x_sym, xBounds)
     
-    if type(dfdx) == mpmath.iv.mpc: return [], [], cur_xiBounds
+    if type(dfdx) == mpmath.iv.mpc or dfdx == []: return [], [], cur_xiBounds
     
     dfdx_sym = lambdifyToMpmathIv(x_sym, dfdx_sym)
     
