@@ -126,24 +126,17 @@ def doIntervalNestingNew(res_solver, dict_options):
     """
     
     model = res_solver["Model"]
+    dict_options["maxBoxNo"] = 100 + int((len(model.xBounds[0]))**0.5)
     iterNo = 0
-    #xBounds = model.xBounds
-    #xSymbolic = model.xSymbolic
-    #parameter = model.parameter
-    #blocks = model.blocks
     newModel = copy.deepcopy(model)
-    #dimVar = len(xSymbolic)
-    #boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
     functions = []
     
     for f in model.fSymbolic:    
         functions.append(Function(f, model.xSymbolic))
     
-    
-    
-    
+     
     for l in range(0, dict_options["iterMaxNewton"]): 
-         
+        
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
@@ -151,32 +144,22 @@ def doIntervalNestingNew(res_solver, dict_options):
         
         else: 
             output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_options)
-            #output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
-            #                                              model, dimVar, blocks, dict_options)
 
         xAlmostEqual = output["xAlmostEqual"]
-        #newXBounds = output["newXBounds"]
-        
+
+              
         if output.__contains__("noSolution"):
-                       
-            newModel.setXBounds(model.xBounds)
+
             newModel.failed = True
- 
-            res_solver["Model"] = newModel
-            res_solver["iterNo"] = iterNo
             res_solver["noSolution"] = output["noSolution"]
-            return True
+            break
         
         elif xAlmostEqual.all():
-            newModel.setXBounds(model.xBounds)
-            res_solver["Model"] = newModel
-            res_solver["iterNo"] = iterNo
-            
-            return True
-          
+            break
+        
         else: continue
         
-    # Terminates with reaching iterMax:
+    # Updating model:
     newModel.setXBounds(model.xBounds)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
