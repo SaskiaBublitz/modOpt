@@ -1298,6 +1298,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
         reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
                                                           fx, i, xBounds, bi, 
                                                           dict_options)
+    #reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
     reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
     return reducedIntervals
 
@@ -1750,7 +1751,8 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
               
         #timeout = checkTimeout(t0, tmax, timeout)
         #if timeout: interval = joinIntervalSet(interval, relEpsX, absEpsX)
-    if not len(interval) <= maxIvNo: interval = joinIntervalSet(interval, relEpsX, absEpsX)
+    if not len(interval) <= maxIvNo: 
+        interval = joinIntervalSet(interval, relEpsX, absEpsX)
         
     return monIncreasingZone, monDecreasingZone, interval
 
@@ -1979,53 +1981,47 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
         :newIvSet:           new set of joint intervals
         
     """
+    newIvSet = ivSet
     
-    newIvSet = []
-    k = 0
-    noIv = len(ivSet)
     
-    while len(newIvSet) != noIv:
+    noOldIvSet = len(ivSet) + 1
+    
+    while noOldIvSet != len(newIvSet) and len(newIvSet)!=1:
+        ivSet = newIvSet
+        noOldIvSet = len(ivSet)
+        newIvSet = []
+        noIv = len(ivSet)
         
-        if k != 0: 
-            ivSet = newIvSet
-            noIv = len(ivSet)
-            newIvSet = []
-        
-        for iv in ivSet:
-            for i in range(0, len(ivSet)): 
-                if iv == ivSet[i]: 
-                    continue
-                elif iv in ivSet[i]:
+        while noIv != 0: #len(newIvSet) != noIv:
+            
+            for i in range(1, noIv): 
+                if ivSet[0] in ivSet[i]:
                     newIvSet.append(ivSet[i])
-                    ivSet.remove(ivSet[i])
-                    ivSet.remove(iv)
-                    break
-                elif ivSet[i] in iv:
-                    newIvSet.append(iv)
-                    ivSet.remove(ivSet[i])
-                    ivSet.remove(iv)
-                    break
-                # elif mpmath.almosteq(iv.b, ivSet[i].a, relEpsX, absEpsX): 
-                #     newIvSet.append(mpmath.mpi(iv.a, ivSet[i].b))
-                #     ivSet.remove(ivSet[i])
-                #     ivSet.remove(iv)
-                #     break
-                # elif mpmath.almosteq(iv.a, ivSet[i].b, relEpsX, absEpsX): 
-                #     newIvSet.append(mpmath.mpi(ivSet[i].a, iv.b))
-                #     ivSet.remove(ivSet[i])
-                #     ivSet.remove(iv)
-                #     break
-                elif ivIntersection(iv, ivSet[i])!=[]:
-                    newIvSet.append(mpmath.mpi(min(ivSet[i].a, iv.a), max(ivSet[i].b, iv.b)))
-                    ivSet.remove(ivSet[i])
-                    ivSet.remove(iv)
+                    ivSet.remove(ivSet[0])
+                    ivSet.remove(ivSet[i-1])
                     break
                 
-        if ivSet != []: 
-            for j in range(0, len(ivSet)):
-                newIvSet.append(ivSet[j])
-        k=1
+                elif ivSet[i] in ivSet[0]:
+                    newIvSet.append(ivSet[0])
+                    ivSet.remove(ivSet[0])
+                    ivSet.remove(ivSet[i-1])
+                    break
+     
+                elif ivIntersection(ivSet[0], ivSet[i])!=[]:
+                    newIvSet.append(mpmath.mpi(min(ivSet[i].a, ivSet[0].a), 
+                                               max(ivSet[i].b, ivSet[0].b)))
+                    ivSet.remove(ivSet[0])
+                    ivSet.remove(ivSet[i-1])
+                    break
                 
+                elif i == noIv-1: 
+                    newIvSet.append(ivSet[0])
+                    ivSet.remove(ivSet[0])
+                    break
+        
+            noIv = len(ivSet)  
+            
+        
     return newIvSet
 
 
