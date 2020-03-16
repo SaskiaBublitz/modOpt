@@ -755,7 +755,8 @@ def lambdifyToMpmathIv(x, f):
     mpmathIv = {"exp" : mpmath.iv.exp,
             "sin" : mpmath.iv.sin,
             "cos" : mpmath.iv.cos,
-            "log" : mpmath.iv.log}
+            "log" : mpmath.iv.log,
+            "sqrt": mpmath.iv.sqrt}
     
     return sympy.lambdify(x,f, mpmathIv)
 
