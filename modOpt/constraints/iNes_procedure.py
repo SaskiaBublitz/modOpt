@@ -116,7 +116,8 @@ def reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options):
     """
     
     varBounds = {}
-            
+    maxBoxNo = dict_options["maxBoxNo"]
+        
     for k in range(0, len(functions)):
         f = functions[k]
         if dict_options["Debug-Modus"]: print(k)
@@ -129,14 +130,14 @@ def reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options):
         
         if varBounds.__contains__('Failed_xID'):
             return get_failed_output(f, varBounds)
-    output = get_newXBounds(varBounds, xBounds)              
+    output = get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds)              
     
-    if len(output["intervalsPerm"]) > dict_options["maxBoxNo"]:
-        print("Note: Algorithm stops because the current number of boxes is ", 
-        len(output["intervalsPerm"]),
-        "and exceeds the maximum number of boxes that is ",  
-        dict_options["maxBoxNo"], "." )        
-        output["xAlmostEqual"] = True
+    #if len(output["intervalsPerm"]) > dict_options["maxBoxNo"]:
+    #    print("Note: Algorithm stops because the current number of boxes is ", 
+    #    len(output["intervalsPerm"]),
+    #    "and exceeds the maximum number of boxes that is ",  
+    #    dict_options["maxBoxNo"], "." )        
+    #    output["xAlmostEqual"] = True
       
     return output
 
@@ -161,7 +162,7 @@ def get_failed_output(f, varBounds):
     return output    
     
    
-def get_newXBounds(varBounds, xBounds):
+def get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds):
     """ creates output dictionary with new variable bounds in a successful 
     reduction process. Also checks if variable bounds change by xUnchanged.
     
@@ -176,8 +177,18 @@ def get_newXBounds(varBounds, xBounds):
     output = {}
     xNewBounds = []
     xUnchanged = True
+    subBoxNo = 1
     
     for i in range(0, len(xBounds)):
+        
+        if ((boxNo-1) + subBoxNo * len(varBounds['%d' % i])) > maxBoxNo:
+            for restj in range(i,len(xBounds)):
+                xNewBounds.append([xBounds[restj]])
+            output["xAlmostEqual"] = xUnchanged     
+            output["intervalsPerm"] = list(itertools.product(*xNewBounds))
+            return output
+            
+        subBoxNo = subBoxNo * len(varBounds['%d' % i]) 
         xNewBounds.append(varBounds['%d' % i])               
         
         if varBounds['%d' % i] != xBounds[i] and xUnchanged:
@@ -593,7 +604,7 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options):
 
                     if ((boxNo-1) + subBoxNo * len(y)) > maxBoxNo:
                         for restj in range(j,blockDim):
-                            xNewBounds[restj] = [xBounds[restj]]
+                            xNewBounds[restj]=[xBounds[restj]]
                         output["xAlmostEqual"] = xUnchanged     
                         output["intervalsPerm"] = list(itertools.product(*xNewBounds))
                         return output

@@ -39,7 +39,7 @@ def analyseResults(dict_options, initialModel, res_solver):
         initVolume = calcInitVolume(initVarBounds)
         hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
                                                                          solvedPerBox)
-        hypercubicLFraction = 0
+        #hypercubicLFraction = 0
         #for hLF in hypercubicLFractions:
         #    hypercubicLFraction = hypercubicLFraction + hLF**(len(varSymbolic))
         hypercubicLFraction = sum(hypercubicLFractions)
@@ -282,7 +282,7 @@ def calcInitVolume(initVarBounds):
     
     """
     
-    volume = 1
+    volume = 1.0
     for curBound in initVarBounds:
         width = curBound.delta
         volume = volume * width

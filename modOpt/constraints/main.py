@@ -127,7 +127,6 @@ def doIntervalNestingNew(res_solver, dict_options):
     
     model = res_solver["Model"]
     #dict_options["maxBoxNo"] =  int((len(model.xBounds[0]))**0.5)
-    dict_options["maxBoxNo"] =  8
     iterNo = 0
     newModel = copy.deepcopy(model)
     functions = []
