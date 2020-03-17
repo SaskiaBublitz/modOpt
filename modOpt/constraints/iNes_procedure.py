@@ -83,8 +83,10 @@ def reduceMultipleXBounds(model, functions, dict_options):
         if boxNo >= dict_options["maxBoxNo"]:
             print("Note: Algorithm stops because the current number of boxes is ", 
                   boxNo,
-                  "and exceeds the maximum number of boxes that is ",  
+                  "and exceeds or equals the maximum number of boxes that is ",  
                   dict_options["maxBoxNo"], "." )
+            for l in range(k+1, nl):
+                newXBounds.append(model.xBounds[l])
             break
         
     if newXBounds == []: 
@@ -2019,7 +2021,11 @@ def joinIntervalSet(ivSet, relEpsX, absEpsX):
                     newIvSet.append(ivSet[0])
                     ivSet.remove(ivSet[0])
                     break
-        
+                
+            if len(ivSet) == 1:
+                newIvSet.append(ivSet[0])
+                ivSet.remove(ivSet[0])
+                
             noIv = len(ivSet)  
             
         

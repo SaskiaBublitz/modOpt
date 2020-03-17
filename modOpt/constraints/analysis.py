@@ -39,8 +39,11 @@ def analyseResults(dict_options, initialModel, res_solver):
         initVolume = calcInitVolume(initVarBounds)
         hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
                                                                          solvedPerBox)
-        
+        hypercubicLFraction = 0
+        #for hLF in hypercubicLFractions:
+        #    hypercubicLFraction = hypercubicLFraction + hLF**(len(varSymbolic))
         hypercubicLFraction = sum(hypercubicLFractions)
+        #hypercubicLFraction = (hypercubicLFraction)**(1.0/len(varSymbolic))   
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
         writeAnalysisResults(dict_options["fileName"], varSymbolic, boundRatios, 
@@ -164,7 +167,7 @@ def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, solvedVarNo):
             hypercubeLengthFractions.append(0.0)
             continue
         
-        n = 1.0 / dim
+        n = 1.0 / float(dim)
         curFraction = 1.0
         
         for i in range(0, len(boundRatios[0])):
