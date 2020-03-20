@@ -3,7 +3,7 @@
 Imported packages
 ***************************************************
 """
-
+import sympy
 import numpy
 import casadi
 
@@ -127,7 +127,13 @@ class Model:
     
     def getFunctionValues(self):
         """ Return: Function Values at current state variable values"""
-        return numpy.array(self.fSymCasadi(*self.stateVarValues[0]))
+        functionValues = []
+        
+        for fun in self.fSymbolic:
+            fun = sympy.lambdify(self.xSymbolic, fun)
+            functionValues.append(fun(*self.stateVarValues[0]))
+        
+        return numpy.array(functionValues)
     
     
     def getScaledFunctionValues(self):
