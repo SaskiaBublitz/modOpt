@@ -86,6 +86,7 @@ class Model:
         self.colSca = numpy.ones(len(X))
         self.failed = False
         self.constraints = CONSTRAINTS
+        self.jacobianSympy = []
 
 
     def getBoundsOfPermutedModel(self, xBounds, xSymbolic, parameter):
@@ -108,8 +109,8 @@ class Model:
         xBoundsPerm = reorderList(xBounds, self.colPerm)
   
         return FsymPerm, xSymbolicPerm, xBoundsPerm
-
-
+    
+    
     def getConditionNumber(self):
         """ Return: Condition number of original system """
         return numpy.linalg.cond(self.getJacobian())
@@ -158,14 +159,22 @@ class Model:
     
     def getJacobian(self):
         """ Return: jacobian evaluated at current state variable values"""
+        jac = self.getCasadiJacobian()
+        if numpy.all(numpy.array(jac==jac)): return jac
+        else: return casadi.casadi.DM(self.getSympyJacobian())
+            
+    def getCasadiJacobian(self):
         return self.jacobian(*numpy.append(self.stateVarValues[0], self.stateVarValues[0]))
-
-
+        
+        
     def getScaledJacobian(self):
         """ Return: scaled jacobian evaluated at current state variable values"""
-        return casadi.mtimes(casadi.mtimes(casadi.diag(1.0 / self.rowSca), self.getJacobian()), 
-
-                             casadi.diag(self.colSca))
+        jac = self.getJacobian()
+        #if type(jac)==casadi.casadi.DM:
+        return casadi.mtimes(casadi.mtimes(casadi.diag(1.0 / self.rowSca), 
+                                               jac, casadi.diag(self.colSca)))                                
+        #else: return self.getSympyScaledJacobian()
+                                 
 
     def getPermutedJacobian(self):
         """ Return: permuted jacobian evaluated at current state variable values"""
@@ -176,6 +185,29 @@ class Model:
         """ Return: permuted and scaled jacobian evaluated at current state variable values"""
         return self.getScaledJacobian()[self.rowPerm, self.colPerm]
 
+
+    def getSympySymbolicJacobian(self):
+        return sympy.Matrix(self.fSymbolic).jacobian(self.xSymbolic)
+  
+      
+    def getSympyJacobian(self):
+        if self.jacobianSympy == []: self.jacobianSympy = self.getSympySymbolicJacobian()
+        
+        array2mat = [{'ImmutableDenseMatrix': numpy.array}, 'numpy']
+        lam_f_mat = sympy.lambdify(self.xSymbolic, self.jacobianSympy, modules=array2mat)
+        
+        return lam_f_mat(*self.stateVarValues[0])
+  
+    
+    def getSympyScaledJacobian(self):
+         """ Return: scaled jacobian evaluated at current state variable values"""
+         return numpy.matmul(numpy.matmul(numpy.diag(1.0 / self.rowSca), 
+                            self.getSympyJacobian()), numpy.diag(self.colSca))
+
+
+    def getSympyPermutedAndScaledJacobian(self):
+        """ Return: permuted and scaled jacobian evaluated at current state variable values"""
+        return self.getSympyScaledJacobian()[self.rowPerm, self.colPerm]
                            
     def getScaledXValues(self):
          """ Return: Scaled state variable values in global order"""
@@ -262,10 +294,10 @@ class Model:
         
         """ 
         
-        if res_scaling.__contains__("Equations"): 
+        if res_scaling.has_key("Equations"): 
             self.rowSca[self.rowPerm] = res_scaling["Equations"]
         
-        if res_scaling.__contains__("Variables"):
+        if res_scaling.has_key("Variables"):
             self.colSca[self.colPerm] = res_scaling["Variables"]
 
                         
