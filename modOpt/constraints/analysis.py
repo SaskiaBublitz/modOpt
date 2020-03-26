@@ -3,10 +3,8 @@
 Import packages
 ***************************************************
 """
-import numpy
 import mpmath
-import copy
-from modOpt.decomposition import dM
+import modOpt.decomposition as mod
 import sympy
 
 """
@@ -32,20 +30,210 @@ def analyseResults(dict_options, initialModel, res_solver):
     modelWithReducedBounds = res_solver["Model"]
     varSymbolic = initialModel.xSymbolic
     initVarBounds = initialModel.xBounds[0]
+    initLength = calcVolumeLength(initVarBounds, len(varSymbolic)) # volume calculation failed for large systems with large initial volumes
+
     if modelWithReducedBounds != []:
         reducedVarBounds = modelWithReducedBounds.xBounds
-        boundRatios = getBoundRatios(initVarBounds, reducedVarBounds)
-        boundRatioOfVars, solvedVars, solvedPerBox = getBoundRatioOfVars(boundRatios)
-        initVolume = calcInitVolume(initVarBounds)
-        hypercubicLFractions = getHypercubelengthFractionOfOneVarBoundSet(boundRatios,
-                                                                         solvedPerBox)
+        solvedVarsID, solvedVarsNo = getSolvedVars(reducedVarBounds)
         
-        hypercubicLFraction = sum(hypercubicLFractions)
+        dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
+        boundsRatios = getVarBoundsRatios(initVarBounds, reducedVarBounds)
+
+        lengths = calcHypercubicLength(reducedVarBounds, dim_reduced)        
+        boundRatiosOfVars = getBoundRatiosOfVars(boundsRatios)
+
+        lengthFractions = getLengthFractions(initLength, lengths)
+     
+        hypercubicLFraction = getHyperCubicLengthFraction(initLength, lengths, dim_reduced)
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
-        writeAnalysisResults(dict_options["fileName"], varSymbolic, boundRatios, 
-                             boundRatioOfVars, initVolume, hypercubicLFractions, 
-                             hypercubicLFraction, solvedVars, density, nonLinRatio)
+        writeAnalysisResults(dict_options["fileName"], varSymbolic, boundsRatios, 
+                             boundRatiosOfVars, initLength, lengthFractions, 
+                             hypercubicLFraction, solvedVarsID, density, nonLinRatio)
+
+
+def calcVolumeLength(box, dim):
+    """ calculates box edge length assuming it as a hypercube
+    
+    Args:
+        :box:      list with variable bounds in mpmath.mpi logic
+        :dim:      box dimension as integer
+    
+    Returns:
+        :length:   box edge length as float
+    
+    """
+    
+    length = 1.0
+    
+    solvedID, solvedVarsNo = getSolvedVars([box])
+    dim =dim - solvedVarsNo[0]
+    
+    for interval in box:
+        width = float(mpmath.mpf(interval.delta)) 
+        if width != 0.0:
+            length*=(width)**(1.0/dim)
+    return length
+
+
+def getSolvedVars(boxes):
+    """ filters out variable intervals with zero width (solved)
+    
+    Args:
+        :boxes:     list with reduced boxes (numpy.array)
+    
+    Returns:
+    :solvedVarsID:      Nested list [[i,j],...] with i box-ID and j variable-ID 
+                        of solved interval as integer
+    solvedVarsNo :      List with numbers of solved intervals in the boxes (int)
+
+    """
+    
+    solvedVarsID =[]
+    solvedVarsNo =[]
+    
+    for i in range(0, len(boxes)):
+        curBox = boxes[i]
+        soledVarsNoBox = 0
+        for j in range(0, len(curBox)):
+            width = float(mpmath.mpf(curBox[j].delta))
+            if width == 0.0:
+                solvedVarsID.append([j,i])
+                soledVarsNoBox += 1
+                
+        solvedVarsNo.append(soledVarsNoBox) 
+    return solvedVarsID, solvedVarsNo
+
+
+def getReducedDimensions(solvedVarsNo, dim):
+    """ determines the dimension of the reduced boxes where solvedVarsNo variables
+    have been solved.
+    
+    Args:
+        :solvedVarsNo:      list with number of solved variables per box 
+        :dim:               integer with dimension of initial box
+    
+    Returns:
+        :dim_reduced:       list with dimension of reduced boxes as integer
+
+    """
+    
+    if solvedVarsNo == []: return [dim]
+    
+    dim_reduced = []
+    for soledVarsNoBox in solvedVarsNo:
+        dim_reduced.append(dim - soledVarsNoBox)
+    return dim_reduced
+            
+    
+def getVarBoundsRatios(initBox, reducedVarBounds):
+    """ calculates ratios of reduced variable bounds to initial variable bounds
+    
+    Args:
+        :initBox:             list with initial variable bounds
+        :reducedVarBounds:    list with reduced variable bound sets
+    
+    Returns:                   list with variable bounds ratios
+        
+    """
+    
+    varBoundsRatios = []
+    
+    for curBox in reducedVarBounds:
+        varBoundsRatios.append(calcBoxRatios(initBox, curBox))
+    return varBoundsRatios
+
+
+def calcHypercubicLength(boxes, dim):
+    """ calculates hypercubic lengths of boxes
+    
+    Args:
+        :boxes:     list with boxes and that contain intervals in mpmath.mpi formate
+        :dim:       list with dimensions of boxes as integer
+        
+    Returns:
+        :lengths:   list with hypercubic lengths as floats
+
+    """
+    
+    lengths = []
+    for i in range(0, len(boxes)):
+        lengths.append(calcVolumeLength(boxes[i], dim[i]))
+    return lengths
+
+
+def getBoundRatiosOfVars(boundsRatios):
+    """ calculates total variable bound ratios through summing up all different
+    variable intervals of the boxes.
+    
+    Args:
+        :boundsRatios:         nested list with bound ratios as float values in 
+                               reduced boxes
+
+    Returns:
+        :boundRatiosOfVars:   list with sums of unique variable bound ratios
+
+    """
+    boundRatiosOfVars = []
+    
+    boxNo = len(boundsRatios)
+    dim = len(boundsRatios[0])
+    
+    for i in range(0, dim):
+        varBoundRatios = []
+        ratioOfVar = 0.0
+        for j in range(0, boxNo):
+            if not boundsRatios[j][i] in varBoundRatios:
+                varBoundRatios.append(boundsRatios[j][i])
+             
+        for ratio in varBoundRatios:
+            if type(ratio) is float: ratioOfVar += ratio
+            
+        if ratioOfVar == 0: ratioOfVar='solved'
+        boundRatiosOfVars.append(ratioOfVar)
+        
+    return boundRatiosOfVars
+    
+
+def getLengthFractions(initLength, lengths):
+    """ calculates hypercubic length fractions of box edge lengths referring 
+    to the lngth of th initial box
+   
+    Args:
+    :initLength:    float with edgie length of initial volume (as hypercube)
+    :lengths:       list with edgie lengths of redced box volumes 
+                    (as hypercubes) as floats
+
+    Returns:
+    :lengthFractions: list with hypercubic length fractions as float
+
+    """
+    
+    lengthFractions = []
+    for length in lengths:
+        lengthFractions.append(length / initLength)
+        
+    return lengthFractions
+
+
+def getHyperCubicLengthFraction(initLength, lengths, dim_reduced):
+    """ calculates length fraction of all reduced boxes / intial box
+    
+    Args:
+        :initLength:    float with hypercubic length of initial box
+        :lengths:       list with hypercubic lengths of reduced boxes as floats
+        :dim_reduced:   list with dimensions of reduced boxes as integer
+        
+    Returns:     hypercubic length fraction as mpmath.mpf (gets to higher nubmers than float)
+    
+    """
+    
+    reduced_volume =  0.0
+
+    for i in range(0, len(lengths)):
+        reduced_volume+=(mpmath.mpf(lengths[i]))**dim_reduced[i]
+        
+    return reduced_volume**(1.0/max(dim_reduced))/initLength
  
 
 def getDensityOfJacoboan(model):
@@ -58,7 +246,7 @@ def getDensityOfJacoboan(model):
     
     """
     
-    model.jacobian, f = dM.getCasadiJandF(model.xSymbolic, model.fSymbolic)
+    model.jacobian, f = mod.getCasadiJandF(model.xSymbolic, model.fSymbolic)
     return float(model.getJacobian().nnz()) / model.getModelDimension()**2
     
 
@@ -96,7 +284,7 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
         :boundRatios:                 list with reduced variable bound tp initial 
                                       variable bound ratio (has only one entry if 
                                       one set of variable bounds remains)
-        :boundRatioOfVars:            sum of the bound ratios of one variable
+        :boundRatioOfVars:            sum of the unique bound ratios of one variable
         :initVolume:                  volume of initial variable bound set
         :hypercubicLFractions:        list with fractional length of each sub-hypercube
         :hypercubicLFraction:         If the volumes were hypercubic, the hypercubicLFraction
@@ -115,9 +303,18 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
     res_file.write("System Dimension: \t%s\n"%(len(boundRatios[0]))) 
     res_file.write("Jacobian Nonzero Density: \t%s\n"%(density))
     res_file.write("Jacobian Nonlinearity Ratio: \t%s\n"%(nonLinRatio))
-    res_file.write("Volume of initial set of varibale bounds: \t%s\n"%(initVolume))
-    res_file.write("\n") 
-    res_file.write("Variables\t") 
+    res_file.write("Length of initial box: \t%s\n"%(initVolume))
+    res_file.write("\nHypercubicLengthFractions\t ")
+    for j in range(0, noOfVarSets):
+        res_file.write("%s\t"%(hypercubicLFractions[j]))
+    res_file.write("%s"%(hypercubicLFraction)) 
+    
+    if solvedVars != []:
+        res_file.write("\n\nFollowing Variables have been solved:\n")
+        for solvedVar in solvedVars:
+            res_file.write("%s (VarBound_%s)\n" %(varSymbolic[solvedVar[0]], 
+                                                               solvedVar[1]))
+    res_file.write("\nVariables\t") 
     for j in range(0, noOfVarSets):
           res_file.write("VarBounds_%s\t"%(j)) 
     res_file.write("VarBoundFraction\n")
@@ -129,53 +326,6 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
             res_file.write("%s \t"%(boundRatios[j][i]))  
         res_file.write("%s\n"%(boundRatioOfVars[i]))
 
-    res_file.write("\nHypercubicLengthFractions\t ")
-    for j in range(0, noOfVarSets):
-        res_file.write("%s\t"%(hypercubicLFractions[j]))
-    res_file.write("%s"%(hypercubicLFraction)) 
-    
-    if solvedVars != []:
-        res_file.write("\n\nFollowing Variables have been solved:\n")
-        for solvedVar in solvedVars:
-            res_file.write("%s (VarBound_%s)\n" %(varSymbolic[solvedVar[1]], 
-                                                               solvedVar[0]))
-
-def getHypercubelengthFractionOfOneVarBoundSet(boundRatios, solvedVarNo):
-    """ calculates edge fraction of each sub-hypercube that result from multiple
-    solution interval sets
-    
-    Args:
-        :boundRatios:      list with reduced variable bound tp initial variable 
-                           bound ratio (has only one entry if one set of variable 
-                           bounds remains) 
-        :solvedVarNo:      list with number of solved variables per box
-        
-    Return:
-        :hypercubeLengthFractions: list with sub-hypercubic length fractions
-        
-    """
-    
-    hypercubeLengthFractions = []
-    
-    
-    for j in range(0, len(boundRatios)):
-        dim = len(boundRatios) - solvedVarNo[j]
-        if dim == 0.0:
-            hypercubeLengthFractions.append(0.0)
-            continue
-        
-        n = 1.0 / dim
-        curFraction = 1.0
-        
-        for i in range(0, len(boundRatios[0])):
-            
-            if type(boundRatios[j][i]) == float:
-                curFraction = curFraction * (boundRatios[j][i])**n
-
-        hypercubeLengthFractions.append(curFraction)
-    
-    return hypercubeLengthFractions
-    
 
 def getBoundRatioOfVarBoundSet(boundRatios):
     """ multiplies all variable bounds of one variable bound set for all variable
@@ -192,7 +342,7 @@ def getBoundRatioOfVarBoundSet(boundRatios):
     
     for j in range(0, len(boundRatios)):
         
-        productOfBoundRatios = 1.0
+        productOfBoundRatios = 1
         
         for i in range(0, len(boundRatios[0])):
             
@@ -202,89 +352,23 @@ def getBoundRatioOfVarBoundSet(boundRatios):
         boundRatioOfVarBoundSet.append(productOfBoundRatios)
     
     return boundRatioOfVarBoundSet
-    
-
-def getBoundRatioOfVars(boundRatios):
-    """ sums of variable bounds of different reduced variable bound sets
-    
-    Args:
-        :boundRatios:       list with bound ratios
-    
-    Return:                 list bound ratios of all iteration variables
-    
-    """
-    
-    boundRatioOfVars = []
-    solvedVars = []
-    solvedPerBox = numpy.zeros(len(boundRatios))
-    
-    for i in range(0, len(boundRatios[0])):
         
-        sumOfBoundRatios = 0.0
-        
-        for j in range(0, len(boundRatios)):
-            
-            if type(boundRatios[j][i]) == float:
-                sumOfBoundRatios = sumOfBoundRatios + boundRatios[j][i]    
-            else:
-                
-                solvedVars.append([j,i])
-                
-        if sumOfBoundRatios != 0.0:
-            boundRatioOfVars.append(sumOfBoundRatios)
-        else: boundRatioOfVars.append('solved')
-    
-    return boundRatioOfVars, solvedVars, solvedPerBox
-            
-    
-def getBoundRatios(initVarBounds, reducedVarBounds):
-    """ calculates ratios of reduced variable bounds to initial variable bounds
-    
-    Args:
-        :initVarBounds:       list with initial variable bounds
-        :reducedVarBounds:    list with reduced variable bound sets
-    
-    Return:                   list with bound ratios
-        
-    """
-    
-    boundRatios = copy.deepcopy(reducedVarBounds)
-    
-    for i in range(0, len(boundRatios)):
-        calcBoundRatios(initVarBounds, boundRatios[i])
-    return boundRatios
-
-        
-def calcBoundRatios(initVarBounds, curBoundRatio):
-    """ calculates current variable set bound ratio
+       
+def calcBoxRatios(initVarBounds, box):
+    """ calculates interval set bound ratio to initial box
   
     Args:
         :initVarBounds:       list with initial variable bounds
-        :curBoundRatio:       current variable bound set as a list with mpmath.mpi
-                              values
-                              
+        :box:           current box as a list with mpmath.mpi values
+    Return:
+
+        :boxRatios:         list with reduced variable bounds ratios                          
     """  
-    
+    boxRatios = []
     for j in range(0, len(initVarBounds)):
-        curBoundRatio[j] = calcBoundFraction(initVarBounds[j], curBoundRatio[j])
+        boxRatios.append(calcBoundFraction(initVarBounds[j], box[j]))
+    return boxRatios
 
-
-def calcInitVolume(initVarBounds):
-    """ calculates volume of initial variable bound set
-    
-    Args:
-        :initVarBounds:     list with initial variable bounds
-    
-    Return:                 float with intiial volume
-    
-    """
-    
-    volume = 1
-    for curBound in initVarBounds:
-        width = curBound.delta
-        volume = volume * width
-    return volume
-        
 
 def calcBoundFraction(initVarBound, curVarBound):
     """ calculates current variable bound ratio

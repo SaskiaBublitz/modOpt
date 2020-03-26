@@ -322,7 +322,7 @@ def getResults(res_solver):
     ex = getPermID(ex, model.rowPerm)
     
     
-    J = model.getPermutedJacobian()
+    J = model.getCasadiJacobian()[model.rowPerm, model.colPerm]
     
     return J, ex, model
     

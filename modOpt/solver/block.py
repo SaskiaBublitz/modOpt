@@ -3,7 +3,7 @@
 Imported packages
 ***************************************************
 """
-
+import sympy
 import numpy
 import casadi
 import copy
@@ -34,7 +34,7 @@ class Block:
     """
     
     def __init__(self, rBlock, cBlock, xInF, J_sym, F_sym, x, xBounds, 
-                 parameter=None, constraints=None, xSymbolic=None):
+                 parameter=None, constraints=None, xSymbolic=None, jacobianSympy =None):
         """ Initialization method for class Block
         
         Args:
@@ -61,6 +61,7 @@ class Block:
         self.rowSca = numpy.ones(len(self.rowPerm))
         self.colSca = numpy.ones(len(self.colPerm))
         self.allConstraints = constraints
+        self.jacobianSympy = jacobianSympy
 
         
     def getSubsystemVariableIDs(self, xInF):
@@ -105,8 +106,23 @@ class Block:
     def getPermutedJacobian(self):
          """ Return: block jacobian evaluated at x_tot"""
          J_tot = self.J_sym_tot(*numpy.append(self.x_tot, self.x_tot))
-         return J_tot[self.rowPerm, self.colPerm]
+         J_perm = J_tot[self.rowPerm, self.colPerm]
+         
+         if numpy.all(numpy.array(J_perm == J_perm)): return J_perm
+         else: return self.getPermutedSympyJacobian()
 
+         
+    def getPermutedSympyJacobian(self):
+        if self.jacobianSympy == []: self.jacobianSympy = self.getSympySymbolicJacobian()
+        array2mat = [{'ImmutableDenseMatrix': numpy.array}, 'numpy']
+        lam_f_mat = sympy.lambdify(self.x_sym_tot, self.jacobianSympy, modules=array2mat)
+        jac = lam_f_mat(*self.x_tot)
+        return casadi.DM(jac)[self.rowPerm, self.colPerm]
+
+
+    def getSympySymbolicJacobian(self):
+        return sympy.Matrix(self.F_sym_tot).jacobian(self.x_sym_tot)
+        
     
     def getScaledJacobian(self):
          """ Return: scaled block jacobian evaluated at x_tot """
@@ -116,14 +132,21 @@ class Block:
 
     def getFunctionValues(self):
         """ Return: block function values evaluated at x_tot """
-        F_tot = numpy.array(self.F_sym_tot(*self.x_tot))
-        return F_tot[self.rowPerm]
+        F_tot = numpy.array(self.F_sym_tot(*self.x_tot))[self.rowPerm]   
+
+        if numpy.all(F_tot==F_tot): return F_tot
+        else:
+            F_tot = []
+            for fun in self.allConstraints(self.x_sym_tot, self.parameter):
+                fun = sympy.lambdify(self.x_sym_tot, fun)
+                F_tot.append(fun(*self.x_tot))
+        
+            return numpy.array(F_tot)[self.rowPerm]
 
     
     def getPermutedFunctionValues(self):
         """ Return: block function values evaluated at x_tot """
-        F_tot = numpy.array(self.F_sym_tot(*self.x_tot))
-        return F_tot[self.rowPerm]
+        return self.getFunctionValues()
 
 
     def getScaledFunctionValues(self):
