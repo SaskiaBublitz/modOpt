@@ -66,8 +66,8 @@ def calcVolumeLength(box, dim):
     
     length = 1.0
     
-    solvedID, dim = getSolvedVars([box])
-    dim =dim[0]
+    solvedID, solvedVarsNo = getSolvedVars([box])
+    dim =dim - solvedVarsNo[0]
     
     for interval in box:
         width = float(mpmath.mpf(interval.delta)) 
