@@ -274,7 +274,7 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     """
     b_max = []
     b_min = []
-    
+    digits = int(abs(numpy.floor(numpy.log10(dict_options['absTol']))))
     b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
     
     if b == []: return []
@@ -291,8 +291,21 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
             get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options)
         
     if b_min !=[] and b_max != []:
-        return mpmath.mpi(max(b_min), min(b_max))
+        
+        b_lb = round_off(max(b_min), digits)
+        b_ub = round_up(min(b_max), digits)
+        return mpmath.mpi(b_lb, b_ub)
     else: return []
+
+
+def round_off(n, decimals=0): 
+    multiplier = 10 ** decimals 
+    return numpy.floor(n * multiplier) / multiplier
+
+
+def round_up(n, decimals=0): 
+    multiplier = 10 ** decimals 
+    return numpy.ceil(n * multiplier) / multiplier
 
 
 def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
@@ -312,8 +325,8 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
     if f.dbdx_sym[x_id][y_id] == 0:
         b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
         if not b == []:
-            b_min.append(b.a)
-            b_max.append(b.b)
+            b_min.append(float(mpmath.mpf(b.a)))
+            b_max.append(float(mpmath.mpf(b.b)))
         
     else:        
         incr_zone, decr_zone, nonmon_zone = get_conti_monotone_intervals(f.dbdx_sym[x_id][y_id], 
@@ -324,7 +337,6 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
         add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
                       copy.deepcopy(xBounds), b_min, b_max)    
     
-
 
 def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_min, b_max):
     """ gets minimum and maximum b(x,y) values for continuous monotone-increasing/-decreasing or 
@@ -1335,7 +1347,7 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]   
     continuousZone = []
-    
+    orgXiBounds = copy.deepcopy(xBounds[i])
     interval = [xBounds[i]] 
       
     while interval != [] and len(interval) <= maxIvNo: 
@@ -1348,7 +1360,7 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
 
         if not len(interval) <= maxIvNo: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
-    if interval == [] and continuousZone == []: return [], [xBounds[i]] 
+    if interval == [] and continuousZone == []: return [], [orgXiBounds] 
         
     return continuousZone, []
 
@@ -1646,6 +1658,7 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
     maxIvNo = dict_options["resolution"]   
     monIncreasingZone = []
     monDecreasingZone = []
+    org_xiBounds = copy.deepcopy(xBounds[i])
     interval = [xBounds[i]] 
         
     while interval != [] and len(interval) < maxIvNo: #and timeout == False: # #and dfdXconst == False:  
@@ -1675,7 +1688,7 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
         interval = joinIntervalSet(interval, relEpsX, absEpsX)
     
     if interval == [] and monDecreasingZone == [] and monIncreasingZone ==[]:
-        return [], [], [xBounds[i]]
+        return [], [], [org_xiBounds]
     return monIncreasingZone, monDecreasingZone, interval
 
 
