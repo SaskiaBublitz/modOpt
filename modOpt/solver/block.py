@@ -121,7 +121,8 @@ class Block:
 
 
     def getSympySymbolicJacobian(self):
-        return sympy.Matrix(self.F_sym_tot).jacobian(self.x_sym_tot)
+        f_sym = self.allConstraints(self.x_sym_tot, self.parameter)
+        return sympy.Matrix(f_sym).jacobian(self.x_sym_tot)
         
     
     def getScaledJacobian(self):
