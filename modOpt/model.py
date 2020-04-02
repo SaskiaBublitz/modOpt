@@ -294,10 +294,10 @@ class Model:
         
         """ 
         
-        if res_scaling.has_key("Equations"): 
+        if "Equations" in res_scaling: 
             self.rowSca[self.rowPerm] = res_scaling["Equations"]
         
-        if res_scaling.has_key("Variables"):
+        if "Variables" in res_scaling:
             self.colSca[self.colPerm] = res_scaling["Variables"]
 
                         
