@@ -178,7 +178,7 @@ def writeFunctionTable(res_file, res_solver):
     exitflag = getQuantityForFunction(res_solver["Exitflag"], blockID)
     condNo = getQuantityForFunction(res_solver["CondNo"], blockID)
     iterNo = getQuantityForFunction(res_solver["IterNo"], blockID)
-    funVal = model.getPermutedFunctionValues()
+    funVal = model.getFunctionValues()
     
     res_file.write(" ****************** Table with Function Results ****************** \n\n") 
     res_file.write("GLbID  BlockID  Exitflag  CondNo  IterNo  Residual\n") 

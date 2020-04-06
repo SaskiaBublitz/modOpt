@@ -183,7 +183,7 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
         curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
                                model.fSymCasadi, model.stateVarValues[0], 
                                model.xBounds[0], model.parameter,
-                               model.constraints, model.xSymbolic
+                               model.constraints, model.xSymbolic, model.jacobianSympy
                                )
         
         if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 

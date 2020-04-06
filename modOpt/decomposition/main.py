@@ -29,7 +29,7 @@ def decomposeSystem(model, dict_eq, dict_var, dict_options):
         
     """
     
-    jacobian = model.getJacobian()
+    jacobian = model.getCasadiJacobian()
     
     if dict_options["decomp"] == 'DM':
         res_permutation = dM.doDulmageMendelsohn(jacobian)
