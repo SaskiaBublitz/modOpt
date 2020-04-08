@@ -11,6 +11,7 @@ import itertools
 from modOpt.constraints import parallelization
 import time
 from modOpt.constraints.FailedSystem import FailedSystem
+import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
            'checkWidths', 'getPrecision']
