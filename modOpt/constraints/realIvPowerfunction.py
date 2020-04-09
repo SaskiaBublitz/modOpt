@@ -47,7 +47,15 @@ def ivRealPower():
 			if frac.denominator % 2 != 0: # denominator odd
 				lowBoundPow = realRoot(mpmath.power(base.a, frac.numerator), frac.denominator)
 				upBoundPow = realRoot(mpmath.power(base.b, frac.numerator), frac.denominator)
-				return mpmath.mpi(lowBoundPow, upBoundPow)
+				if frac.numerator % 2 == 0: # numerator even
+					if 0 <= base.a <= base.b:
+						return mpmath.mpi(lowBoundPow, upBoundPow)
+					elif base.a <= base.b <= 0:
+						return mpmath.mpi(upBoundPow, lowBoundPow)
+					else:
+						return mpmath.mpi(0, max(upBoundPow, lowBoundPow))
+				else: # numerator also odd
+						return mpmath.mpi(lowBoundPow, upBoundPow)
 			else: # dnominator even
 				if frac.numerator % 2 == 0: # numerator also even
 					lowBoundPow = realRoot(mpmath.power(base.a, frac.numerator), frac.denominator)
@@ -76,5 +84,5 @@ ivmpf.__pow__ = ivRealPower()
 
 
 # Test
-#print(mpmath.mpi(-2,4)**(1/3))
+#print(mpmath.mpi(-2,4)**(-2/3))
 
