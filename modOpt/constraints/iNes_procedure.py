@@ -1452,7 +1452,7 @@ def monotoneIncreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
         
     lowerBound = curInterval.a
     curInterval  = xBounds[i]    
-    
+    fxInterval = fx(*xBounds)
     if fIntervalxUp.a > bi.b:
         
         while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(fxInterval.b), 
@@ -1510,7 +1510,8 @@ def monotoneDecreasingIntervalNesting(fx, xBounds, i, bi, dict_options):
         
     lowerBound = curInterval.a  
     curInterval  = xBounds[i]        
-
+    fxInterval = fx(*xBounds)
+    
     if fIntervalxUp.b < bi.a:
         
         while not mpmath.almosteq(mpmath.mpf(fxInterval.a), mpmath.mpf(fxInterval.b), 
