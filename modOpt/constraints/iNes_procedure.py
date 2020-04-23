@@ -2060,19 +2060,15 @@ def getFunctionValuesIntervalsOfXList(x, f, xBounds, i):
         xBounds[i] = mpmath.mpi(x[j], x[j+1])
         curfunValue = f(*xBounds)
         
-        if curfunValue.a != '+inf' and curfunValue.a !='-inf':
-            funValuesLow.append(float(mpmath.mpf(curfunValue.a)))
-        elif curfunValue.a == '+inf': 
-            funValuesLow.append(1/numpy.finfo(float).eps)
-        else: 
-            funValuesLow.append(-1/numpy.finfo(float).eps)
-        
-        if curfunValue.b != '+inf' and curfunValue.b !='-inf':
-            funValuesUp.append(float(mpmath.mpf(curfunValue.b)))
-        elif curfunValue.b == '+inf': 
-            funValuesUp.append(1/numpy.finfo(float).eps)
-        else: 
-            funValuesUp.append(-1/numpy.finfo(float).eps)
+       # if lb !='-inf' and lb != '+inf':
+        funValuesLow.append(float(mpmath.mpf(curfunValue.a)))
+        #else:
+            #funValuesLow.append(-1/numpy.finfo(float).eps)
+            
+        #if ub != '+inf' and ub != '-inf':
+        funValuesUp.append(float(mpmath.mpf(curfunValue.b)))
+        #else: 
+            #funValuesUp.append(1/numpy.finfo(float).eps)
         
     return funValuesLow, funValuesUp
 
