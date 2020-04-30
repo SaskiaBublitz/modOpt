@@ -52,10 +52,10 @@ def reduceMultipleXBounds(model, functions, dict_options):
     for k in range(0, len(model.xBounds)):
 
         if dict_options['method'] == 'b_normal_newton':
-            Boundsmid, fmid, Jacmid, JacInterval, JacmidInv = getNewtonIntervalSystem(
-                model.xBounds[k], model.xSymbolic, model.fSymbolic, model.getSympySymbolicJacobian())     
+            newtonSystemDic = getNewtonIntervalSystem(model.xBounds[k], model.xSymbolic,
+                                        model.fSymbolic, model.getSympySymbolicJacobian())    
         else:
-            Boundsmid, fmid, Jacmid, JacInterval, JacmidInv = [], [], [], [], []
+            newtonSystemDic = {}
 
 
         if dict_options['method'] == 'b_tight':
@@ -63,8 +63,7 @@ def reduceMultipleXBounds(model, functions, dict_options):
         else:
             if not dict_options["Parallel Variables"]:
                 output = reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
-                                  model.blocks, boxNo, dict_options, Boundsmid, fmid,
-                                  Jacmid, JacInterval, JacmidInv)
+                                  model.blocks, boxNo, dict_options, newtonSystemDic)
             else:
                 output = parallelization.reduceXBounds(model.xBounds[k], model.xSymbolic, model.fSymbolic,
                                   model.blocks, boxNo, dict_options)
@@ -152,7 +151,9 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian):
     except: 
         JacInv = numpy.array(numpy.matrix(Jacmid).getH()) # if singular return adjunct
           
-    return Boundsmid, fmid[0], Jacmid, JacInterval, JacInv
+    return {'Boxpoint':Boundsmid, 'f(Boxpoint)':fmid[0], 'J(Boxpoint)':Jacmid,
+            'J(Box)':JacInterval, 'J(Boxpoint)-1':JacInv}
+
 
 def removeInfAndConvertToFloat(array, subs):
     '''removes inf in 2-dimensional arra
@@ -634,8 +635,7 @@ def getPrecision(xBounds):
     return 5*10**(numpy.floor(numpy.log10(minValue))-2)
 
 
-def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options, Boundsmid,
-                  fmid, Jacmid, JacInterval, JacmidInv):
+def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options, newtonSystemDic):
     """ solves an equation system blockwise. For block dimensions > 1 each
     iteration variable interval of the block is reduced sequentially by all
     equations of the block. The narrowest bounds from this procedure are taken
@@ -677,16 +677,17 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options, Boundsmid,
                         xNewBounds[j] = [xBounds[j]]
                         continue
 
+            if dict_options['method'] == 'b_normal_newton':        
+                y = NewtonReduction(newtonSystemDic, xBounds, j)
+
             for m in range(0, blockDim):
                 i = blocks[b][m]
                 if xSymbolic[j] in f[i].free_symbols:
                     if y == []: y = reduceXIntervalByFunction(xBounds, xSymbolic,
-                                    f[i], j, dict_options, Boundsmid, fmid, Jacmid,
-                                    JacInterval, JacmidInv)
+                                    f[i], j, dict_options)
                     else:
                         y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, xSymbolic,
-                                                f[i], j, dict_options, Boundsmid, fmid, Jacmid,
-                                                JacInterval, JacmidInv))
+                                                f[i], j, dict_options))
                     if y == [] or y ==[[]]:
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
@@ -778,8 +779,7 @@ def reduce_x_by_gb(g_sym, dgdx_sym, b, x_sym, i, xBounds, dict_options):
                                                      dict_options)
 
 
-def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options, Boundsmid, fmid,
-                              Jacmid, JacInterval, JacmidInv): # One function that gets fi, xi and does the procedure
+def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options): # One function that gets fi, xi and does the procedure
     """ reduces variable interval by either solving a linear function directly
     with Gauss-Seidl-Operator or finding the reduced variable interval(s) of a
     nonlinear function by interval nesting
@@ -806,30 +806,12 @@ def reduceXIntervalByFunction(xBounds, xSymbolic, f, i, dict_options, Boundsmid,
 
     #if(df2dxInterval == 0 and fxInterval == dfdxInterval*xBounds[i]): # Linear Case -> solving system directly
     if not xSymbolic[i] in dfdX_sympy.free_symbols and fxInterval == dfdxInterval*xBounds[i]: # Linear Case -> solving system directly
-        if dict_options['method'] == 'b_normal':
-            return getReducedIntervalOfLinearFunction(dfdX, i, xBounds, bi)
-        if dict_options['method'] == 'b_normal_newton':
-            b_normalIv = getReducedIntervalOfLinearFunction(dfdX, i, xBounds, bi)
-            NIv = NewtonReduction(Boundsmid, fmid, Jacmid, JacInterval, JacmidInv, xBounds, i)
-            intersection = ivIntersection(b_normalIv[0], NIv[0])
-            if intersection == []:
-                return b_normalIv
-            else:
-                return [intersection]
+        return getReducedIntervalOfLinearFunction(dfdX, i, xBounds, bi)
+  
 
     else: # Nonlinear Case -> solving system by interval nesting
-        if dict_options['method'] == 'b_normal':
-            return getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdxInterval,
+        return getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdxInterval,
                                                      i, xBounds, bi, dict_options)
-        if dict_options['method'] == 'b_normal_newton':
-            NIv = NewtonReduction(Boundsmid, fmid, Jacmid, JacInterval, JacmidInv, xBounds, i)
-            b_normalIv = getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdxInterval, 
-                                                         i, xBounds, bi, dict_options)
-            intersection = ivIntersection(b_normalIv[0], NIv[0])
-            if intersection == []:
-                return b_normalIv
-            else:
-                return [intersection]
 
 
 def splitFunctionByVariableDependency(f, x):
@@ -885,13 +867,16 @@ def lambdifyToMpmathIv(x, f):
     mpmathIv = {"exp" : mpmath.iv.exp,
             "sin" : mpmath.iv.sin,
             "cos" : mpmath.iv.cos,
-            "log" : ivLn,
-            "sqrt": ivRealSqrt}
+            "acos": ivacos,
+            "asin": ivasin,
+            "atan": ivatan,
+            "log" : ivlog,
+            "sqrt": ivsqrt}
 
     return sympy.lambdify(x, f, mpmathIv)
 
 
-def ivRealSqrt(iv):
+def ivsqrt(iv):
     """calculates the square root of an interval iv, stripping it from the imaginary part"""
 
     if iv.a >= 0 and iv.b >= 0:
@@ -905,18 +890,65 @@ def ivRealSqrt(iv):
     return sqrtiv
 
 
-def ivLn(iv):
-    """calculates the ln of an interval iv, stripping it from the negative ln"""
-
+def ivlog(iv):
+    """calculates the ln root of an interval iv, stripping it from the imaginary part"""
+    
     if iv.a > 0 and iv.b > 0:
-        ivlog = mpmath.mpi(mpmath.iv.ln(iv.a), mpmath.iv.ln(iv.b))
+        ivlog=mpmath.mpi(mpmath.log(iv.a),mpmath.log(iv.b))
     elif iv.a <= 0 and iv.b > 0:
-        ivlog = mpmath.mpi('-inf', mpmath.iv.ln(iv.b))
-    else:
-        # this case should not occur, the solution can not be in this interval
-        ivlog = mpmath.mpi('-inf', '+inf')
+        ivlog=mpmath.mpi('-inf',mpmath.log(iv.b))
+    elif iv.a <= 0 and iv.b <= 0:
+        #this case should not occur, the solution can not be in this interval
+        #print('Negative ln! Solution can not be in this Interval!')
+        ivlog=mpmath.mpi('-inf', '+inf')
 
     return ivlog
+
+
+def ivacos(iv):
+    """calculates the acos of an interval iv, stripping it from the imaginary part"""
+
+    if iv.a>=-1 and iv.b<=1:
+        ivacos = mpmath.mpi(mpmath.acos(iv.b),mpmath.acos(iv.a))
+    elif iv.a<-1 and iv.b<=1 and iv.b>=-1:
+        ivacos = mpmath.mpi(mpmath.acos(iv.b),mpmath.pi)
+    elif iv.a>=-1 and iv.a<=1 and iv.b>1:
+        ivacos = mpmath.mpi(0, mpmath.acos(iv.a))
+    else:
+        ivacos = mpmath.mpi(0, mpmath.pi)
+        
+    return ivacos
+
+
+def ivasin(iv):
+    """calculates the asin of an interval iv, stripping it from the imaginary part"""
+
+    if iv.a>=-1 and iv.b<=1:
+        ivasin = mpmath.mpi(mpmath.asin(iv.a),mpmath.asin(iv.b))
+    elif iv.a<-1 and iv.b<=1 and iv.b>=-1:
+        ivasin = mpmath.mpi(mpmath.asin(-1),mpmath.asin(iv.b))
+    elif iv.a>=-1 and iv.a<=1 and iv.b>1:
+        ivasin = mpmath.mpi(mpmath.asin(iv.a),mpmath.asin(1))
+    else:
+        ivasin = mpmath.mpi(mpmath.asin(-1), mpmath.asin(1))
+        
+    return ivasin
+
+
+def ivatan(iv):
+    """calculates the atan of an interval iv, stripping it from the imaginary part"""
+
+    if iv.a>=-mpmath.pi/2 and iv.b<=mpmath.pi/2:
+        ivatan = mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(iv.b))
+    elif iv.a<-mpmath.pi/2 and iv.b<=mpmath.pi/2 and iv.b>=-mpmath.pi/2:
+        ivatan = mpmath.mpi(mpmath.atan(-mpmath.pi/2),mpmath.atan(iv.b))
+    elif iv.a>=-mpmath.pi/2 and iv.a<=mpmath.pi/2 and iv.b>mpmath.pi/2:
+        ivatan = mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(mpmath.pi/2))
+    else:
+        ivatan = mpmath.mpi(mpmath.atan(-mpmath.pi/2), mpmath.atan(mpmath.pi/2))
+        
+    return ivatan
+
 
 def calculateCurrentBounds(fx, fWithoutX, dfdX, xSymbolic, i, xBounds, dict_options):
     """ calculates bounds of function fx, the residual fWithoutX, first and second
@@ -2277,7 +2309,7 @@ def checkWidths(X, Y, relEps, absEps):
     return almostEqual.all()
 
 
-def NewtonReduction(Boundsmid, fmid, Jacmid, JacInterval, JacmidInv, xBounds, i):
+def NewtonReduction(newtonSystemDic, xBounds, i):
     """ Computation of the Interval-Newton Method to reduce the single interval xBounds[i]:
      
         Args: 
@@ -2296,7 +2328,11 @@ def NewtonReduction(Boundsmid, fmid, Jacmid, JacInterval, JacmidInv, xBounds, i)
     """
     interval=[]
              
-    Y=JacmidInv
+    Boundsmid = newtonSystemDic['Boxpoint']
+    fmid = newtonSystemDic['f(Boxpoint)']
+    JacInterval = newtonSystemDic['J(Box)']
+    Y = newtonSystemDic['J(Boxpoint)-1']
+
     M = numpy.dot(Y, JacInterval)
     b = (-1)*numpy.dot(Y, fmid)
     R = b[i]
@@ -2305,5 +2341,6 @@ def NewtonReduction(Boundsmid, fmid, Jacmid, JacInterval, JacmidInv, xBounds, i)
             R = R - M[i][j]*(xBounds[j]-Boundsmid[j])
     N = Boundsmid[i] + ivDivision(R, mpmath.mpi(M[i][i]))[0]
     intersection=ivIntersection(N, xBounds[i])
+
     if intersection !=[]: interval.append(intersection)
     return interval
