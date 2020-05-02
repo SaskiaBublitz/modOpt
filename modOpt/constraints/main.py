@@ -39,83 +39,19 @@ def reduceVariableBounds(model, options):
     
     if options['timer'] == True: 
         tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
-        doIntervalNestingNew(res_solver, options)
+        doIntervalNesting(res_solver, options)
         toc = time.time()
         t = toc - tic
         res_solver["time"] = t
         return res_solver
         
     else:
-        doIntervalNestingNew(res_solver, options)
+        doIntervalNesting(res_solver, options)
         res_solver["time"] = []
         return res_solver
 
 
 def doIntervalNesting(res_solver, dict_options):
-    """ iterates the state variable intervals related to model using the
-    Gauss-Seidel Operator combined with an interval nesting strategy
-    
-    Args:
-        :res_solver:      dictionary for storing procedure output
-        :dict_options:    dictionary with solver options
-            
-    """
-    
-    model = res_solver["Model"]
-    iterNo = 0
-    xBounds = model.xBounds
-    xSymbolic = model.xSymbolic
-    parameter = model.parameter
-    blocks = model.blocks
-    newModel = copy.deepcopy(model)
-    dimVar = len(xSymbolic)
-    #boundsAlmostEqual = False * numpy.ones(dimVar, dtype=bool)
-
-
-    for l in range(0, dict_options["iterMaxNewton"]): 
-         
-        iterNo = l + 1
-       
-        if dict_options["Parallel Branches"]:
-            output = parallelization.reduceMultipleXBounds(xBounds, model, blocks, dimVar,
-                                        xSymbolic, parameter, dict_options)
-               
-        else: 
-            output = iNes_procedure.reduceMultipleXBounds(xBounds, xSymbolic, parameter, 
-                                                          model, dimVar, blocks, dict_options)
-        
-        xAlmostEqual = output["xAlmostEqual"]
-        newXBounds = output["newXBounds"]
-        
-        if output.__contains__("noSolution"):
-                       
-            newModel.setXBounds(xBounds)
-            newModel.failed = True
- 
-            res_solver["Model"] = newModel
-            res_solver["iterNo"] = iterNo
-            res_solver["noSolution"] = output["noSolution"]
-            return True
-        
-        elif xAlmostEqual.all():
-            newModel.setXBounds(xBounds)
-            res_solver["Model"] = newModel
-            res_solver["iterNo"] = iterNo
-            
-            return True
-          
-        else: xBounds = newXBounds
-        
-    # Terminates with reaching iterMax:
-    newModel.setXBounds(xBounds)
-    res_solver["Model"] = newModel
-    res_solver["iterNo"] = iterNo
-    
-    return True
-
-
-
-def doIntervalNestingNew(res_solver, dict_options):
     """ iterates the state variable intervals related to model using the
     Gauss-Seidel Operator combined with an interval nesting strategy
     

@@ -12,7 +12,7 @@ import itertools
 from modOpt.constraints import parallelization
 from modOpt.constraints.FailedSystem import FailedSystem
 
-__all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
+__all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
            'checkWidths', 'getPrecision']
 
 """
@@ -252,8 +252,8 @@ def store_reduced_xBounds(f, x_id, reduced_interval, varBounds):
     if not varBounds.__contains__('%d' % f.glb_ID[x_id]): 
         varBounds['%d' % f.glb_ID[x_id]] = reduced_interval
     else: 
-        varBounds['%d' % f.glb_ID[x_id]] = reduceTwoIVSets(varBounds['%d' % f.glb_ID[x_id]],
-                 reduced_interval)
+        varBounds['%d' % f.glb_ID[x_id]] = setOfIvSetIntersection([varBounds['%d' % f.glb_ID[x_id]],
+                 reduced_interval])
     
     if varBounds['%d' % f.glb_ID[x_id]] == [] or varBounds['%d' % f.glb_ID[x_id]] == [[]]: 
                 varBounds['Failed_xID'] = x_id
@@ -471,72 +471,6 @@ def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_min, b_max):
     if cur_min != []: b_min.append(max(cur_min))
     
 
-def reduceMultipleXBounds_old(xBounds, xSymbolic, parameter, model, dimVar, blocks,
-                          dict_options):
-    """ reduction of multiple solution interval sets
-    
-    Args:
-        :xBounds:               list with list of interval sets in mpmath.mpi logic
-        :xSymbolic:             list with symbolic iteration variables in sympy logic
-        :parameter:             list with parameter values of equation system        
-        :model:                 object of type model
-        :dimVar:                integer that equals iteration variable dimension        
-        :blocks:                list with block indices of equation system       
-        :dict_options:          dictionary with user specified algorithm settings
-    
-    Return:
-        :results:               dictionary with newXBounds and a list of booleans
-                                that marks all non reducable variable bounds with True.
-                                If solver terminates because of a NoSolution case the
-                                critical equation is also stored in results for the error
-                                analysis.
-            
-    """
-    
-    results = {}
-    newXBounds = []
-    xAlmostEqual = False * numpy.ones(len(xBounds), dtype=bool)
-
-    for k in range(0,len(xBounds)):
-
-        FsymPerm, xSymbolicPerm, xBoundsPerm = model.getBoundsOfPermutedModel(xBounds[k], 
-                                                                              xSymbolic, 
-                                                                              parameter)
-        #dict_options["precision"] = getPrecision(xBoundsPerm)
-        
-        if not dict_options["Parallel Variables"]:
-            output = reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                  blocks, dict_options)#, boundsAlmostEqual)
-        else:
-            output = parallelization.reduceXBounds(xBoundsPerm, xSymbolicPerm, FsymPerm,
-                                                  blocks, dict_options)#, boundsAlmostEqual)
-        
-        intervalsPerm = output["intervalsPerm"]
-        xAlmostEqual[k] = output["xAlmostEqual"]
-        
-        if output.__contains__("noSolution") :
-            saveFailedIntervalSet = output["noSolution"]
-            break
-        
-        for m in range(0, len(intervalsPerm)):          
-            x = numpy.empty(dimVar, dtype=object)     
-            x[model.colPerm]  = numpy.array(intervalsPerm[m])           
-            newXBounds.append(x)
-            
-            #if checkWidths(xBounds[k], x, dict_options["relTolX"], 
-            #               dict_options["absTolX"]): 
-            #    xAlmostEqual[k] = True
-            #    break
-            
-    results["newXBounds"] = newXBounds
-    
-    if newXBounds == []: 
-        results["noSolution"] = saveFailedIntervalSet
-        
-    results["xAlmostEqual"] = xAlmostEqual
-    return results
-
-
 def getPrecision(xBounds):
     """ calculates precision for intervalnesting procedure (when intervals are
     joined to one interval)
@@ -605,8 +539,10 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options):
                     if y == []: y = reduceXIntervalByFunction(xBounds, xSymbolic, 
                            f[i], j, dict_options)
                     else: 
-                        y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
-                                                    xSymbolic, f[i], j, dict_options))
+                        #y = reduceTwoIVSets(y, reduceXIntervalByFunction(xBounds, 
+                        #                            xSymbolic, f[i], j, dict_options))
+                        y = setOfIvSetIntersection([y, reduceXIntervalByFunction(xBounds, 
+                                                    xSymbolic, f[i], j, dict_options)])
                     if y == [] or y ==[[]]:
                         output["intervalsPerm"] = []
                         failedSystem = FailedSystem(f[i], xSymbolic[j])
@@ -1338,7 +1274,7 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
         #                                                  fx, i, xBounds, bi, 
         #                                                  dict_options)
     #reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
-    reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
+    reducedIntervals = setOfIvSetIntersection([reducedIntervals, orgXiBounds])
     return reducedIntervals
 
 
@@ -2106,20 +2042,9 @@ def getFunctionValuesIntervalsOfXList(x, f, xBounds, i):
     for j in range(0, len(x)-1):
         xBounds[i] = mpmath.mpi(x[j], x[j+1])
         curfunValue = f(*xBounds)
-        #curfunValue = timeout(f, xBounds)
-        #if curfunValue == False: 
-        #    print ("Warning: Function evaluation in non-monotone interval reduction takes too long.")
-        #    return numpy.ones(len(x)-1) * float('-inf'), numpy.ones(len(x)-1) * float('inf')
-        
-       # if lb !='-inf' and lb != '+inf':
+
         funValuesLow.append(float(mpmath.mpf(curfunValue.a)))
-        #else:
-            #funValuesLow.append(-1/numpy.finfo(float).eps)
-            
-        #if ub != '+inf' and ub != '-inf':
         funValuesUp.append(float(mpmath.mpf(curfunValue.b)))
-        #else: 
-            #funValuesUp.append(1/numpy.finfo(float).eps)
         
     return funValuesLow, funValuesUp
 
@@ -2146,13 +2071,69 @@ def reduceTwoIVSets(ivSet1, ivSet2):
         ivLong = ivSet2
         ivShort = ivSet1
     
-    for i in range(0, len(ivLong)):
-        curIV = compareIntervalToIntervalSet(ivLong[i], ivShort)
+    for iv in ivLong:
+        curIV = compareIntervalToIntervalSet(iv, ivShort)
         if curIV != []: ivReduced.append(curIV)
     
     return ivReduced
 
 
+def setOfIvSetIntersection(setOfIvSets):
+    """ intersects elements of a set of sets with disjoint intervals and returns a list with
+    the intersecting intervals.
+    
+    Args:
+        :setOfIvSets: list with lists of disjoint intervals in mpmath.mpi logic
+    
+    Return:          
+        :ivSet:     list with intersected, disjoint intervals in mpmath.mpi logic
+        
+    """
+    if len(setOfIvSets) <= 1: return setOfIvSets
+    
+    ivSet = setOfIvSets.pop(0)
+       
+    for curIvSet in setOfIvSets:
+        ivSet = ivSetIntersection(ivSet, curIvSet)
+        if ivSet == []: return []
+    return ivSet
+              
+  
+def ivSetIntersection(ivSet1, ivSet2):
+    """ intersects two sets of intervals with each other.
+    
+    Args:
+        :ivSet1:    first list with intervals in mpmath.mpi logic
+        :ivSet2:    second list with intervals in mpmath.mpi logic
+    
+    Return:          
+        :ivSetIntersected:  set with intersecting intervals in mpmath.mpi logic
+        
+    """
+    
+    ivSetIntersected = []
+    for iv in ivSet1:     
+        ivWithIvSetIntersection(iv, ivSet2, ivSetIntersected)
+                    
+    return ivSetIntersected  
+ 
+    
+def ivWithIvSetIntersection(iv1, ivSet, ivSetIntersected):
+    """ intersects an interval with a set of intervals.
+    
+    Args:
+        :iv1:               interval  in mpmath.mpi logic
+        :ivSet:             list with intervals in mpmath.mpi logic
+        :ivSetIntersected:  set with intersecting intervals in mpmath.mpi logic
+        
+    """
+    
+    for iv2 in ivSet:
+        intersection = ivIntersection(iv1, iv2)
+        if intersection !=[]: ivSetIntersected.append(intersection)
+    return True
+            
+            
 def compareIntervalToIntervalSet(iv, ivSet):
     """ checks if there is an intersection betweeen interval iv and a list of 
     intervals ivSet. If there is one the intersection is returned. 
