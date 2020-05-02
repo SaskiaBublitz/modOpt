@@ -3,13 +3,13 @@
 Import packages
 ***************************************************
 """
+import time
 import copy
 import numpy
 import sympy
 import mpmath
 import itertools
 from modOpt.constraints import parallelization
-import time
 from modOpt.constraints.FailedSystem import FailedSystem
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'reduceTwoIVSets',
@@ -117,8 +117,9 @@ def reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options):
     
     varBounds = {}
     maxBoxNo = dict_options["maxBoxNo"]
-        
+   
     for k in range(0, len(functions)):
+
         f = functions[k]
         if dict_options["Debug-Modus"]: print(k)
         
@@ -877,7 +878,10 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     if isinstance(f, sympy.Float) and len(str(f)) > 15:
         return roundValue(f, 16)
     fMpmathIV = lambdifyToMpmathIv(xSymbolic, f)
-    try: return mpmath.mpi(fMpmathIV(*xBounds))
+    try:         
+        fInterval = timeout(fMpmathIV, xBounds)
+        if fInterval == False: return mpmath.mpi('-inf','inf')
+        return mpmath.mpi(str(fInterval))
     except:
         return []
     #return  mpmath.mpi(str(fMpmathIV(*xBounds)))
@@ -1293,12 +1297,11 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
     reducedIntervals = []
     orgXiBounds = [copy.deepcopy(xBounds[i])]
     curXiBounds = orgXiBounds
-    
+
     if dfdXInterval == []: return []
     
     if '-inf' in dfdXInterval or '+inf' in dfdXInterval: # condition for discontinuities
         curXiBounds, nonMonotoneZones = getContinuousFunctionSections(dfdX, i, xBounds, dict_options)
-
     if curXiBounds != []:
         for curInterval in curXiBounds:
             xBounds[i] = curInterval
@@ -1321,9 +1324,19 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
                                     xBounds, i, bi, dict_options, increasing = False)  
        
     if nonMonotoneZones !=[]:  
-        reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
-                                                          fx, i, xBounds, bi, 
-                                                          dict_options)
+        reducedIntervals = timeout(reduceNonMonotoneIntervals, [{"0":nonMonotoneZones, 
+                                   "1": reducedIntervals, 
+                                   "2": fx, 
+                                   "3": i, 
+                                   "4": xBounds, 
+                                   "5": bi, 
+                                   "6": dict_options}]) 
+        if reducedIntervals == False: 
+            print("Warning: Reduction in non-monotone Interval took too long.")
+            return orgXiBounds
+        #reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
+        #                                                  fx, i, xBounds, bi, 
+        #                                                  dict_options)
     #reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
     reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
     return reducedIntervals
@@ -1343,7 +1356,7 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
     
     """
 
-    maxIvNo = dict_options["resolution"]
+    maxIvNo = dict_options["maxBoxNo"]
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]   
     continuousZone = []
@@ -1355,10 +1368,10 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
                
         for curInterval in interval:
             newContinuousZone = testIntervalOnContinuity(dfdx, curInterval, xBounds, i, discontinuousZone)
+            if newContinuousZone == False: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
             continuousZone = addIntervaltoZone(newContinuousZone, continuousZone, dict_options)  
                
         interval = checkIntervalWidth(discontinuousZone, absEpsX, relEpsX)
-
         if not len(interval) <= maxIvNo: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
     if interval == [] and continuousZone == []: return [], [orgXiBounds] 
         
@@ -1719,14 +1732,14 @@ def discretizeAndEvaluateIntervals(dfdX, xBounds, i, intervals, monIncreasingZon
     newIntervals = []
     
     for interval in intervals:
-        newIntervals, monIncreasingZone, monDecreasingZone = discretizeAndEvaluataInterval(dfdX, 
+        newIntervals, monIncreasingZone, monDecreasingZone = discretizeAndEvaluateInterval(dfdX, 
                                         xBounds, i, interval, newIntervals, monIncreasingZone, 
                                         monDecreasingZone, dict_options)
     
     return newIntervals, monIncreasingZone, monDecreasingZone  
         
 
-def discretizeAndEvaluataInterval(dfdX, xBounds, i, interval, newIntervals,
+def discretizeAndEvaluateInterval(dfdX, xBounds, i, interval, newIntervals,
                                    monIncreasingZone, monDecreasingZone, dict_options):
     """ if a certain interval width is undershot it is useful to discretize it and
     check all segments on their monotony.
@@ -1802,22 +1815,50 @@ def testIntervalOnContinuity(dfdx, interval, xBounds, i, discontinuousZone):
                             mpmath.mpi-logic
         
     """
-
+    
     continuousZone = []
     curXBoundsLow = mpmath.mpi(interval.a, interval.mid)      
     xBounds[i] = curXBoundsLow
-    dfdxLow = dfdx(*xBounds)    
-          
-    if not '-inf' in dfdxLow and not '+inf' in dfdxLow: continuousZone.append(curXBoundsLow)
-    else: discontinuousZone.append(curXBoundsLow) 
-       
+    dfdxLow = timeout(dfdx, xBounds)  
+         
     curXBoundsUp = mpmath.mpi(interval.mid, interval.b)
     xBounds[i] = curXBoundsUp
-    dfdxUp = dfdx(*xBounds)
+    dfdxUp = timeout(dfdx, xBounds)
     
+    if dfdxLow == False: discontinuousZone.append(curXBoundsLow)    
+    if dfdxUp == False : discontinuousZone.append(curXBoundsUp)       
+    if dfdxLow == False or dfdxUp == False: return False
+
+    if not '-inf' in dfdxLow and not '+inf' in dfdxLow: continuousZone.append(curXBoundsLow)
+    else: discontinuousZone.append(curXBoundsLow) 
+        
     if not '-inf' in dfdxUp and not '+inf' in dfdxUp: continuousZone.append(curXBoundsUp)
     else: discontinuousZone.append(curXBoundsUp) 
+
     return continuousZone
+
+
+def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
+    import signal
+
+    class TimeoutError(Exception):
+        pass
+
+    def handler(signum, frame):
+        raise TimeoutError()
+
+    # set the timeout handler
+    signal.signal(signal.SIGALRM, handler) 
+    signal.alarm(timeout_duration)
+    try:
+        result = func(*args, **kwargs)
+    except TimeoutError: #as exc:
+        result = False
+        print("Warning: TimeOut")
+    finally:
+        signal.alarm(0)
+
+    return result
 
 
 def testIntervalOnMonotony(dfdx, interval, xBounds, i):
@@ -2001,8 +2042,7 @@ def checkTolerance(interval, relEpsX):
     return reducedInterval
 
 
-def reduceNonMonotoneIntervals(nonMonotoneZone, reducedIntervals, fx, i, xBounds, bi, 
-                               dict_options):
+def reduceNonMonotoneIntervals(args):
     """ reduces non monotone intervals by simply calculating function values for
     interval segments of a discretized variable interval and keeps those segments
     that intersect with bi. The discretization resolution is defined in dict_options.
@@ -2020,6 +2060,13 @@ def reduceNonMonotoneIntervals(nonMonotoneZone, reducedIntervals, fx, i, xBounds
     Return:                  reduced x-Interval(s) and list of monotone x-intervals
         
  """   
+    nonMonotoneZone = args["0"]
+    reducedIntervals = args["1"]
+    fx = args["2"]
+    i = args["3"]
+    xBounds = args["4"]
+    bi = args["5"]
+    dict_options = args["6"]
     
     relEpsX = dict_options["relTol"]
     precision = getPrecision(xBounds)
@@ -2059,6 +2106,10 @@ def getFunctionValuesIntervalsOfXList(x, f, xBounds, i):
     for j in range(0, len(x)-1):
         xBounds[i] = mpmath.mpi(x[j], x[j+1])
         curfunValue = f(*xBounds)
+        #curfunValue = timeout(f, xBounds)
+        #if curfunValue == False: 
+        #    print ("Warning: Function evaluation in non-monotone interval reduction takes too long.")
+        #    return numpy.ones(len(x)-1) * float('-inf'), numpy.ones(len(x)-1) * float('inf')
         
        # if lb !='-inf' and lb != '+inf':
         funValuesLow.append(float(mpmath.mpf(curfunValue.a)))
