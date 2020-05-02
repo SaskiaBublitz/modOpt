@@ -437,8 +437,8 @@ def reduceXBounds_Worker(xBounds, xNewBounds, xSymbolic, f, blocks, dict_options
                 if y == []: y = iNes_procedure.reduceXIntervalByFunction(xBounds, xSymbolic, 
                         f[i], j, dict_options)
                 else: 
-                    y = iNes_procedure.reduceTwoIVSets(y, iNes_procedure.reduceXIntervalByFunction(xBounds, 
-                                                                            xSymbolic, f[i], j, dict_options))
+                    y = iNes_procedure.setOfIvSetIntersection([y, iNes_procedure.reduceXIntervalByFunction(xBounds, 
+                                                                            xSymbolic, f[i], j, dict_options)])
                 if y==[] or y==[[]]:
                     results['%d' % n] = ([], FailedSystem(f[i], xSymbolic[j]))
                     return True                
