@@ -336,10 +336,10 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
                                                                          copy.deepcopy(xBounds), 
                                                                          dict_options)    
         add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, 
-                      copy.deepcopy(xBounds), b_min, b_max)    
+                      copy.deepcopy(xBounds), b_min, b_max, dict_options)    
     
 
-def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_min, b_max):
+def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_min, b_max, dict_options):
     """ gets minimum and maximum b(x,y) values for continuous monotone-increasing/-decreasing or 
     non-monotone section. If section b is non-monotone the complete interval is evaluated with
     common interval arithmetic. The upper bound of b is put to b_max and th lower bound to b_min.  
@@ -383,7 +383,8 @@ def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_m
                                                  copy.deepcopy(xBounds),
                                                  nonmon_zone,
                                                  cur_b_min,
-                                                 cur_b_max)                                                      
+                                                 cur_b_max,
+                                                 dict_options)                                                      
     
     if cur_b_max != []:  b_max.append(max(cur_b_max))
     if cur_b_min != []:  b_min.append(min(cur_b_min))
@@ -413,7 +414,7 @@ def get_bounds_incr_zone(b_sym, x_sym, i, xBounds, incr_zone, b_min, b_max):
         cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))
             
     if cur_max != []: b_max.append(max(cur_max))
-    if cur_min != []: b_min.append(max(cur_min))
+    if cur_min != []: b_min.append(min(cur_min))
 
     
 
@@ -441,10 +442,10 @@ def get_bounds_decr_zone(b_sym, x_sym, i, xBounds, decr_zone, b_min, b_max):
         cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))    
     
     if cur_max != []: b_max.append(max(cur_max))
-    if cur_min != []: b_min.append(max(cur_min))
+    if cur_min != []: b_min.append(min(cur_min))
     
 
-def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_min, b_max):
+def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_min, b_max, dict_options):
     """ stores maximum and minimum value of b(y) in b_max and b_min for an 
     interval y = x_sym[i], where b is non-monotone.
     
@@ -457,18 +458,27 @@ def get_bounds_nonmon_zone(b_sym, x_sym, i, xBounds, nonmon_zone, b_min, b_max):
         :b_max:         list with maximun values of b(y) for different y of b(x,y)
         
     """
+    
+    resolution = dict_options["resolution"] * 2
+    b = lambdifyToMpmathIv(x_sym, b_sym)
+    
     cur_max = []
     cur_min = []
     for interval in nonmon_zone:
         xBounds[i] = interval
-        b_bounds = getBoundsOfFunctionExpression(b_sym, x_sym, xBounds)   
+        #b_bounds = getBoundsOfFunctionExpression(b_sym, x_sym, xBounds)   
         
-        if type(b_bounds) == mpmath.iv.mpc: continue        
-        cur_max.append(float(mpmath.mpf(b_bounds.b)))
-        cur_min.append(float(mpmath.mpf(b_bounds.a)))
+        curInterval= convertIntervalBoundsToFloatValues(interval)
+        x = numpy.linspace(curInterval[0], curInterval[1], resolution)
+        bLowValues, bUpValues = getFunctionValuesIntervalsOfXList(x, b, xBounds, i)
+        
+        
+        #if type(b_bounds) == mpmath.iv.mpc: continue        
+        if bUpValues != []: cur_max.append(max(bUpValues))#float(mpmath.mpf(b_bounds.b)))
+        if bLowValues != []: cur_min.append(min(bLowValues))#float(mpmath.mpf(b_bounds.a)))
     
     if cur_max != []: b_max.append(max(cur_max))
-    if cur_min != []: b_min.append(max(cur_min))
+    if cur_min != []: b_min.append(min(cur_min))
     
 
 def getPrecision(xBounds):
