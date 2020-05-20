@@ -22,6 +22,17 @@ def realRoot(x, r):
 def ivRealPower():
 
 	def pow(base, power):
+		if isinstance(power, mpmath.ctx_iv.ivmpf):
+			lowerBoundPower = floatPow(base, float(mpmath.convert(power.a)))
+			upperBoundPower = floatPow(base, float(mpmath.convert(power.b)))
+			lowerBound = min(lowerBoundPower.a, upperBoundPower.a)
+			upperBound = max(lowerBoundPower.b, upperBoundPower.b)
+			return mpmath.mpi(lowerBound, upperBound)
+		else:
+			return floatPow(base, power)
+
+
+	def floatPow(base, power):
 		if power > 0:
 			return posPow(base, power)
 		elif power == 0:
@@ -84,5 +95,5 @@ ivmpf.__pow__ = ivRealPower()
 
 
 # Test
-#print(mpmath.mpi(-2,4)**(-2/3))
+#print(mpmath.mpi(-2,-1.5)**(-2/3))
 

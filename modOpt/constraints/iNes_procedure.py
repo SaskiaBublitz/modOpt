@@ -51,9 +51,11 @@ def reduceMultipleXBounds(model, functions, dict_options):
     nl = len(model.xBounds)
     for k in range(0, len(model.xBounds)):
 
-        if dict_options['method'] == 'b_normal_newton':
+        newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
+        if dict_options['method'] in newtonMethods:
             newtonSystemDic = getNewtonIntervalSystem(model.xBounds[k], model.xSymbolic,
-                                        model.fSymbolic, model.getSympySymbolicJacobian())    
+                                        model.fSymbolic, model.getSympySymbolicJacobian(),
+                                        dict_options)  
         else:
             newtonSystemDic = {}
 
@@ -104,7 +106,7 @@ def reduceMultipleXBounds(model, functions, dict_options):
     return results
 
 
-def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian):
+def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
     '''calculates all necessary System matrices for the Newton-Interval reduction
     Args:
         :xBounds:           list with variable bounds in mpmath.mpi formate
@@ -113,46 +115,120 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian):
         :jacobian:          jacobian as sympy.matrix in sympy format
 
     Return:
-        :Boundsmid:         list with center of Bounds
-        :fmid:              functions of midpoints in numpy array
-        :Jacmid:            jacobian of midpoints in numpy array
+        :Boxpoint:          list with Boxpoint/s values
+        :fpoint:            functions of Boxpoint/s in numpy array
+        :Jacpoint:          jacobian of Boxpoint/s in numpy array
         :JacInterval:       jacobian of ivmpf intervals in numpy array
-        :JacInv:            inverse of Jacmid in numpy array 
+        :JacInv:            inverse of Jacpoint in numpy array, stripped of inf Parts
     '''
     
-    Boundsmid = []
-    for j in range(0, len(xBounds)):
-            Boundsmid.append(xBounds[j].mid)
+    flamb = sympy.lambdify(xSymbolic, fSymbolic)
+    jaclamb = sympy.lambdify(xSymbolic, jacobian,'numpy')
+    jacIvLamb = lambdifyToMpmathIv(xSymbolic, list(numpy.array(jacobian)))
 
-    flamb = lambdifyToMpmathIv(xSymbolic, fSymbolic)
-    jaclamb = lambdifyToMpmathIv(xSymbolic, list(numpy.array(jacobian)))
-     
-    fmid = numpy.array([flamb(*Boundsmid)])
-    Jacmid = numpy.array(jaclamb(*Boundsmid))
-    JacInterval = numpy.array(jaclamb(*xBounds))
+    if options['method'] == "b_normal_detNewton":
+        Boxpoint, Jacpoint, fpoint = findPointWithHighestDeterminant(jaclamb, flamb, xBounds)
+    elif options['method'] == "b_normal_3PNewton":
+        Boxpoint = [getPointInBox(xBounds, 'a'), getPointInBox(xBounds, 'mid'),
+                    getPointInBox(xBounds, 'b')]
+        Jacpoint = []
+        fpoint = []
+        for bp in range(len(Boxpoint)):
+            Jacpoint.append(removeInfAndConvertToFloat(jaclamb(*Boxpoint[bp]), 1))
+            fpoint.append(removeInfAndConvertToFloat(numpy.array([flamb(*Boxpoint[bp])]), 1)[0]) 
+    else:
+        Boxpoint = [getPointInBox(xBounds, 'mid')]
+        Jacpoint = jaclamb(*Boxpoint[0])
+        Jacpoint= [removeInfAndConvertToFloat(Jacpoint, 1)]
+        fpoint = numpy.array([flamb(*Boxpoint[0])])
+        fpoint = [removeInfAndConvertToFloat(fpoint, 1)[0]] 
     
-    #remove inf parts and convert to float
-    fmid = removeInfAndConvertToFloat(fmid, 2)    
-    Jacmid = removeInfAndConvertToFloat(Jacmid, 2)
+    JacInterval = numpy.array(jacIvLamb(*xBounds)) 
 
-    # converts 'inf' in numpy float-inf            
+    # converts 'inf' in numpy float-inf   
+    infRows = []           
     for l in range(0, len(JacInterval)):
         for n, iv in enumerate(JacInterval[l]):
             if isinstance(iv, mpmath.ctx_iv.ivmpf):
                 if iv == mpmath.mpi('-inf','+inf'):
                     JacInterval[l][n] = mpmath.mpi(numpy.nan_to_num(-numpy.inf), numpy.nan_to_num(numpy.inf))
+                    if l not in infRows:
+                        infRows.append(l)
                 elif iv.a == '-inf': 
                     JacInterval[l][n] = mpmath.mpi(numpy.nan_to_num(-numpy.inf), iv.b)
                 elif iv.b == '+inf':
                     JacInterval[l][n] = mpmath.mpi(iv.a, numpy.nan_to_num(numpy.inf))
     
-    try:
-        JacInv = numpy.linalg.inv(Jacmid)
-    except: 
-        JacInv = numpy.array(numpy.matrix(Jacmid).getH()) # if singular return adjunct
+    JacInv = []
+    for J in Jacpoint:
+        try:
+            JacInv.append(numpy.linalg.inv(J))
+        except: 
+            JacInv.append(numpy.array(numpy.matrix(J).getH())) # if singular return adjunct 
+
+    #remove inf parts in inverse
+    for inf in infRows:
+        for Ji in JacInv:
+            Ji[:,inf] = numpy.zeros(len(Ji))
           
-    return {'Boxpoint':Boundsmid, 'f(Boxpoint)':fmid[0], 'J(Boxpoint)':Jacmid,
+    return {'Boxpoint':Boxpoint, 'f(Boxpoint)':fpoint, 'J(Boxpoint)':Jacpoint,
             'J(Box)':JacInterval, 'J(Boxpoint)-1':JacInv}
+
+
+def getPointInBox(xBounds, pointIndicator):
+	'''returns lowest(a), highest(b) or Midpoint(mid)
+	out of the Box 
+	Args:
+		:xBounds: current Bounds as iv.mpi
+		:pointIndicator: a, b or mid as String
+	Return:
+		:Boxpoint: chosen Boxpoint
+	''' 
+    
+	Boxpoint = numpy.zeros(len(xBounds), dtype=float)
+	for i in range(len(xBounds)):
+	    if pointIndicator=='a':
+	        Boxpoint[i] = sympy.Float(xBounds[i].a)
+	    elif pointIndicator=='b':
+	        Boxpoint[i] = sympy.Float(xBounds[i].b)
+	    else:
+	        Boxpoint[i] = sympy.Float(xBounds[i].mid)
+	    
+	    
+	return Boxpoint
+
+def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds): 
+	'''finds Boxpoint with highest determinant of J(Boxpoint)
+	Args:
+		:jacLamb: 		lambdifyed Jacobian 
+		:fLamb: 		lambdifyed function
+		:xBounds: 		current xBounds as iv.mpi
+	Return:
+		:chosenPoint: 	List of variable Point in Box
+		:chosenJacobi: 	Jacobian evaluated at chosen Point
+		:chosenFunc: 	function evaluated at chosen Point
+	'''
+    
+	lowerPoint = getPointInBox(xBounds, 'a')
+	midPoint = getPointInBox(xBounds, 'mid')
+	upperPoint = getPointInBox(xBounds, 'b')
+	TestingPoints = [lowerPoint, midPoint, upperPoint]
+    
+	biggestDValue = -numpy.inf    
+	for tp in TestingPoints:
+	    currentJacpoint = jacLamb(*tp)
+	    currentFunc = numpy.array([fLamb(*tp)])
+	    currentJacpoint = removeInfAndConvertToFloat(currentJacpoint, 1)
+	    currentFunc = removeInfAndConvertToFloat(currentFunc, 1)
+	    currentAbsDet = numpy.absolute(numpy.linalg.det(currentJacpoint))
+	    decisionValue = currentAbsDet - numpy.sum(numpy.absolute(currentFunc[0]))
+	    if decisionValue>=biggestDValue:
+	        biggestDValue = decisionValue
+	        chosenPoint = tp
+	        chosenJacobi = currentJacpoint
+	        chosenFunc = currentFunc
+     
+	return [chosenPoint], [chosenJacobi], [chosenFunc[0]]
 
 
 def removeInfAndConvertToFloat(array, subs):
@@ -677,8 +753,9 @@ def reduceXBounds(xBounds, xSymbolic, f, blocks, boxNo, dict_options, newtonSyst
                         xNewBounds[j] = [xBounds[j]]
                         continue
 
-            if dict_options['method'] == 'b_normal_newton':        
-                y = NewtonReduction(newtonSystemDic, xBounds, j)
+            newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
+            if dict_options['method'] in newtonMethods:        
+                y = NewtonReduction(newtonSystemDic, xBounds, j, absEpsX)
 
             for m in range(0, blockDim):
                 i = blocks[b][m]
@@ -2309,7 +2386,7 @@ def checkWidths(X, Y, relEps, absEps):
     return almostEqual.all()
 
 
-def NewtonReduction(newtonSystemDic, xBounds, i):
+def NewtonReduction(newtonSystemDic, xBounds, i, absTol):
     """ Computation of the Interval-Newton Method to reduce the single interval xBounds[i]:
      
         Args: 
@@ -2328,19 +2405,31 @@ def NewtonReduction(newtonSystemDic, xBounds, i):
     """
     interval=[]
              
-    Boundsmid = newtonSystemDic['Boxpoint']
-    fmid = newtonSystemDic['f(Boxpoint)']
+    Boundspoint = newtonSystemDic['Boxpoint']
+    fpoint = newtonSystemDic['f(Boxpoint)']
     JacInterval = newtonSystemDic['J(Box)']
     Y = newtonSystemDic['J(Boxpoint)-1']
 
-    M = numpy.dot(Y, JacInterval)
-    b = (-1)*numpy.dot(Y, fmid)
-    R = b[i]
-    for j in range(0, len(M[i])):
-        if j != i:
-            R = R - M[i][j]*(xBounds[j]-Boundsmid[j])
-    N = Boundsmid[i] + ivDivision(R, mpmath.mpi(M[i][i]))[0]
-    intersection=ivIntersection(N, xBounds[i])
+    intersection = xBounds[i]
+    for bp in range(len(Boundspoint)):
+        Yfmid = numpy.dot(Y[bp][i],fpoint[bp])
+        D = numpy.dot(Y[bp][i],JacInterval[:,i])
+        ivsum=0
+        for j in range(0, len(JacInterval[i])):
+            if j!=i:
+                ivsum = ivsum + numpy.dot(numpy.dot(Y[bp][i], JacInterval[:,j]), (xBounds[j]-Boundspoint[bp][j]))
+                
+        N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
+    
+        if N.a == '-inf' or N.b=='+inf':
+            N = xBounds[i]
+            
+        intersection = ivIntersection(N, intersection)
+        if intersection == []:
+            return intersection
+        if checkVariableBound(intersection, absTol, absTol):
+                        break
+
 
     if intersection !=[]: interval.append(intersection)
     return interval
