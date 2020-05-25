@@ -10,7 +10,6 @@ import copy
 from modOpt.constraints import iNes_procedure, parallelization 
 from modOpt.constraints.function import Function
 
-
 """
 ***************************************************
 Main that invokes methods for variable constraints reduction
@@ -51,6 +50,12 @@ def reduceVariableBounds(model, options):
         return res_solver
 
 
+def sort_fId_to_varIds(fId, varIds, dict_varId_fIds):
+    for varId in varIds:
+        if not varId in dict_varId_fIds: dict_varId_fIds[varId]=[fId]
+        else: dict_varId_fIds[varId].append(fId)
+
+
 def doIntervalNesting(res_solver, dict_options):
     """ iterates the state variable intervals related to model using the
     Gauss-Seidel Operator combined with an interval nesting strategy
@@ -64,11 +69,14 @@ def doIntervalNesting(res_solver, dict_options):
     model = res_solver["Model"]
     #dict_options["maxBoxNo"] =  int((len(model.xBounds[0]))**0.5)
     iterNo = 0
+    dict_options["tear_id"] = 0
     newModel = copy.deepcopy(model)
     functions = []
+    dict_varId_fIds = {}
     
-    for f in model.fSymbolic:    
-        functions.append(Function(f, model.xSymbolic))
+    for i in range(0, len(model.fSymbolic)):
+        functions.append(Function(model.fSymbolic[i], model.xSymbolic))
+        sort_fId_to_varIds(i, functions[i].glb_ID, dict_varId_fIds)
     
      
     for l in range(0, dict_options["iterMaxNewton"]): 
@@ -76,10 +84,10 @@ def doIntervalNesting(res_solver, dict_options):
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
-            output = parallelization.reduceMultipleXBounds(model, functions, dict_options)
+            output = parallelization.reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options)
         
         else: 
-            output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_options)
+            output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options)
 
         xAlmostEqual = output["xAlmostEqual"]
 
@@ -102,7 +110,7 @@ def doIntervalNesting(res_solver, dict_options):
     
     return True
 
-
+  
 def nestBlocks(model):
     """ creates list with nested blocks for complete interval nesting procedurce
 
