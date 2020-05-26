@@ -87,6 +87,7 @@ class Model:
         self.failed = False
         self.constraints = CONSTRAINTS
         self.jacobianSympy = []
+        self.tearVarsID=[]
 
 
     def getBoundsOfPermutedModel(self, xBounds, xSymbolic, parameter):

@@ -247,7 +247,7 @@ def getDensityOfJacoboan(model):
     """
     
     model.jacobian, f = mod.getCasadiJandF(model.xSymbolic, model.fSymbolic)
-    return float(model.getJacobian().nnz()) / model.getModelDimension()**2
+    return float(model.getCasadiJacobian().nnz()) / model.getModelDimension()**2
     
 
 def getNonLinearityRatio(model):
