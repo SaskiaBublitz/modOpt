@@ -343,7 +343,7 @@ def get_b_from_branching(f, x_id, xBounds, dict_options):
     noBox = int(dict_options["maxBoxNo"] / resolution)
     oneBox = dict_options["maxBoxNo"] - noBox
     j = 0
-    b = lambdifyToMpmathIv(f.x_sym, f.b_sym[x_id])
+    b = lambdifyToMpmathIvComplex(f.x_sym, f.b_sym[x_id])
     for interval in xBounds:
         iv_disc = []
         #if interval == xBounds[x_id]:
@@ -829,16 +829,16 @@ def reduce_x_by_gb(g_sym, dgdx_sym, b, x_sym, i, xBounds, dict_options):
     g = getBoundsOfFunctionExpression(g_sym, x_sym, xBounds)
     dgdx = getBoundsOfFunctionExpression(dgdx_sym, x_sym, xBounds)
     
-    g_sym = lambdifyToMpmathIv(x_sym, g_sym)
+    g_sym = lambdifyToMpmathIvComplex(x_sym, g_sym)
 
     if isinstance(g, mpmath.iv.mpc) or isinstance(dgdx, mpmath.iv.mpc) or g==[] or dgdx==[]: return [xBounds[i]] # TODO: Complex case
     
     if not x_sym[i] in dgdx_sym.free_symbols and g == dgdx*xBounds[i]: # Linear Case -> solving system directly
-        dgdx_sym = lambdifyToMpmathIv(x_sym, dgdx_sym)
+        dgdx_sym = lambdifyToMpmathIvComplex(x_sym, dgdx_sym)
         return getReducedIntervalOfLinearFunction(dgdx_sym, i, xBounds, b)   
 
     else: # Nonlinear Case -> solving system by interval nesting
-        dgdx_sym = lambdifyToMpmathIv(x_sym, dgdx_sym)
+        dgdx_sym = lambdifyToMpmathIvComplex(x_sym, dgdx_sym)
         
         return getReducedIntervalOfNonlinearFunction(g_sym, 
                                                      dgdx_sym, 
@@ -874,8 +874,8 @@ def reduceXIntervalByFunction(xBounds, f, i, dict_options):
         return getReducedIntervalOfLinearFunction(dgdxInterval, i, xBounds, bInterval)
              
     else: # Nonlinear Case -> solving system by interval nesting
-        g_sym = lambdifyToMpmathIv(f.x_sym, f.g_sym[i])
-        dgdx_sym = lambdifyToMpmathIv(f.x_sym, f.dgdx_sym[i])
+        g_sym = lambdifyToMpmathIvComplex(f.x_sym, f.g_sym[i])
+        dgdx_sym = lambdifyToMpmathIvComplex(f.x_sym, f.dgdx_sym[i])
         return getReducedIntervalOfNonlinearFunction(g_sym, dgdx_sym, 
                                                      dgdxInterval, i, 
                                                      xBounds, bInterval, dict_options)
@@ -925,7 +925,7 @@ def splitFunctionByVariableDependency(f, x):
         return 0, 0
 
 
-def lambdifyToMpmathIvComplex(x, f):
+def lambdifyToMpmathIv(x, f):
     """Converting operations of symoblic equation system f (simpy) to
     arithmetic interval functions (mpmath.iv), able to filter out complex 
     intervals
@@ -941,15 +941,15 @@ def lambdifyToMpmathIvComplex(x, f):
     mpmathIv = {"exp" : mpmath.iv.exp,
             "sin" : mpmath.iv.sin,
             "cos" : mpmath.iv.cos,
-            "acos": mpmath.ivacos,
-            "asin": mpmath.ivasin,
-            "atan": mpmath.ivatan,
+            "acos": mpmath.iv.cos,
+            "asin": mpmath.iv.sin,
+            "atan": mpmath.iv.tan,
             "log" : mpmath.log,
             "sqrt": mpmath.ivsqrt}
 
     return sympy.lambdify(x, f, mpmathIv)
 
-def lambdifyToMpmathIv(x, f):
+def lambdifyToMpmathIvComplex(x, f):
     """Converting operations of symoblic equation system f (simpy) to
     arithmetic interval functions (mpmath.iv)
 
@@ -964,11 +964,11 @@ def lambdifyToMpmathIv(x, f):
     mpmathIv = {"exp" : mpmath.iv.exp,
             "sin" : mpmath.iv.sin,
             "cos" : mpmath.iv.cos,
-            "acos": mpmath.acos,#ivacos,
-            "asin": mpmath.asin,#ivasin,
-            "atan": mpmath.atan,#ivatan,
+            "acos": ivacos,
+            "asin": ivasin,
+            "atan": ivatan,
             "log" : mpmath.log,
-            "sqrt": mpmath.sqrt}#ivsqrt}
+            "sqrt": ivsqrt}
 
     return sympy.lambdify(x, f, mpmathIv)
 
@@ -1064,7 +1064,7 @@ def calculateCurrentBounds(f, i, xBounds, dict_options):
     
     """
     
-    if dict_options["method"] == "b_tight_new":
+    if dict_options["method"] == "b_tight_split":
         try: bInterval = get_tight_bBounds(f, i, xBounds, dict_options)
            # b_max = []
            # b_min = []
@@ -1117,15 +1117,9 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     
     if isinstance(f, sympy.Float) and len(str(f)) > 15:
         return roundValue(f, 16)
-    fMpmathIV = lambdifyToMpmathIv(xSymbolic, f)
+    fMpmathIV = lambdifyToMpmathIvComplex(xSymbolic, f)
     try:         
         fInterval = timeout(fMpmathIV, xBounds)
-        if fInterval == mpmath.iv.mpc: 
-                fMpmathIV = lambdifyToMpmathIvComplex(xSymbolic, f)
-                try: 
-                    fInterval = timeout(fMpmathIV, xBounds)
-                except: 
-                    return []
         if fInterval == False: return mpmath.mpi('-inf','inf')
         return mpmath.mpi(str(fInterval))
     except:
@@ -1490,7 +1484,7 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
     
     if type(dfdx) == mpmath.iv.mpc or dfdx == []: return [], [], cur_xiBounds
     
-    dfdx_sym = lambdifyToMpmathIv(x_sym, dfdx_sym)
+    dfdx_sym = lambdifyToMpmathIvComplex(x_sym, dfdx_sym)
     
     if '-inf' in dfdx or '+inf' in dfdx: 
         cur_xiBounds, nonMonotoneZones = getContinuousFunctionSections(dfdx_sym, i, xBounds, dict_options)
