@@ -65,7 +65,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         xAlmostEqual[k] = output["xAlmostEqual"]
         
         if output["xAlmostEqual"]:
-            boxNo_split = dict_options["maxBoxNo"] - boxNo + 1
+            boxNo_split = dict_options["maxBoxNo"] - boxNo
             if model.tearVarsID == []: getTearVariables(model)
             #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
             xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
@@ -1119,7 +1119,7 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
         return roundValue(f, 16)
     fMpmathIV = lambdifyToMpmathIvComplex(xSymbolic, f)
     try:         
-        fInterval = timeout(fMpmathIV, xBounds)
+        fInterval = fMpmathIV(*xBounds)#timeout(fMpmathIV, xBounds)
         if fInterval == False: return mpmath.mpi('-inf','inf')
         return mpmath.mpi(str(fInterval))
     except:
@@ -1559,14 +1559,21 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
             reducedIntervals = reduceMonotoneIntervals(decreasingZones, reducedIntervals, fx, 
                                     xBounds, i, bi, dict_options, increasing = False)  
        
-    if nonMonotoneZones !=[]:  
-        reducedIntervals = timeout(reduceNonMonotoneIntervals, [{"0":nonMonotoneZones, 
+    if nonMonotoneZones !=[]:
+        reducedIntervals = reduceNonMonotoneIntervals({"0":nonMonotoneZones, 
                                    "1": reducedIntervals, 
                                    "2": fx, 
                                    "3": i, 
                                    "4": xBounds, 
                                    "5": bi, 
-                                   "6": dict_options}]) 
+                                   "6": dict_options})
+        #reducedIntervals = timeout(reduceNonMonotoneIntervals, [{"0":nonMonotoneZones, 
+    #                               "1": reducedIntervals, 
+    #                               "2": fx, 
+    #                               "3": i, 
+    #                               "4": xBounds, 
+    #                               "5": bi, 
+    #                               "6": dict_options}]) 
         if reducedIntervals == False: 
             print("Warning: Reduction in non-monotone Interval took too long.")
             return orgXiBounds
@@ -2059,11 +2066,11 @@ def testIntervalOnContinuity(dfdx, interval, xBounds, i, discontinuousZone):
     continuousZone = []
     curXBoundsLow = mpmath.mpi(interval.a, interval.mid)      
     xBounds[i] = curXBoundsLow
-    dfdxLow = timeout(dfdx, xBounds)  
+    dfdxLow = dfdx(*xBounds)#timeout(dfdx, xBounds)  
          
     curXBoundsUp = mpmath.mpi(interval.mid, interval.b)
     xBounds[i] = curXBoundsUp
-    dfdxUp = timeout(dfdx, xBounds)
+    dfdxUp = dfdx(*xBounds)#timeout(dfdx, xBounds)
     
     if dfdxLow == False: discontinuousZone.append(curXBoundsLow)    
     if dfdxUp == False : discontinuousZone.append(curXBoundsUp)       
