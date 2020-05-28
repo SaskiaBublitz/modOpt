@@ -8,8 +8,9 @@ import numpy
 import sympy
 import mpmath
 import itertools
-from modOpt.constraints import parallelization
 import time
+import warnings
+from modOpt.constraints import parallelization
 from modOpt.constraints.FailedSystem import FailedSystem
 import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
 
@@ -133,15 +134,19 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
                     getPointInBox(xBounds, 'b')]
         Jacpoint = []
         fpoint = []
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
         for bp in range(len(Boxpoint)):
             Jacpoint.append(removeInfAndConvertToFloat(jaclamb(*Boxpoint[bp]), 1))
-            fpoint.append(removeInfAndConvertToFloat(numpy.array([flamb(*Boxpoint[bp])]), 1)[0]) 
+            fpoint.append(removeInfAndConvertToFloat(numpy.array([flamb(*Boxpoint[bp])]), 1)[0])
+        warnings.filterwarnings("default", category=RuntimeWarning)
     else:
         Boxpoint = [getPointInBox(xBounds, 'mid')]
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
         Jacpoint = jaclamb(*Boxpoint[0])
         Jacpoint= [removeInfAndConvertToFloat(Jacpoint, 1)]
         fpoint = numpy.array([flamb(*Boxpoint[0])])
         fpoint = [removeInfAndConvertToFloat(fpoint, 1)[0]] 
+        warnings.filterwarnings("default", category=RuntimeWarning)
     
     JacInterval = numpy.array(jacIvLamb(*xBounds)) 
 
@@ -176,59 +181,61 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
 
 
 def getPointInBox(xBounds, pointIndicator):
-	'''returns lowest(a), highest(b) or Midpoint(mid)
-	out of the Box 
-	Args:
-		:xBounds: current Bounds as iv.mpi
-		:pointIndicator: a, b or mid as String
-	Return:
-		:Boxpoint: chosen Boxpoint
-	''' 
+    '''returns lowest(a), highest(b) or Midpoint(mid)
+    out of the Box 
+    Args:
+        :xBounds: current Bounds as iv.mpi
+        :pointIndicator: a, b or mid as String
+        Return:
+        :Boxpoint: chosen Boxpoint
+    ''' 
     
-	Boxpoint = numpy.zeros(len(xBounds), dtype=float)
-	for i in range(len(xBounds)):
-	    if pointIndicator=='a':
-	        Boxpoint[i] = sympy.Float(xBounds[i].a)
-	    elif pointIndicator=='b':
-	        Boxpoint[i] = sympy.Float(xBounds[i].b)
-	    else:
-	        Boxpoint[i] = sympy.Float(xBounds[i].mid)
+    Boxpoint = numpy.zeros(len(xBounds), dtype=float)
+    for i in range(len(xBounds)):
+        if pointIndicator=='a':
+            Boxpoint[i] = sympy.Float(xBounds[i].a)
+        elif pointIndicator=='b':
+            Boxpoint[i] = sympy.Float(xBounds[i].b)
+        else:
+            Boxpoint[i] = sympy.Float(xBounds[i].mid)
 	    
 	    
-	return Boxpoint
+    return Boxpoint
 
 def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds): 
-	'''finds Boxpoint with highest determinant of J(Boxpoint)
-	Args:
-		:jacLamb: 		lambdifyed Jacobian 
-		:fLamb: 		lambdifyed function
-		:xBounds: 		current xBounds as iv.mpi
-	Return:
-		:chosenPoint: 	List of variable Point in Box
-		:chosenJacobi: 	Jacobian evaluated at chosen Point
-		:chosenFunc: 	function evaluated at chosen Point
-	'''
+    '''finds Boxpoint with highest determinant of J(Boxpoint)
+    Args:
+        :jacLamb: 		lambdifyed Jacobian 
+        :fLamb: 		lambdifyed function
+        :xBounds: 		current xBounds as iv.mpi
+    Return:
+        :chosenPoint: 	List of variable Point in Box
+        :chosenJacobi: 	Jacobian evaluated at chosen Point
+        :chosenFunc: 	function evaluated at chosen Point
+    '''
     
-	lowerPoint = getPointInBox(xBounds, 'a')
-	midPoint = getPointInBox(xBounds, 'mid')
-	upperPoint = getPointInBox(xBounds, 'b')
-	TestingPoints = [lowerPoint, midPoint, upperPoint]
+    lowerPoint = getPointInBox(xBounds, 'a')
+    midPoint = getPointInBox(xBounds, 'mid')
+    upperPoint = getPointInBox(xBounds, 'b')
+    TestingPoints = [lowerPoint, midPoint, upperPoint]
     
-	biggestDValue = -numpy.inf    
-	for tp in TestingPoints:
-	    currentJacpoint = jacLamb(*tp)
-	    currentFunc = numpy.array([fLamb(*tp)])
-	    currentJacpoint = removeInfAndConvertToFloat(currentJacpoint, 1)
-	    currentFunc = removeInfAndConvertToFloat(currentFunc, 1)
-	    currentAbsDet = numpy.absolute(numpy.linalg.det(currentJacpoint))
-	    decisionValue = currentAbsDet - numpy.sum(numpy.absolute(currentFunc[0]))
-	    if decisionValue>=biggestDValue:
-	        biggestDValue = decisionValue
-	        chosenPoint = tp
-	        chosenJacobi = currentJacpoint
-	        chosenFunc = currentFunc
+    biggestDValue = -numpy.inf    
+    for tp in TestingPoints:
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+        currentJacpoint = jacLamb(*tp)
+        currentFunc = numpy.array([fLamb(*tp)])
+        warnings.filterwarnings("default", category=RuntimeWarning)
+        currentJacpoint = removeInfAndConvertToFloat(currentJacpoint, 1)
+        currentFunc = removeInfAndConvertToFloat(currentFunc, 1)
+        currentAbsDet = numpy.absolute(numpy.linalg.det(currentJacpoint))
+        decisionValue = currentAbsDet - numpy.sum(numpy.absolute(currentFunc[0]))
+        if decisionValue>=biggestDValue:
+            biggestDValue = decisionValue
+            chosenPoint = tp
+            chosenJacobi = currentJacpoint
+            chosenFunc = currentFunc
      
-	return [chosenPoint], [chosenJacobi], [chosenFunc[0]]
+    return [chosenPoint], [chosenJacobi], [chosenFunc[0]]
 
 
 def removeInfAndConvertToFloat(array, subs):
@@ -243,6 +250,8 @@ def removeInfAndConvertToFloat(array, subs):
 
     for l in range(0, len(array)):
         for n, iv in enumerate(array[l]):
+            if iv == float('inf') or iv == float('-inf'):
+                array[l][n] = subs
             if iv == mpmath.mpi('-inf','+inf'):
                 array[l][n] = subs
             elif isinstance(iv, mpmath.ctx_iv.ivmpf):
