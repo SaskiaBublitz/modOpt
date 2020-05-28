@@ -55,8 +55,6 @@ class Function:
         self.x_sym = list(f_sym.free_symbols)
         self.glb_ID = self.get_glb_ID(x_symbolic)
         self.g_sym, self.b_sym = self.get_g_b_functions()
-        #self.b_sym = self.get_b_functions(b, self.x_sym)
-        #self.dgdx_sym = self.get_dgdx_functions(self.g_sym, self.x_sym)
         self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions()
 
     def get_glb_ID(self,x_symbolic):
