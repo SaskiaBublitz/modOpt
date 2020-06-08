@@ -89,7 +89,7 @@ def doIntervalNesting(res_solver, dict_options):
         else: 
             output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options)
 
-        xAlmostEqual = output["xAlmostEqual"]
+        xSolved = output["xSolved"]
 
               
         if output.__contains__("noSolution"):
@@ -98,7 +98,7 @@ def doIntervalNesting(res_solver, dict_options):
             res_solver["noSolution"] = output["noSolution"]
             break
         
-        elif xAlmostEqual.all():
+        elif xSolved.all():
             break
         
         else: continue
