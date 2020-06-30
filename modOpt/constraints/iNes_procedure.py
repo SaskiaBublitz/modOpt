@@ -46,6 +46,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     results = {}
     allBoxes = []
     xAlmostEqual = False * numpy.ones(len(model.xBounds), dtype=bool)
+    xSolved = False * numpy.ones(len(model.xBounds), dtype=bool)
 
     boxNo = len(model.xBounds)
     nl = len(model.xBounds)
@@ -71,8 +72,9 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         
         xNewBounds = output["xNewBounds"]
         xAlmostEqual[k] = output["xAlmostEqual"]
+        xSolved[k] = output["xSolved"]
         
-        if output["xAlmostEqual"]:
+        if output["xAlmostEqual"] and not output["xSolved"]:
             boxNo_split = dict_options["maxBoxNo"] - boxNo
             if model.tearVarsID == []: getTearVariables(model)
             #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
@@ -106,6 +108,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         model.xBounds = allBoxes    
         
     results["xAlmostEqual"] = xAlmostEqual
+    results["xSolved"] = xSolved
     return results
 
 def getTearVariables(model):
@@ -379,7 +382,7 @@ def reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options):
 
         if varBounds.__contains__('Failed_xID'):
             return get_failed_output(f, varBounds)
-    output = get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds)
+    output = get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds, dict_options)
 
     #if len(output["intervalsPerm"]) > dict_options["maxBoxNo"]:
     #    print("Note: Algorithm stops because the current number of boxes is ",
@@ -404,14 +407,15 @@ def get_failed_output(f, varBounds):
     """
 
     output = {}
-    output["intervalsPerm"] = []
+    output["xNewBounds"] = []
     failedSystem = FailedSystem(f.f_sym, f.x_sym[varBounds['Failed_xID']])
     output["noSolution"] = failedSystem
     output["xAlmostEqual"] = False
+    output["xSolved"] = False
     return output
 
 
-def get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds):
+def get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds, dict_options):
     """ creates output dictionary with new variable bounds in a successful
     reduction process. Also checks if variable bounds change by xUnchanged.
 
@@ -428,6 +432,7 @@ def get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds):
     output = {}
     xNewBounds = []
     xUnchanged = True
+    xSolved = True
     subBoxNo = 1
 
     for i in range(0, len(xBounds)):
@@ -436,6 +441,7 @@ def get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds):
             for restj in range(i,len(xBounds)):
                 xNewBounds.append([xBounds[restj]])
             output["xAlmostEqual"] = xUnchanged
+            output["xSolved"] = False
             output["xNewBounds"] = list(itertools.product(*xNewBounds))
             return output
 
@@ -444,8 +450,13 @@ def get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds):
 
         if varBounds['%d' % i] != [xBounds[i]] and xUnchanged:
             xUnchanged = False
+            
+        for varB in varBounds['%d' % i]:
+            if not checkVariableBound(varB, dict_options):
+                        xSolved = False
 
     output["xAlmostEqual"] = xUnchanged
+    output["xSolved"] = xSolved
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
     return output
 
@@ -861,6 +872,11 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     output = {}            
     xNewBounds = copy.deepcopy(xBounds)
     xUnchanged = True
+    xSolved = True
+    
+    if not solutionInFunctionRange(model, xBounds, dict_options):
+        saveFailedSystem(output, functions[0], model, 0)
+        return output 
     
     for i in range(0, len(model.xSymbolic)):
         y = [xBounds[i]]
@@ -873,36 +889,53 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
         newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
         if dict_options['method'] in newtonMethods:        
             y = NewtonReduction(newtonSystemDic, xBounds, i, dict_options)
-
-        for j in dict_varId_fIds[i]:
-            f = functions[j]
-            y = setOfIvSetIntersection([y, 
-                                        reduceXIntervalByFunction(xBounds[f.glb_ID],
-                                                                  f,
-                                                                  f.glb_ID.index(i),
-                                                                  dict_options)])      
             if y == [] or y ==[[]]: 
-                saveFailedSystem(output, f, model, i)
-                return output    
-    
-            if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-                assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
+                saveFailedSystem(output, functions[0], model, 0)
                 return output 
 
-            boundsInAllBoxesNotAlmostEqual = True
-            for b in y:
-                boundsInAllBoxesNotAlmostEqual = bool(boundsInAllBoxesNotAlmostEqual*(not checkVariableBound(b, dict_options)))
-            if not boundsInAllBoxesNotAlmostEqual:
-                break   
+        if not variableSolved(y, dict_options):
+            for j in dict_varId_fIds[i]:
+                f = functions[j]
+                y = setOfIvSetIntersection([y, 
+                                            reduceXIntervalByFunction(xBounds[f.glb_ID],
+                                                                      f,
+                                                                      f.glb_ID.index(i),
+                                                                      dict_options)])      
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, f, model, i)
+                    return output    
+        
+                if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
+                    assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
+                    return output 
+    
+                if variableSolved(y, dict_options): break
+                else: xSolved = False 
     
         subBoxNo = subBoxNo * len(y) 
         xNewBounds[i] = y
         xUnchanged = checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
                                        dict_options)
 
-    output["xAlmostEqual"] = xUnchanged     
+    output["xAlmostEqual"] = xUnchanged
+    output["xSolved"] = xSolved       
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
     return output
+
+
+def variableSolved(BoundsList, dict_options):
+    """ checks, if variable is solved in all Boxes in BoundsList
+    Args:
+        :BoundsList:      List of mpi Bounds for single variable
+        :dict_options:    dictionary with tolerances for equality criterion
+    """
+    
+    variableSolved = True
+    for bound in BoundsList:
+        if not checkVariableBound(bound, dict_options):
+            variableSolved = False
+    
+    return variableSolved
 
 
 def checkXforEquality(xBound, xNewBound, xUnchanged, dict_options):
@@ -943,6 +976,7 @@ def assignIvsWithoutSplit(output, i, xUnchanged, xBounds, xNewBounds):
     for resti in range(i, len(xBounds)):
         xNewBounds[resti] = [xBounds[resti]]
     output["xAlmostEqual"] = xUnchanged     
+    output["xSolved"] = False
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
                 
                                
@@ -961,6 +995,7 @@ def saveFailedSystem(output, f, model, i):
     failedSystem = FailedSystem(f.f_sym, model.xSymbolic[i])
     output["noSolution"] = failedSystem
     output["xAlmostEqual"] = False 
+    output["xSolved"] = False
 
     
 def checkVariableBound(newXInterval, dict_options):
@@ -2702,3 +2737,23 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
 
     if intersection !=[]: interval.append(intersection)
     return interval
+
+
+def solutionInFunctionRange(model, xBounds, dict_options):
+    """checks, if the solution (0-vector) can lie in these Bounds and returns true or false 
+    Args: 
+        :model: instance of class-Model
+        :xBounds:   current Bounds of Box
+        :dict_options:  options with absTolerance for deviation from the solution
+    """
+
+    absTol = dict_options["absTol"]
+    solutionInRange = True
+    
+    fIvLamb = lambdifyToMpmathIvComplex(model.xSymbolic, model.fSymbolic)
+    fInterval = numpy.array(fIvLamb(*xBounds)) 
+    for f in fInterval:
+        if not(f.a<=0+absTol and f.b>=0-absTol):
+            solutionInRange = False
+            
+    return solutionInRange
