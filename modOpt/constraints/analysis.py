@@ -6,6 +6,7 @@ Import packages
 import mpmath
 import modOpt.decomposition as mod
 import sympy
+import numpy
 
 """
 ***************************************************
@@ -35,6 +36,13 @@ def analyseResults(dict_options, initialModel, res_solver):
     if modelWithReducedBounds != []:
         reducedVarBounds = modelWithReducedBounds.xBounds
         solvedVarsID, solvedVarsNo = getSolvedVars(reducedVarBounds)
+        initLengths = calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo)
+
+
+        
+
+        
+        
         
         dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
         boundsRatios = getVarBoundsRatios(initVarBounds, reducedVarBounds)
@@ -42,14 +50,44 @@ def analyseResults(dict_options, initialModel, res_solver):
         lengths = calcHypercubicLength(reducedVarBounds, dim_reduced)        
         boundRatiosOfVars = getBoundRatiosOfVars(boundsRatios)
 
-        lengthFractions = getLengthFractions(initLength, lengths)
-     
-        hypercubicLFraction = getHyperCubicLengthFraction(initLength, lengths, dim_reduced)
+        lengthFractions = getLengthFractions(initLengths, lengths)
+        hypercubicLFraction = sum(lengthFractions)
+        #hypercubicLFraction = getHyperCubicLengthFraction(initLengths, lengths, dim_reduced)
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
         writeAnalysisResults(dict_options["fileName"], varSymbolic, boundsRatios, 
                              boundRatiosOfVars, initLength, lengthFractions, 
                              hypercubicLFraction, solvedVarsID, density, nonLinRatio)
+
+def calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo):
+    """calculates initial edge lengths for each box (neglecting solved variables)
+    
+    Args:
+        :initVarBounds:     numpy array with initial bounds
+        :solvedVarsID:      Nested list [[i,j],...] with i box-ID and j variable-ID 
+                            of solved interval as integer
+        :solvedVarsNo :     List with numbers of solved intervals in the boxes (int)
+    
+    Returns:
+        :initLengths:       list with floats of individual boxes initial lengths 
+
+    """
+    initLengths = []
+        
+    for  k in range(0, len(solvedVarsNo)):
+        notSolvedVarBounds = initVarBounds
+        curBoxsolvedVarsNo = solvedVarsNo[k]
+        if curBoxsolvedVarsNo !=0:
+            for curSolvedVarId in solvedVarsID:
+                if curSolvedVarId[0] == k: notSolvedVarBounds = numpy.delete(notSolvedVarBounds,k)
+                    
+                    
+            initLengths.append(calcVolumeLength(notSolvedVarBounds, solvedVarsNo[k]))        
+            
+        else:
+            initLengths.append(calcVolumeLength(initVarBounds, len(solvedVarsNo)))
+            
+    return initLengths
 
 
 def calcVolumeLength(box, dim):
@@ -67,7 +105,7 @@ def calcVolumeLength(box, dim):
     length = 1.0
     
     solvedID, solvedVarsNo = getSolvedVars([box])
-    dim =dim - solvedVarsNo[0]
+    #dim =dim - solvedVarsNo[0]
     
     for interval in box:
         width = float(mpmath.mpf(interval.delta)) 
@@ -98,7 +136,7 @@ def getSolvedVars(boxes):
         for j in range(0, len(curBox)):
             width = float(mpmath.mpf(curBox[j].delta))
             if width == 0.0:
-                solvedVarsID.append([j,i])
+                solvedVarsID.append([i,j])
                 soledVarsNoBox += 1
                 
         solvedVarsNo.append(soledVarsNoBox) 
@@ -195,12 +233,12 @@ def getBoundRatiosOfVars(boundsRatios):
     return boundRatiosOfVars
     
 
-def getLengthFractions(initLength, lengths):
+def getLengthFractions(initLengths, lengths):
     """ calculates hypercubic length fractions of box edge lengths referring 
     to the lngth of th initial box
    
     Args:
-    :initLength:    float with edgie length of initial volume (as hypercube)
+    :initLengths:   list with edge lengths of initial volume (as hypercube)
     :lengths:       list with edgie lengths of redced box volumes 
                     (as hypercubes) as floats
 
@@ -210,17 +248,17 @@ def getLengthFractions(initLength, lengths):
     """
     
     lengthFractions = []
-    for length in lengths:
-        lengthFractions.append(length / initLength)
+    for k in range(0, len(lengths)):
+        lengthFractions.append(lengths[k] / initLengths[k])
         
     return lengthFractions
 
 
-def getHyperCubicLengthFraction(initLength, lengths, dim_reduced):
+def getHyperCubicLengthFraction(initLengths, lengths, dim_reduced):
     """ calculates length fraction of all reduced boxes / intial box
     
     Args:
-        :initLength:    float with hypercubic length of initial box
+        :initLengths:   list with edge lengths of initial volume (as hypercube)
         :lengths:       list with hypercubic lengths of reduced boxes as floats
         :dim_reduced:   list with dimensions of reduced boxes as integer
         
@@ -233,7 +271,7 @@ def getHyperCubicLengthFraction(initLength, lengths, dim_reduced):
     for i in range(0, len(lengths)):
         reduced_volume+=(mpmath.mpf(lengths[i]))**dim_reduced[i]
         
-    return reduced_volume**(1.0/max(dim_reduced))/initLength
+    return reduced_volume**(1.0/max(dim_reduced))/initLengths[i]
  
 
 def getDensityOfJacoboan(model):
