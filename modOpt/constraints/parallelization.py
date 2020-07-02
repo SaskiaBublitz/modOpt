@@ -246,25 +246,25 @@ def reduceMultipleXBounds_Worker(k, model, functions, dict_varId_fIds, dict_opti
     boxNo = len(model.xBounds)
     xBounds = model.xBounds[k] #numpy.array(model.xBounds[k])
     
-    newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
-    if dict_options['method'] in newtonMethods:
+    newtonMethods = {'newton', 'detNewton', '3PNewton'}
+    if dict_options['newton_method'] in newtonMethods:
         newtonSystemDic = iNes_procedure.getNewtonIntervalSystem(xBounds, model.xSymbolic,
                                                   model.fSymbolic, model.getSympySymbolicJacobian(),
                                                   dict_options)  
     else:
         newtonSystemDic = {}
 
-    if dict_options['method'] == 'b_tight':
-        output = iNes_procedure.reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)
+    #if dict_options['method'] == 'b_tight':
+    #    output = iNes_procedure.reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)
             
-    else:
-        if not dict_options["Parallel Variables"]:
 
-            output = iNes_procedure.reduceBox(xBounds, model, functions, 
+    if not dict_options["Parallel Variables"]:
+
+        output = iNes_procedure.reduceBox(xBounds, model, functions, 
                                               dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
 
-        else: 
-            output = reduceBox(xBounds, model, functions, dict_varId_fIds, 
+    else: 
+        output = reduceBox(xBounds, model, functions, dict_varId_fIds, 
                                boxNo, dict_options, newtonSystemDic)         
      
     xNewBounds = output["xNewBounds"]
@@ -447,8 +447,8 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
             dict_options_temp["relTol"] = 0.1 * y[0].delta
             dict_options_temp["absTol"] = 0.1 * y[0].delta
 
-    newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
-    if dict_options['method'] in newtonMethods:        
+    newtonMethods = {'newton', 'detNewton', '3PNewton'}
+    if dict_options['newton_method'] in newtonMethods:        
         y = iNes_procedure.NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)
         if y == [] or y ==[[]]: 
             results['%d' % i] = ([], FailedSystem(functions[0], i),False, False)
@@ -461,7 +461,7 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
                                             iNes_procedure.reduceXIntervalByFunction(xBounds[f.glb_ID],
                                                                       f,
                                                                       f.glb_ID.index(i),
-                                                                      dict_options)])      
+                                                                      dict_options_temp)])      
                 if y == [] or y ==[[]]: 
                         results['%d' % i] = ([], FailedSystem(f.f_sym, f.x_sym[f.glb_ID.index(i)]), False, False)
                         

@@ -55,21 +55,21 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         
         xBounds = model.xBounds[k]
 
-        newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
-        if dict_options['method'] in newtonMethods:
+        newtonMethods = {'newton', 'detNewton', '3PNewton'}
+        if dict_options['newton_method'] in newtonMethods:
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model.xSymbolic,
                                         model.fSymbolic, model.getSympySymbolicJacobian(),
                                         dict_options)  
         else:
             newtonSystemDic = {}
         
-        if dict_options['method'] == 'b_tight':
-            output = reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options)
-        else:
-            if not dict_options["Parallel Variables"]:             
-                output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-            else: 
-                output = parallelization.reduceBox(xBounds, model, functions, 
+        #if dict_options['method'] == 'b_tight':
+        #    output = reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options)
+        #else:
+        if not dict_options["Parallel Variables"]:             
+            output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+        else: 
+            output = parallelization.reduceBox(xBounds, model, functions, 
                                                        dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
 
         xNewBounds = output["xNewBounds"]
@@ -216,9 +216,9 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
     jaclamb = sympy.lambdify(xSymbolic, jacobian,'numpy')
     jacIvLamb = lambdifyToMpmathIvComplex(xSymbolic, list(numpy.array(jacobian)))
 
-    if options['method'] == "b_normal_detNewton":
+    if options['newton_method'] == "detNewton":
         Boxpoint, Jacpoint, fpoint = findPointWithHighestDeterminant(jaclamb, flamb, xBounds)
-    elif options['method'] == "b_normal_3PNewton":
+    elif options['newton_method'] == "3PNewton":
         Boxpoint = [getPointInBox(xBounds, 'a'), getPointInBox(xBounds, 'mid'),
                     getPointInBox(xBounds, 'b')]
         Jacpoint = []
@@ -906,8 +906,8 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
             dict_options_temp["relTol"] = 0.1 * y[0].delta
             dict_options_temp["absTol"] = 0.1 * y[0].delta
        
-        newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
-        if dict_options['method'] in newtonMethods:        
+        newtonMethods = {'newton', 'detNewton', '3PNewton'}
+        if dict_options['newton_method'] in newtonMethods:        
             y = NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)
             if y == [] or y ==[[]]: 
                 saveFailedSystem(output, functions[0], model, 0)
@@ -1294,7 +1294,7 @@ def calculateCurrentBounds(f, i, xBounds, dict_options):
     
     """
     
-    if dict_options["method"] == "b_tight_split":
+    if dict_options["bc_method"] == "b_tight":
         try: bInterval = get_tight_bBounds(f, i, xBounds, dict_options)
            # b_max = []
            # b_min = []
