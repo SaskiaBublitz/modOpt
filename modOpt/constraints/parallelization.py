@@ -192,7 +192,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     results = manager.dict()
     done = numpy.zeros(len(model.xBounds))
     started = numpy.zeros(len(model.xBounds))
-    
+    output["xSolved"]  = False * numpy.ones(len(model.xBounds), dtype=bool)
     output["xAlmostEqual"] = False * numpy.ones(len(model.xBounds), dtype=bool)   
 
     for k in range(0,len(model.xBounds)):  
@@ -206,8 +206,8 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
     
     
-    output["newXBounds"], output["xAlmostEqual"] = getReducedXBoundsResults(results, dim)
-    
+    output["newXBounds"], output["xAlmostEqual"], output["xSolved"]  = getReducedXBoundsResults(results, dim)
+ 
     boxNo = len(output["newXBounds"])
     if boxNo >= dict_options["maxBoxNo"]:
         print("Note: Algorithm stops because the current number of boxes is ", 
@@ -242,40 +242,41 @@ def reduceMultipleXBounds_Worker(k, model, functions, dict_varId_fIds, dict_opti
     Return:                     True if method finishes ordinary
                              
     """
-    
     allBoxes = []
     boxNo = len(model.xBounds)
     xBounds = model.xBounds[k] #numpy.array(model.xBounds[k])
     
-    #dict_options["precision"] = iNes_procedure.getPrecision(model.xBounds[k])
+    newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
+    if dict_options['method'] in newtonMethods:
+        newtonSystemDic = iNes_procedure.getNewtonIntervalSystem(xBounds, model.xSymbolic,
+                                                  model.fSymbolic, model.getSympySymbolicJacobian(),
+                                                  dict_options)  
+    else:
+        newtonSystemDic = {}
 
     if dict_options['method'] == 'b_tight':
         output = iNes_procedure.reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)
             
     else:
         if not dict_options["Parallel Variables"]:
+
             output = iNes_procedure.reduceBox(xBounds, model, functions, 
-                                              dict_varId_fIds, boxNo, dict_options)
+                                              dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
 
         else: 
             output = reduceBox(xBounds, model, functions, dict_varId_fIds, 
-                               boxNo, dict_options)         
+                               boxNo, dict_options, newtonSystemDic)         
      
     xNewBounds = output["xNewBounds"]
     
-    if output["xAlmostEqual"]:
-        boxNo_split = dict_options["maxBoxNo"] - boxNo + 1
+    if output["xAlmostEqual"] and not output["xSolved"]:
+        boxNo_split = dict_options["maxBoxNo"] - boxNo
         if model.tearVarsID == []: iNes_procedure.getTearVariables(model)
-        #xNewBounds = iNes_procedure.separateBox(model.xBounds[k], 
-        #                                           [model.tearVarsID[-1]],
-        #                                           boxNo_split)
+        #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
         xNewBounds, dict_options["tear_id"] = iNes_procedure.splitTearVars(model.tearVarsID, 
-                                                                           model.xBounds[k], 
-                                                                           boxNo_split, dict_options)
-        
+                                   model.xBounds[k], boxNo_split, dict_options)
         output["xAlmostEqual"] = False
 
-            
     for box in xNewBounds:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
 
@@ -283,7 +284,7 @@ def reduceMultipleXBounds_Worker(k, model, functions, dict_varId_fIds, dict_opti
         results['%d' %k] = ([], output["noSolution"])
     else:
                  
-        results['%d' %k] = (allBoxes, output["xAlmostEqual"])
+        results['%d' %k] = (allBoxes, output["xAlmostEqual"], output["xSolved"])
 
     return True
 
@@ -327,6 +328,7 @@ def getReducedXBoundsResults(results, noOfxBounds):
                                  
     """
     xAlmostEqual = False * numpy.ones(noOfxBounds, dtype=bool) 
+    xSolved = False * numpy.ones(noOfxBounds, dtype=bool) 
     newXBounds = []
     
     for k in range(0, noOfxBounds):
@@ -336,12 +338,13 @@ def getReducedXBoundsResults(results, noOfxBounds):
             for curNewXBound in curNewXBounds:
                 newXBounds.append(numpy.array(convertListToMpi(curNewXBound), dtype=object))
                 
-            xAlmostEqual[k] = (results['%d' %k][1])   
+            xAlmostEqual[k] = (results['%d' %k][1])
+            xSolved[k] = (results['%d' %k][2])   
 
-    return newXBounds, xAlmostEqual
+    return newXBounds, xAlmostEqual, xSolved
     
 
-def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options): #boundsAlmostEqual):
+def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic): #boundsAlmostEqual):
     """ reduce box spanned by current intervals of xBounds.
      
     Args: 
@@ -363,10 +366,13 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options): 
     dim = len(model.xSymbolic)
     xNewBounds = copy.deepcopy(xBounds)
     CPU_count = dict_options["CPU count Variables"] 
-    xUnchanged = True
-    # Block loop
-
-        # Variables Loop
+    xUnchanged = []
+    xSolved = []
+    
+    if not iNes_procedure.solutionInFunctionRange(model, xBounds, dict_options):
+        iNes_procedure.saveFailedSystem(output, functions[0], model, 0) 
+        return output 
+    
     jobs = []
     manager = Manager()
     results = manager.dict()
@@ -374,7 +380,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options): 
     started = numpy.zeros (dim)
 
     for i in range(0, dim):
-        p = Process(target=reduceBox_Worker, args=(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_options, results))
+        p = Process(target=reduceBox_Worker, args=(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_options, newtonSystemDic, results))
         jobs.append(p)        
         
     startAndDeleteJobs(jobs, started, done, dim, CPU_count)
@@ -383,26 +389,29 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options): 
         
         if results['%d' % i][0] != []:
             xNewBounds[i] = convertListToMpi(results['%d' % i][0])
-            xUnchanged = iNes_procedure.checkXforEquality(xBounds[i], 
-                                                          xNewBounds[i], 
-                                                          xUnchanged, dict_options)
+            xUnchanged.append(results['%d' % i][2])
+            xSolved.append(results['%d' % i][3])
+            #xUnchanged = iNes_procedure.checkXforEquality(xBounds[i], 
+            #                                              xNewBounds[i], 
+            #                                              xUnchanged, dict_options)
             
             
         else: 
             output["xNewBounds"]  = [] 
             output["noSolution"] = results['%d' % i][1] 
+            output["xSolved"] = False
             output["xAlmostEqual"] = False
             return output
         #results['%d' % i][1]: (xNewBounds[i] ==xBounds[i])
         
-        
-    output["xAlmostEqual"] = xUnchanged
+    output["xSolved"] = all(xSolved)    
+    output["xAlmostEqual"] = all(xUnchanged)
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
     
     return output
 
 
-def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_options, results):
+def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_options, newtonSystemDic, results):
     """ contains work that can be done in parallel during the reduction of one 
     solution interval sets stored in xBounds. The package multiprocessing is used 
     for parallelization.
@@ -422,32 +431,52 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
         :True:                  If method finishes regulary
                                 
     """
+    xUnchanged = True
+    xSolved = True
     y = [xBounds[i]]
+    dict_options_temp = copy.deepcopy(dict_options)
     if dict_options["Debug-Modus"]: print(i)
         
-    if iNes_procedure.checkVariableBound(xBounds[i], dict_options): 
-        results['%d' % i] = (convertMpiToList([xBounds[i]]),[])
+    #if iNes_procedure.checkVariableBound(xBounds[i], dict_options): #
+    
+    if xBounds[i].delta == 0:
+        results['%d' % i] = (convertMpiToList([xBounds[i]]),[], True, True)
         return True
 
-    for j in dict_varId_fIds[i]:
-            f = functions[j]
-            y = iNes_procedure.setOfIvSetIntersection([y, 
-                                        iNes_procedure.reduceXIntervalByFunction(xBounds[f.glb_ID],
-                                                                  f,
-                                                                  f.glb_ID.index(i),
-                                                                  dict_options)])  
+    if iNes_procedure.variableSolved([xBounds[i]], dict_options) and y[0].delta > 1.0e-15:
+            dict_options_temp["relTol"] = 0.1 * y[0].delta
+            dict_options_temp["absTol"] = 0.1 * y[0].delta
 
-            if y == [] or y ==[[]]: 
-                    results['%d' % i] = ([], FailedSystem(f.f_sym, f.x_sym[f.glb_ID.index(i)]))
-                    
-                    return True       
+    newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
+    if dict_options['method'] in newtonMethods:        
+        y = iNes_procedure.NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)
+        if y == [] or y ==[[]]: 
+            results['%d' % i] = ([], FailedSystem(functions[0], i),False, False)
+            return True 
+
+    if not iNes_procedure.variableSolved(y, dict_options_temp):
+        for j in dict_varId_fIds[i]:
+                f = functions[j]
+                y = iNes_procedure.setOfIvSetIntersection([y, 
+                                            iNes_procedure.reduceXIntervalByFunction(xBounds[f.glb_ID],
+                                                                      f,
+                                                                      f.glb_ID.index(i),
+                                                                      dict_options)])      
+                if y == [] or y ==[[]]: 
+                        results['%d' % i] = ([], FailedSystem(f.f_sym, f.x_sym[f.glb_ID.index(i)]), False, False)
+                        
+                        return True
+                if iNes_procedure.variableSolved(y, dict_options): break
+                else: xSolved = False 
     
             #if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
             #    assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
             #    return output
     xNewBounds[i] = y
-    
-    results['%d' % i] = (convertMpiToList(xNewBounds[i]),[])
+    xUnchanged = iNes_procedure.checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
+                                       dict_options_temp)    
+    results['%d' % i] = (convertMpiToList(xNewBounds[i]),[], xUnchanged, xSolved)
+
     return True
 
     

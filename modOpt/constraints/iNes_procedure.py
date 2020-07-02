@@ -18,7 +18,8 @@ import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivm
 
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
-           'checkWidths', 'getPrecision']
+           'checkWidths', 'getPrecision', 'getNewtonIntervalSystem', 'saveFailedSystem', 
+           'solutionInFunctionRange', 'variableSolved']
 
 """
 ***************************************************
@@ -69,14 +70,13 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
                 output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
             else: 
                 output = parallelization.reduceBox(xBounds, model, functions, 
-                                                       dict_varId_fIds, boxNo, dict_options)
-        
+                                                       dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+
         xNewBounds = output["xNewBounds"]
         xAlmostEqual[k] = output["xAlmostEqual"]
         xSolved[k] = output["xSolved"]
         
         if output["xAlmostEqual"] and not output["xSolved"]:
-            print("Came here!") #TODO: Remove
             boxNo_split = dict_options["maxBoxNo"] - boxNo
             if model.tearVarsID == []: getTearVariables(model)
             #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)

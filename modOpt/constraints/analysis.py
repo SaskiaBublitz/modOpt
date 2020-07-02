@@ -36,15 +36,9 @@ def analyseResults(dict_options, initialModel, res_solver):
     if modelWithReducedBounds != []:
         reducedVarBounds = modelWithReducedBounds.xBounds
         solvedVarsID, solvedVarsNo = getSolvedVars(reducedVarBounds)
-        initLengths = calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo)
-
-
-        
-
-        
-        
-        
         dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
+        initLengths = calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo, dim_reduced)
+        
         boundsRatios = getVarBoundsRatios(initVarBounds, reducedVarBounds)
 
         lengths = calcHypercubicLength(reducedVarBounds, dim_reduced)        
@@ -59,7 +53,7 @@ def analyseResults(dict_options, initialModel, res_solver):
                              boundRatiosOfVars, initLength, lengthFractions, 
                              hypercubicLFraction, solvedVarsID, density, nonLinRatio)
 
-def calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo):
+def calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo, dim_reduced):
     """calculates initial edge lengths for each box (neglecting solved variables)
     
     Args:
@@ -74,7 +68,7 @@ def calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo):
     """
     initLengths = []
         
-    for  k in range(0, len(solvedVarsNo)):
+    for k in range(0, len(solvedVarsNo)):
         notSolvedVarBounds = initVarBounds
         curBoxsolvedVarsNo = solvedVarsNo[k]
         if curBoxsolvedVarsNo !=0:
@@ -82,10 +76,10 @@ def calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo):
                 if curSolvedVarId[0] == k: notSolvedVarBounds = numpy.delete(notSolvedVarBounds,k)
                     
                     
-            initLengths.append(calcVolumeLength(notSolvedVarBounds, solvedVarsNo[k]))        
+            initLengths.append(calcVolumeLength(notSolvedVarBounds, dim_reduced[k]))       
             
         else:
-            initLengths.append(calcVolumeLength(initVarBounds, len(solvedVarsNo)))
+            initLengths.append(calcVolumeLength(initVarBounds, dim_reduced[k]))
             
     return initLengths
 
@@ -350,8 +344,8 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
     if solvedVars != []:
         res_file.write("\n\nFollowing Variables have been solved:\n")
         for solvedVar in solvedVars:
-            res_file.write("%s (VarBound_%s)\n" %(varSymbolic[solvedVar[0]], 
-                                                               solvedVar[1]))
+            res_file.write("%s (VarBound_%s)\n" %(varSymbolic[solvedVar[1]], 
+                                                               solvedVar[0]))
     res_file.write("\nVariables\t") 
     for j in range(0, noOfVarSets):
           res_file.write("VarBounds_%s\t"%(j)) 
