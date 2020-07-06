@@ -66,6 +66,8 @@ def doIntervalNesting(res_solver, dict_options):
             
     """
     
+    if "iterMaxNewton" in dict_options: dict_options["redStepMax"] = dict_options["iterMaxNewton"]
+    
     model = res_solver["Model"]
     #dict_options["maxBoxNo"] =  int((len(model.xBounds[0]))**0.5)
     iterNo = 0
@@ -79,7 +81,7 @@ def doIntervalNesting(res_solver, dict_options):
         sort_fId_to_varIds(i, functions[i].glb_ID, dict_varId_fIds)
     
      
-    for l in range(0, dict_options["iterMaxNewton"]): 
+    for l in range(0, dict_options["redStepMax"]): 
         
         iterNo = l + 1
        
@@ -104,6 +106,7 @@ def doIntervalNesting(res_solver, dict_options):
         else: continue
         
     # Updating model:
+    # TODO: if some boxes share same lb or ub they should be unified
     newModel.setXBounds(model.xBounds)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo

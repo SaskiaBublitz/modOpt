@@ -18,7 +18,8 @@ import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivm
 
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
-           'checkWidths', 'getPrecision']
+           'checkWidths', 'getPrecision', 'getNewtonIntervalSystem', 'saveFailedSystem', 
+           'solutionInFunctionRange', 'variableSolved']
 
 """
 ***************************************************
@@ -51,25 +52,26 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     boxNo = len(model.xBounds)
     nl = len(model.xBounds)
     for k in range(0, len(model.xBounds)):
+        
         xBounds = model.xBounds[k]
 
-        newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
-        if dict_options['method'] in newtonMethods:
+        newtonMethods = {'newton', 'detNewton', '3PNewton'}
+        if dict_options['newton_method'] in newtonMethods:
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model.xSymbolic,
                                         model.fSymbolic, model.getSympySymbolicJacobian(),
                                         dict_options)  
         else:
             newtonSystemDic = {}
         
-        if dict_options['method'] == 'b_tight':
-            output = reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options)
-        else:
-            if not dict_options["Parallel Variables"]:             
-                output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-            else: 
-                output = parallelization.reduceBox(xBounds, model, functions, 
-                                                       dict_varId_fIds, boxNo, dict_options)
-        
+        #if dict_options['method'] == 'b_tight':
+        #    output = reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options)
+        #else:
+        if not dict_options["Parallel Variables"]:             
+            output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+        else: 
+            output = parallelization.reduceBox(xBounds, model, functions, 
+                                                       dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+
         xNewBounds = output["xNewBounds"]
         xAlmostEqual[k] = output["xAlmostEqual"]
         xSolved[k] = output["xSolved"]
@@ -214,9 +216,9 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
     jaclamb = sympy.lambdify(xSymbolic, jacobian,'numpy')
     jacIvLamb = lambdifyToMpmathIvComplex(xSymbolic, list(numpy.array(jacobian)))
 
-    if options['method'] == "b_normal_detNewton":
+    if options['newton_method'] == "detNewton":
         Boxpoint, Jacpoint, fpoint = findPointWithHighestDeterminant(jaclamb, flamb, xBounds)
-    elif options['method'] == "b_normal_3PNewton":
+    elif options['newton_method'] == "3PNewton":
         Boxpoint = [getPointInBox(xBounds, 'a'), getPointInBox(xBounds, 'mid'),
                     getPointInBox(xBounds, 'b')]
         Jacpoint = []
@@ -382,6 +384,7 @@ def reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options):
 
         if varBounds.__contains__('Failed_xID'):
             return get_failed_output(f, varBounds)
+        
     output = get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds, dict_options)
 
     #if len(output["intervalsPerm"]) > dict_options["maxBoxNo"]:
@@ -452,8 +455,7 @@ def get_newXBounds(varBounds, boxNo, maxBoxNo, xBounds, dict_options):
             xUnchanged = False
             
         for varB in varBounds['%d' % i]:
-            if not checkVariableBound(varB, dict_options):
-                        xSolved = False
+            if not checkVariableBound(varB, dict_options): xSolved = False
 
     output["xAlmostEqual"] = xUnchanged
     output["xSolved"] = xSolved
@@ -474,21 +476,31 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
                         case  a reduced interval is empty.
 
     """
-
+    dict_options_temp = copy.deepcopy(dict_options)
+    #TODO
     for x_id in range(0, len(f.glb_ID)): # get g(x) and b(x),y
-        if mpmath.almosteq(xBounds[x_id].a, xBounds[x_id].b,
-                           dict_options["absTol"],
-                           dict_options["relTol"]):
+    
+        if xBounds[x_id].delta <= 1.0e-15: 
             store_reduced_xBounds(f, x_id, [xBounds[x_id]], varBounds)
-            continue
+            continue     
+        
+        if variableSolved([xBounds[x_id]], dict_options) and xBounds[x_id].delta > 1.0e-15:
+            dict_options_temp["relTol"] = 0.1 * xBounds[x_id].delta
+            dict_options_temp["absTol"] = 0.1 * xBounds[x_id].delta
+
+        #if mpmath.almosteq(xBounds[x_id].a, xBounds[x_id].b,
+        #                   dict_options["absTol"],
+        #                   dict_options["relTol"]):
+        #    store_reduced_xBounds(f, x_id, [xBounds[x_id]], varBounds)
+        #    continue
         if dict_options["Parallel b's"]:
             b = parallelization.get_tight_bBounds(f, x_id, xBounds, dict_options)
 
         else:
             b = get_tight_bBounds(f, x_id, xBounds, dict_options) # TODO: Parallel
             if b == mpmath.mpi('-inf','inf') or b == []: reduced_xBounds = [xBounds[x_id]]
-            else: reduced_xBounds = get_reducedxBounds(f, b, x_id, copy.deepcopy(xBounds), dict_options)
-            
+            else: reduced_xBounds = get_reducedxBounds(f, b, x_id, copy.deepcopy(xBounds), dict_options_temp)
+
             #if reduced_xBounds == [xBounds[x_id]] and f.b_sym[x_id].free_symbols!=set():
                 #if x_id==7: print ("Before ", f.x_sym[7], " ", b)
                 #b = get_b_from_branching(f, x_id, xBounds, dict_options) 
@@ -613,13 +625,13 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     
     b_max = []
     b_min = []
-    digits = int(abs(numpy.floor(numpy.log10(dict_options['absTol']))))
+    #digits = int(abs(numpy.floor(numpy.log10(dict_options['absTol']))))
     b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)
 
     if b == []: return []
 
-    if mpmath.almosteq(b.a, b.b, dict_options["relTol"], dict_options["absTol"]):
-        return b
+    #if mpmath.almosteq(b.a, b.b, dict_options["relTol"], dict_options["absTol"]):
+    #    return b
 
     if len(f.glb_ID)==1: # this is import if b is interval but there is only one variable in f (for design var intervals in future)
         return b
@@ -631,8 +643,8 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
 
     if b_min !=[] and b_max != []:
 
-        b_lb = round_off(max(b_min), digits)
-        b_ub = round_up(min(b_max), digits)
+        b_lb = max(b_min) #round_off(max(b_min), digits)
+        b_ub = min(b_max) #round_up(min(b_max), digits)
         return mpmath.mpi(b_lb, b_ub)
     else: return []
 
@@ -873,6 +885,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     xNewBounds = copy.deepcopy(xBounds)
     xUnchanged = True
     xSolved = True
+    dict_options_temp = copy.deepcopy(dict_options)
     
     if not solutionInFunctionRange(model, xBounds, dict_options):
         saveFailedSystem(output, functions[0], model, 0)
@@ -880,27 +893,34 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     
     for i in range(0, len(model.xSymbolic)):
         y = [xBounds[i]]
+
+        
         if dict_options["Debug-Modus"]: print(i)
         
-        if checkVariableBound(xBounds[i], dict_options):
-                        xNewBounds[i] = [xBounds[i]]
-                        continue
-        
-        newtonMethods = {'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'}
-        if dict_options['method'] in newtonMethods:        
-            y = NewtonReduction(newtonSystemDic, xBounds, i, dict_options)
+        #if checkVariableBound(xBounds[i], dict_options):
+        if xBounds[i].delta == 0:
+            xNewBounds[i] = [xBounds[i]]
+            continue
+
+        if variableSolved(y, dict_options) and y[0].delta > 1.0e-15:
+            dict_options_temp["relTol"] = 0.1 * y[0].delta
+            dict_options_temp["absTol"] = 0.1 * y[0].delta
+       
+        newtonMethods = {'newton', 'detNewton', '3PNewton'}
+        if dict_options['newton_method'] in newtonMethods:        
+            y = NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)
             if y == [] or y ==[[]]: 
                 saveFailedSystem(output, functions[0], model, 0)
                 return output 
 
-        if not variableSolved(y, dict_options):
+        if not variableSolved(y, dict_options_temp):
             for j in dict_varId_fIds[i]:
                 f = functions[j]
                 y = setOfIvSetIntersection([y, 
                                             reduceXIntervalByFunction(xBounds[f.glb_ID],
                                                                       f,
                                                                       f.glb_ID.index(i),
-                                                                      dict_options)])      
+                                                                      dict_options_temp)])      
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, f, model, i)
                     return output    
@@ -911,11 +931,15 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     
                 if variableSolved(y, dict_options): break
                 else: xSolved = False 
-    
+
+  
         subBoxNo = subBoxNo * len(y) 
         xNewBounds[i] = y
         xUnchanged = checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
-                                       dict_options)
+                                       dict_options_temp)
+        
+        dict_options_temp["relTol"] = dict_options["relTol"]
+        dict_options_temp["absTol"] = dict_options["absTol"]  
 
     output["xAlmostEqual"] = xUnchanged
     output["xSolved"] = xSolved       
@@ -1270,7 +1294,7 @@ def calculateCurrentBounds(f, i, xBounds, dict_options):
     
     """
     
-    if dict_options["method"] == "b_tight_split":
+    if dict_options["bc_method"] == "b_tight":
         try: bInterval = get_tight_bBounds(f, i, xBounds, dict_options)
            # b_max = []
            # b_min = []
