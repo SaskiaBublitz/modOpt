@@ -1,0 +1,49 @@
+Test report from module: flash
+
+Tolerance:	 1e-10
+
+Case	 Status	 CPU in s	 Comparison with seq. process
+newton/flash	 Ok	 25.578428745269775	 -
+newton/flash_par_b	 Ok	 32.60498595237732	 Ok
+newton/flash_par_v	 Ok	 32.0085654258728	 Ok
+newton/flash_par_vb	 Ok	 31.825172185897827	 Ok
+detNewton/flash	 Ok	 38.69292378425598	 -
+detNewton/flash_par_b	 Ok	 40.41228175163269	 Ok
+detNewton/flash_par_v	 Ok	 40.487853050231934	 Ok
+detNewton/flash_par_vb	 Ok	 41.40184283256531	 Ok
+newton3P/flash	 Ok	 21.80663013458252	 -
+newton3P/flash_par_b	 Ok	 21.944868803024292	 Ok
+newton3P/flash_par_v	 Ok	 21.44929003715515	 Ok
+newton3P/flash_par_vb	 Ok	 22.585275173187256	 Ok
+b_normal/flash	 Ok	 21.595747470855713	 -
+b_normal/flash_par_b	 Ok	 21.799937963485718	 Ok
+b_normal/flash_par_v	 Ok	 22.37746000289917	 Ok
+b_normal/flash_par_vb	 Ok	 23.562299013137817	 Ok
+b_normal_newton/flash	 Ok	 36.05217432975769	 -
+b_normal_newton/flash_par_b	 Ok	 36.25102639198303	 Ok
+b_normal_newton/flash_par_v	 Ok	 35.45920705795288	 Ok
+b_normal_newton/flash_par_vb	 Ok	 37.327622413635254	 Ok
+b_normal_detNewton/flash	 Ok	 45.42422366142273	 -
+b_normal_detNewton/flash_par_b	 Ok	 44.47581768035889	 Ok
+b_normal_detNewton/flash_par_v	 Ok	 45.87909173965454	 Ok
+b_normal_detNewton/flash_par_vb	 Ok	 45.753363609313965	 Ok
+b_normal_newton3P/flash	 Ok	 23.141165494918823	 -
+b_normal_newton3P/flash_par_b	 Ok	 23.248414516448975	 Ok
+b_normal_newton3P/flash_par_v	 Ok	 24.259467601776123	 Ok
+b_normal_newton3P/flash_par_vb	 Ok	 23.31715178489685	 Ok
+b_tight/flash	 Ok	 59.80497431755066	 -
+b_tight/flash_par_b	 Ok	 57.84086561203003	 Ok
+b_tight/flash_par_v	 Ok	 56.50800347328186	 Ok
+b_tight/flash_par_vb	 Ok	 57.3488712310791	 Ok
+b_tight_newton/flash	 Ok	 70.14598894119263	 -
+b_tight_newton/flash_par_b	 Ok	 70.02620124816895	 Ok
+b_tight_newton/flash_par_v	 Ok	 72.3868510723114	 Ok
+b_tight_newton/flash_par_vb	 Ok	 71.12251377105713	 Ok
+b_tight_detNewton/flash	 Ok	 77.61587238311768	 -
+b_tight_detNewton/flash_par_b	 Ok	 77.69927763938904	 Ok
+b_tight_detNewton/flash_par_v	 Ok	 78.19124603271484	 Ok
+b_tight_detNewton/flash_par_vb	 Ok	 77.21422243118286	 Ok
+b_tight_newton3P/flash	 Ok	 59.686577796936035	 -
+b_tight_newton3P/flash_par_b	 Ok	 57.93078112602234	 Ok
+b_tight_newton3P/flash_par_v	 Ok	 58.296189308166504	 Ok
+b_tight_newton3P/flash_par_vb	 Ok	 60.32457613945007	 Ok
