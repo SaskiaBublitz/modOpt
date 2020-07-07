@@ -1,0 +1,49 @@
+Test report from module: vanDerWaals
+
+Tolerance:	 1e-22
+
+Case	 Status	 CPU in s	 Comparison with seq. process
+newton/vanDerWaals	 Ok	 0.5308318138122559	 -
+newton/vanDerWaals_par_b	 Ok	 0.5297703742980957	 Ok
+newton/vanDerWaals_par_v	 Ok	 0.5581493377685547	 Ok
+newton/vanDerWaals_par_vb	 Ok	 0.5230669975280762	 Ok
+detNewton/vanDerWaals	 Ok	 0.5591917037963867	 -
+detNewton/vanDerWaals_par_b	 Ok	 0.5248477458953857	 Ok
+detNewton/vanDerWaals_par_v	 Ok	 0.5591635704040527	 Ok
+detNewton/vanDerWaals_par_vb	 Ok	 0.5295116901397705	 Ok
+newton3P/vanDerWaals	 Ok	 0.935189962387085	 -
+newton3P/vanDerWaals_par_b	 Ok	 0.9970531463623047	 Ok
+newton3P/vanDerWaals_par_v	 Ok	 0.949578046798706	 Ok
+newton3P/vanDerWaals_par_vb	 Ok	 0.9363813400268555	 Ok
+b_normal/vanDerWaals	 Ok	 0.918447732925415	 -
+b_normal/vanDerWaals_par_b	 Ok	 0.946629524230957	 Ok
+b_normal/vanDerWaals_par_v	 Ok	 1.0722682476043701	 Ok
+b_normal/vanDerWaals_par_vb	 Ok	 0.9634435176849365	 Ok
+b_normal_newton/vanDerWaals	 Ok	 0.5621323585510254	 -
+b_normal_newton/vanDerWaals_par_b	 Ok	 0.5646235942840576	 Ok
+b_normal_newton/vanDerWaals_par_v	 Ok	 0.6241130828857422	 Ok
+b_normal_newton/vanDerWaals_par_vb	 Ok	 0.5798823833465576	 Ok
+b_normal_detNewton/vanDerWaals	 Ok	 0.562469482421875	 -
+b_normal_detNewton/vanDerWaals_par_b	 Ok	 0.681903600692749	 Ok
+b_normal_detNewton/vanDerWaals_par_v	 Ok	 0.5423648357391357	 Ok
+b_normal_detNewton/vanDerWaals_par_vb	 Ok	 0.5687384605407715	 Ok
+b_normal_newton3P/vanDerWaals	 Ok	 1.0822441577911377	 -
+b_normal_newton3P/vanDerWaals_par_b	 Ok	 0.9761126041412354	 Ok
+b_normal_newton3P/vanDerWaals_par_v	 Ok	 1.0650253295898438	 Ok
+b_normal_newton3P/vanDerWaals_par_vb	 Ok	 0.9508938789367676	 Ok
+b_tight/vanDerWaals	 Ok	 2.004298686981201	 -
+b_tight/vanDerWaals_par_b	 Ok	 1.941683292388916	 Ok
+b_tight/vanDerWaals_par_v	 Ok	 1.9465620517730713	 Ok
+b_tight/vanDerWaals_par_vb	 Ok	 1.9096391201019287	 Ok
+b_tight_newton/vanDerWaals	 Ok	 1.363396167755127	 -
+b_tight_newton/vanDerWaals_par_b	 Ok	 1.351060390472412	 Ok
+b_tight_newton/vanDerWaals_par_v	 Ok	 1.3728814125061035	 Ok
+b_tight_newton/vanDerWaals_par_vb	 Ok	 1.27923583984375	 Ok
+b_tight_detNewton/vanDerWaals	 Ok	 1.3134922981262207	 -
+b_tight_detNewton/vanDerWaals_par_b	 Ok	 1.3023042678833008	 Ok
+b_tight_detNewton/vanDerWaals_par_v	 Ok	 1.4355146884918213	 Ok
+b_tight_detNewton/vanDerWaals_par_vb	 Ok	 1.3253865242004395	 Ok
+b_tight_newton3P/vanDerWaals	 Ok	 2.1836998462677	 -
+b_tight_newton3P/vanDerWaals_par_b	 Ok	 2.03204607963562	 Ok
+b_tight_newton3P/vanDerWaals_par_v	 Ok	 2.0264270305633545	 Ok
+b_tight_newton3P/vanDerWaals_par_vb	 Ok	 2.0312299728393555	 Ok
