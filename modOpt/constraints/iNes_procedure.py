@@ -8,6 +8,7 @@ import copy
 import numpy
 import sympy
 import mpmath
+import pyibex
 import itertools
 import warnings
 from modOpt.constraints import parallelization
@@ -55,7 +56,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         
         xBounds = model.xBounds[k]
 
-        newtonMethods = {'newton', 'detNewton', '3PNewton'}
+        newtonMethods = {'Newton', 'detNewton', '3PNewton'}
         if dict_options['newton_method'] in newtonMethods:
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model.xSymbolic,
                                         model.fSymbolic, model.getSympySymbolicJacobian(),
@@ -254,16 +255,17 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
                     JacInterval[l][n] = mpmath.mpi(iv.a, numpy.nan_to_num(numpy.inf))
     
     JacInv = []
-    for J in Jacpoint:
-        try:
-            JacInv.append(numpy.linalg.inv(J))
-        except: 
-            JacInv.append(numpy.array(numpy.matrix(J).getH())) # if singular return adjunct 
+    if options["InverseOrHybrid"]!='Hybrid':
+        for J in Jacpoint:
+            try:
+                JacInv.append(numpy.linalg.inv(J))
+            except: 
+                JacInv.append(numpy.array(numpy.matrix(J).getH())) # if singular return adjunct 
 
-    #remove inf parts in inverse
-    for inf in infRows:
-        for Ji in JacInv:
-            Ji[:,inf] = numpy.zeros(len(Ji))
+        #remove inf parts in inverse
+        for inf in infRows:
+            for Ji in JacInv:
+                Ji[:,inf] = numpy.zeros(len(Ji))
           
     return {'Boxpoint':Boxpoint, 'f(Boxpoint)':fpoint, 'J(Boxpoint)':Jacpoint,
             'J(Box)':JacInterval, 'J(Boxpoint)-1':JacInv}
@@ -890,11 +892,21 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     if not solutionInFunctionRange(model, xBounds, dict_options):
         saveFailedSystem(output, functions[0], model, 0)
         return output 
+
+
+    if dict_options['hc_method']=='HC4':
+        HC4_IvV = HC4(model, xBounds)
+        if HC4_IvV.is_empty():
+            saveFailedSystem(output, functions[0], model, 0)
+            return output 
+        else:
+            for i in range(0, len(model.xSymbolic)):
+                xNewBounds[i] = mpmath.mpi(list(HC4_IvV[i]))
+
     
     for i in range(0, len(model.xSymbolic)):
-        y = [xBounds[i]]
-
-        
+        y = [xNewBounds[i]]
+     
         if dict_options["Debug-Modus"]: print(i)
         
         #if checkVariableBound(xBounds[i], dict_options):
@@ -906,21 +918,30 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
             dict_options_temp["relTol"] = 0.1 * y[0].delta
             dict_options_temp["absTol"] = 0.1 * y[0].delta
        
-        newtonMethods = {'newton', 'detNewton', '3PNewton'}
-        if dict_options['newton_method'] in newtonMethods:        
-            y = NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)
-            if y == [] or y ==[[]]: 
-                saveFailedSystem(output, functions[0], model, 0)
-                return output 
 
-        if not variableSolved(y, dict_options_temp):
+        newtonMethods = {'Newton', 'detNewton', '3PNewton'}
+        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:   
+            if dict_options['InverseOrHybrid']!='Hybrid':     
+                y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output 
+            if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options_temp):  
+                y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output 
+
+
+        if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
                 f = functions[j]
                 y = setOfIvSetIntersection([y, 
                                             reduceXIntervalByFunction(xBounds[f.glb_ID],
                                                                       f,
                                                                       f.glb_ID.index(i),
-                                                                      dict_options_temp)])      
+                                                                      dict_options_temp)]) 
+   
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, f, model, i)
                     return output    
@@ -935,6 +956,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
   
         subBoxNo = subBoxNo * len(y) 
         xNewBounds[i] = y
+        if not variableSolved(y, dict_options): xSolved = False
         xUnchanged = checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
                                        dict_options_temp)
         
@@ -2781,3 +2803,83 @@ def solutionInFunctionRange(model, xBounds, dict_options):
             solutionInRange = False
             
     return solutionInRange
+
+
+
+def HC4(model, xBounds):
+    """reduces the bounds of all variables in every model function based on HC4 hull-consistency
+    Args:
+        :model: instance of class-Model
+        :xBounds:   current Bounds of Box
+    Return: 
+        :pyibex IntervalVector with reduced bounds 
+    """
+
+    HC4reduced_IvV = pyibex.IntervalVector(eval(mpmath.nstr(xBounds.tolist())))
+    currentIntervalVector = HC4reduced_IvV
+    for f in model.fSymbolic: 
+        stringF = str(f).replace('log', 'ln').replace('**', '^')
+        for i,s in enumerate(model.xSymbolic):
+            if s in f.free_symbols:
+                stringF = stringF.replace(str(s), 'x['+str(i)+']')
+           
+        pyibexFun = pyibex.Function('x['+str(len(xBounds))+']', stringF)
+        ctc = pyibex.CtcFwdBwd(pyibexFun)
+        ctc.contract(currentIntervalVector)
+        HC4reduced_IvV = HC4reduced_IvV & currentIntervalVector
+
+        if HC4reduced_IvV.is_empty():
+            return HC4reduced_IvV
+
+    return HC4reduced_IvV
+
+
+
+def HybridGS(newtonSystemDic, xBounds, i, dict_options):
+        """ Computation of the Interval-Newton Method with hybrid approach to reduce the single interval xBounds[i]: 
+        Args: 
+            :newtonSystemDic:   dictionary, containing:
+                :Boxpoint:      Point in IntervalBox
+                :f(Boxpoint):   functionvalues at Boxpoint
+                :JacInterval:   evaluated jacobimatrix with Bounds
+            :xBounds:       current Bounds
+            :i:             index of reducing Bound
+            
+        Return:
+            :interval:   interval(s) of mpi format from mpmath library where
+                         solution for x can be in, if interval remains [] there
+                         is no solution within the initially guessed interval of x                  
+        """
+
+        interval=[]
+                 
+        Boundspoint = newtonSystemDic['Boxpoint']
+        fpoint = newtonSystemDic['f(Boxpoint)']
+        JacInterval = newtonSystemDic['J(Box)']
+        #Y = newtonSystemDic['J(Boxpoint)-1']
+
+        intersection = xBounds[i]
+        for bp in range(len(Boundspoint)):
+            for y in range(len(xBounds)):
+                Yfmid = fpoint[bp][y]
+                D = JacInterval[y,i]
+                ivsum=0
+                if D!=0 and D!=mpmath.mpi('-inf','+inf'):
+                    for j in range(0, len(JacInterval[i])):
+                        if j!=i:
+                            ivsum = ivsum + numpy.dot(JacInterval[y,j], (xBounds[j]-Boundspoint[bp][j]))
+                    
+                    try:    N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
+                    except: N = mpmath.mpi('-inf', '+inf')
+                
+                    if N.a == '-inf' or N.b=='+inf':
+                        N = xBounds[i]
+                        
+                    intersection = ivIntersection(N, intersection)
+                    if intersection == []:
+                        return intersection
+                    if checkVariableBound(intersection, dict_options):
+                        return [intersection]
+
+        if intersection !=[]: interval.append(intersection)
+        return interval
