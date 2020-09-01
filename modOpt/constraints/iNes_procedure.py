@@ -10,6 +10,7 @@ import sympy
 import mpmath
 import itertools
 import warnings
+from modOpt.constraints import affineArithmetic
 from modOpt.constraints import parallelization
 from modOpt.constraints.FailedSystem import FailedSystem
 from modOpt.decomposition import MC33
@@ -237,7 +238,7 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
         fpoint = [removeInfAndConvertToFloat(fpoint, 1)[0]] 
         warnings.filterwarnings("default", category=RuntimeWarning)
     
-    JacInterval = numpy.array(jacIvLamb(*xBounds)) 
+    JacInterval = numpy.array(jacIvLamb(*xBounds))
 
     # converts 'inf' in numpy float-inf   
     infRows = []           
@@ -1064,14 +1065,13 @@ def reduce_x_by_gb(g_sym, dgdx_sym, b, x_sym, i, xBounds, dict_options):
     if isinstance(g, mpmath.iv.mpc) or isinstance(dgdx, mpmath.iv.mpc) or g==[] or dgdx==[]: return [xBounds[i]] # TODO: Complex case
 
     if not x_sym[i] in dgdx_sym.free_symbols and g == dgdx*xBounds[i]: # Linear Case -> solving system directly
-        #dgdx_sym = lambdifyToMpmathIvComplex(x_sym, dgdx_sym)
         return getReducedIntervalOfLinearFunction(dgdx, i, xBounds, b)   
 
     else: # Nonlinear Case -> solving system by interval nesting
         dgdx_sym = lambdifyToMpmathIvComplex(x_sym, dgdx_sym)
-        
+        #dgdx_sym_aff = lambdifyToAffapyAffine(x_sym, dgdx_sym)
         return getReducedIntervalOfNonlinearFunction(g_sym, 
-                                                     dgdx_sym, 
+                                                     dgdx_sym,
                                                      dgdx, 
                                                      i, 
                                                      xBounds, 
@@ -1153,6 +1153,34 @@ def splitFunctionByVariableDependency(f, x):
     else:
         print("Problems occured during function parsing")
         return 0, 0
+
+def lambdifyToAffapyAffine(x, f):
+    """Converting operations of symoblic equation system f (simpy) to
+    affine arithmetic values (ref. to affapy.aa slightly modified in 
+    affineArithmetic module to count for minimum range and Chebyshev's 
+    approximation
+
+    Args:
+        :x:      set with symbolic variables in sympy formate
+        :f:      list with symbolic functions in sympy formate
+        
+    Return:     lambdified symbolic function in affapy formate   
+
+    """
+
+    affapyhIv = {"exp" : affineArithmetic.Affine.exp,
+            "sin" : affineArithmetic.Affine.sin,
+            "sinh" : affineArithmetic.Affine.sinh,
+            "cos" : affineArithmetic.Affine.cos,
+            "cosh" : affineArithmetic.Affine.cosh,
+            "tan" : affineArithmetic.Affine.tan,
+            "tanh" : affineArithmetic.Affine.tanh,
+            "log" : affineArithmetic.Affine.log,
+            "sqrt": affineArithmetic.Affine.sqrt,
+            "Pow": affineArithmetic.Affine.__pow__}
+    
+    return sympy.lambdify(x, f, affapyhIv)
+
 
 
 def lambdifyToMpmathIv(x, f):
@@ -1348,12 +1376,45 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     if isinstance(f, sympy.Float) and len(str(f)) > 15:
         return roundValue(f, 16)
     fMpmathIV = lambdifyToMpmathIvComplex(xSymbolic, f)
+    
     try:         
         fInterval = fMpmathIV(*xBounds)#timeout(fMpmathIV, xBounds)
-        if fInterval == False: return mpmath.mpi('-inf','inf')
-        return mpmath.mpi(str(fInterval))
+        if fInterval == False: fInterval = mpmath.mpi('-inf','inf')
+        
     except:
         return []
+    
+    fInterval = intersectWithAffineFunctionIntervals(xSymbolic, xBounds, [f], [fInterval])
+    return mpmath.mpi(str(fInterval[0]))
+        
+        
+def intersectWithAffineFunctionIntervals(xSymbolic, xBounds, f, fIntervals):
+    """ tries to reduces intervals in xBounds by affine arithmetic and intersetcts
+    the resulting function intervals with the function intervals from classical 
+    interval arithmetic.
+    
+    Args:
+        :xSymbolic:     list with symbolic variables in sympy logic
+        :xBounds:       numpy.array with current variable bounds
+        :f:             list with sympy functions
+        :fIntervals:    list or array with function intervals in mpmath.mpi formate
+    
+    Returns:
+        :fIntervals:    updated list or array with function intervals in mpmath.mpi formate
+
+    """
+    
+    xBounds_affapy = affineArithmetic.Affine.mpiList2affList(xBounds)
+        
+    for j in range(0, len(f)):
+        try:
+            fAffapy = lambdifyToAffapyAffine(xSymbolic, f[j]) 
+            box_affapy = affineArithmetic.Affine.aff2mpi(fAffapy(*xBounds_affapy))
+            fIntervals[j] = ivIntersection(mpmath.mpi(str(fIntervals[j])), box_affapy) 
+        except:
+            pass
+        
+    return fIntervals
 
 
 def roundValue(val, digits):
@@ -1737,19 +1798,19 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
     return increasingZones, decreasingZones, nonMonotoneZones
 
 
-def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi, dict_options):
+def getReducedIntervalOfNonlinearFunction(gx, dgdx, dgdXInterval, i, xBounds, bi, dict_options):
     """ checks function for monotone sections in x and reduces them one after the other.
 
     Args:
-        :fx:                 symbolic x-depending part of function f in mpmath.mpi logic
-        :dfdX:               first symbolic derivative of function f with respect to x
+        :gx:                 symbolic x-depending part of function f in mpmath.mpi logic
+        :dgdx:               first symbolic derivative of function f with respect to x
                              in mpmath.mpi logic
-        :dfdXInterval:       first derivative of function f with respect to x at xBounds
+        :dgdXInterval:       first derivative of function f with respect to x at xBounds
         :i:                  integer with current iteration variable index
         :xBounds:            numpy array with set of variable bounds
         :bi:                 current function residual bounds
         :dict_options:       for function and variable interval tolerances in the used
-                            algorithms
+                             algorithms     
 
     Return:                reduced x-Interval(s) and list of monotone x-intervals
 
@@ -1763,14 +1824,14 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
     orgXiBounds = [copy.deepcopy(xBounds[i])]
     curXiBounds = orgXiBounds
 
-    if dfdXInterval == []: return []
+    if dgdXInterval == []: return []
 
-    if '-inf' in dfdXInterval or '+inf' in dfdXInterval: # condition for discontinuities
-        curXiBounds, nonMonotoneZones = getContinuousFunctionSections(dfdX, i, xBounds, dict_options)
+    if '-inf' in dgdXInterval or '+inf' in dgdXInterval: # condition for discontinuities
+        curXiBounds, nonMonotoneZones = getContinuousFunctionSections(dgdx, i, xBounds, dict_options)
     if curXiBounds != []:
         for curInterval in curXiBounds:
             xBounds[i] = curInterval
-            increasingZone, decreasingZone, nonMonotoneZone = getMonotoneFunctionSections(dfdX, i, xBounds, dict_options)
+            increasingZone, decreasingZone, nonMonotoneZone = getMonotoneFunctionSections(dgdx, i, xBounds, dict_options)
             if increasingZone !=[]: increasingZones.append(increasingZone)
             if decreasingZone !=[]: decreasingZones.append(decreasingZone)
             if nonMonotoneZone !=[]:
@@ -1780,18 +1841,18 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
 
     if increasingZones !=[]:
             increasingZones = removeListInList(increasingZones)
-            reducedIntervals = reduceMonotoneIntervals(increasingZones, reducedIntervals, fx,
-                                    xBounds, i, bi, dict_options, increasing = True)
+            reducedIntervals = reduceMonotoneIntervals(increasingZones, reducedIntervals, gx,
+                                                       xBounds, i, bi, dict_options, increasing = True)
 
     if decreasingZones !=[]:
             decreasingZones = removeListInList(decreasingZones)                
-            reducedIntervals = reduceMonotoneIntervals(decreasingZones, reducedIntervals, fx, 
+            reducedIntervals = reduceMonotoneIntervals(decreasingZones, reducedIntervals, gx, 
                                     xBounds, i, bi, dict_options, increasing = False)  
        
     if nonMonotoneZones !=[]:
         reducedIntervals = reduceNonMonotoneIntervals({"0":nonMonotoneZones, 
                                    "1": reducedIntervals, 
-                                   "2": fx, 
+                                   "2": gx, 
                                    "3": i, 
                                    "4": xBounds, 
                                    "5": bi, 
@@ -1814,14 +1875,15 @@ def getReducedIntervalOfNonlinearFunction(fx, dfdX, dfdXInterval, i, xBounds, bi
     return reducedIntervals
 
 
-def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
+def getContinuousFunctionSections(dgdx, i, xBounds, dict_options, dgdx_aff=None):
     """filters out discontinuities which either have a +/- inf derrivative.
 
     Args:
-        :dfdx:                scalar first derivate of function in mpmath.mpi logic
+        :dgdx:                scalar first derivate of function in mpmath.mpi logic
         :i:                   index of differential variable
         :xBounds:             numpy array with variable bounds
         :dict_options:        dictionary with variable and function interval tolerances
+        :dgdX_aff:            optional derivative in affine arithmetic
 
     Return:
         :continuousZone:      list with continuous sections
@@ -1840,7 +1902,7 @@ def getContinuousFunctionSections(dfdx, i, xBounds, dict_options):
         discontinuousZone = []
 
         for curInterval in interval:
-            newContinuousZone = testIntervalOnContinuity(dfdx, curInterval, xBounds, i, discontinuousZone)
+            newContinuousZone = testIntervalOnContinuity(dgdx, curInterval, xBounds, i, discontinuousZone, dgdx_aff)
             if newContinuousZone == False: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
             continuousZone = addIntervaltoZone(newContinuousZone, continuousZone, dict_options)  
                
@@ -2123,12 +2185,12 @@ def residualBoundOperator(bi, increasing, lowerXBound):
     if not increasing and not lowerXBound: return bi.a
 
 
-def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
+def getMonotoneFunctionSections(dgdx, i, xBounds, dict_options, dgdx_aff=None):
     """seperates variable interval into variable interval sets where a function
     with derivative dfdx is monontoneous
 
     Args:
-        :dfdx:                scalar function in mpmath.mpi logic
+        :dgdx:                scalar function in mpmath.mpi logic
         :i:                   index of differential variable
         :xBounds:             numpy array with variable bounds
         :dict_options:        dictionary with function and variable interval
@@ -2156,7 +2218,7 @@ def getMonotoneFunctionSections(dfdx, i, xBounds, dict_options):
         curIntervals = []
 
         for xc in interval:
-            newIntervals, newMonIncreasingZone, newMonDecreasingZone = testIntervalOnMonotony(dfdx,
+            newIntervals, newMonIncreasingZone, newMonDecreasingZone = testIntervalOnMonotony(dgdx,
                                                     xc, xBounds, i)
 
             monIncreasingZone = addIntervaltoZone(newMonIncreasingZone,
@@ -2273,7 +2335,7 @@ def convertIntervalBoundsToFloatValues(interval):
     return [float(mpmath.mpf(interval.a)), float(mpmath.mpf(interval.b))]
 
 
-def testIntervalOnContinuity(dfdx, interval, xBounds, i, discontinuousZone):
+def testIntervalOnContinuity(dgdx, interval, xBounds, i, discontinuousZone, dgdx_aff=None):
     """ splits interval into 2 halfs and orders them regarding their continuity
    in the first derrivative.
 
@@ -2285,7 +2347,8 @@ def testIntervalOnContinuity(dfdx, interval, xBounds, i, discontinuousZone):
         :i:                 variable index
         :discontinuousZone: list with current discontinuous intervals in
                             mpmath.mpi-logic
-
+        :dgdx_aff:          optional derivative in affine arithmetic
+        
     Reutrn:
         :continuousZone:    list with new continuous intervals in
                             mpmath.mpi-logic
@@ -2295,20 +2358,28 @@ def testIntervalOnContinuity(dfdx, interval, xBounds, i, discontinuousZone):
     continuousZone = []
     curXBoundsLow = mpmath.mpi(interval.a, interval.mid)
     xBounds[i] = curXBoundsLow
-    dfdxLow = dfdx(*xBounds)#timeout(dfdx, xBounds)  
+    dgdxLow = dgdx(*xBounds)#timeout(dfdx, xBounds)  
+    #try :
+    #    dgdxLow = ivIntersection(dgdx_aff(*affineArithmetic.Affine.mpiList2affList(xBounds)), dgdxLow)
+    #except:
+    #    pass
          
     curXBoundsUp = mpmath.mpi(interval.mid, interval.b)
     xBounds[i] = curXBoundsUp
-    dfdxUp = dfdx(*xBounds)#timeout(dfdx, xBounds)
+    dgdxUp = dgdx(*xBounds)#timeout(dfdx, xBounds)
+    #try :
+    #    dgdxUp = ivIntersection(dgdx_aff(*affineArithmetic.Affine.mpiList2affList(xBounds)), dgdxUp)
+    #except:
+    #    pass
     
-    if dfdxLow == False: discontinuousZone.append(curXBoundsLow)    
-    if dfdxUp == False : discontinuousZone.append(curXBoundsUp)       
-    if dfdxLow == False or dfdxUp == False: return False
+    if dgdxLow == False: discontinuousZone.append(curXBoundsLow)    
+    if dgdxUp == False : discontinuousZone.append(curXBoundsUp)       
+    if dgdxLow == False or dgdxUp == False: return False
 
-    if not '-inf' in dfdxLow and not '+inf' in dfdxLow: continuousZone.append(curXBoundsLow)
+    if not '-inf' in dgdxLow and not '+inf' in dgdxLow: continuousZone.append(curXBoundsLow)
     else: discontinuousZone.append(curXBoundsLow) 
         
-    if not '-inf' in dfdxUp and not '+inf' in dfdxUp: continuousZone.append(curXBoundsUp)
+    if not '-inf' in dgdxUp and not '+inf' in dgdxUp: continuousZone.append(curXBoundsUp)
     else: discontinuousZone.append(curXBoundsUp) 
 
     return continuousZone
@@ -2337,7 +2408,7 @@ def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
     return result
 
 
-def testIntervalOnMonotony(dfdx, interval, xBounds, i):
+def testIntervalOnMonotony(dgdx, interval, xBounds, i):
     """ splits interval into 2 halfs and orders concering their monotony
     behaviour of f (first derivative dfdx):
         1. monotone increasing function in interval of x
@@ -2345,12 +2416,13 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i):
         3. non monotone function in interval of x
 
     Args:
-        :dfdx:           scalar derivative of f with respect to x in mpmath.mpi-logic
+        :dgdx:           scalar derivative of f with respect to x in mpmath.mpi-logic
         :interval:       x interval in mpmath.mpi-logic
         :xBounds:        numpy array with variable bounds in mpmath.mpi-logic
         :i:              variable index
                          that have an x indepenendent derrivate constant interval of
-                         [-inf, +inf] for example: f=x/y-1 and y in [-1,1]
+                         [-inf, +inf] for example: f=x/y-1 and y in [-1,1]  
+            
     Reutrn:
         3 lists nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone
         and one updated count of [-inf,inf] dfdxIntervals as integer
@@ -2364,17 +2436,25 @@ def testIntervalOnMonotony(dfdx, interval, xBounds, i):
     curXBoundsUp = mpmath.mpi(interval.mid, interval.b)
 
     xBounds[i] = curXBoundsLow
-    dfdxLow = dfdx(*xBounds)
-
-    if bool(dfdxLow >= 0): monotoneIncreasingZone.append(curXBoundsLow)
-    elif bool(dfdxLow <= 0): monotoneDecreasingZone.append(curXBoundsLow)
+    dgdxLow = dgdx(*xBounds)
+    #try :
+    #    dgdxLow = ivIntersection(dgdx_aff(*affineArithmetic.Affine.mpiList2affList(xBounds)), dgdxLow)
+    #except:
+    #    pass
+    
+    if bool(dgdxLow >= 0): monotoneIncreasingZone.append(curXBoundsLow)
+    elif bool(dgdxLow <= 0): monotoneDecreasingZone.append(curXBoundsLow)
     else: nonMonotoneZone.append(curXBoundsLow)
 
     xBounds[i] = curXBoundsUp
-    dfdxUp = dfdx(*xBounds)
-
-    if bool(dfdxUp >= 0): monotoneIncreasingZone.append(curXBoundsUp)
-    elif bool(dfdxUp <= 0): monotoneDecreasingZone.append(curXBoundsUp)
+    dgdxUp = dgdx(*xBounds)
+    #try:
+    #    dgdxUp = ivIntersection(dgdx_aff(*affineArithmetic.Affine.mpiList2affList(xBounds)), dgdxUp)
+    #except:
+    #    pass
+    
+    if bool(dgdxUp >= 0): monotoneIncreasingZone.append(curXBoundsUp)
+    elif bool(dgdxUp <= 0): monotoneDecreasingZone.append(curXBoundsUp)
     else: nonMonotoneZone.append(curXBoundsUp)
 
     return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone
@@ -2766,9 +2846,12 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
 def solutionInFunctionRange(model, xBounds, dict_options):
     """checks, if the solution (0-vector) can lie in these Bounds and returns true or false 
     Args: 
-        :model: instance of class-Model
-        :xBounds:   current Bounds of Box
-        :dict_options:  options with absTolerance for deviation from the solution
+        :model:             instance of class-Model
+        :xBounds:           current Bounds of Box
+        :dict_options:      options with absTolerance for deviation from the solution
+        
+    Returns:
+        :solutionRange:     boolean that is true if solution in the range
     """
 
     absTol = dict_options["absTol"]
@@ -2776,6 +2859,8 @@ def solutionInFunctionRange(model, xBounds, dict_options):
     
     fIvLamb = lambdifyToMpmathIvComplex(model.xSymbolic, model.fSymbolic)
     fInterval = numpy.array(fIvLamb(*xBounds)) 
+    fInterval = intersectWithAffineFunctionIntervals(model.xSymbolic, xBounds, model.fSymbolic, fInterval)
+    
     for f in fInterval:
         if not(f.a<=0+absTol and f.b>=0-absTol):
             solutionInRange = False
