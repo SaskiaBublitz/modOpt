@@ -85,7 +85,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
             boxNo_split = dict_options["maxBoxNo"] - boxNo
             #if model.tearVarsID == []: getTearVariables(model)
             #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-            splitVar = getTearVariableLargestDerivative(model, k)
+            splitVar = getTearVariableLargestDerivative(model, k, [])
             xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                                        model.xBounds[k], boxNo_split, dict_options)
             #xAlmostEqual[k] = False
@@ -134,7 +134,7 @@ def getTearVariables(model):
     model.tearVarsID =res_permutation["Column Permutation"][-tearsCount:]  
 
 
-def getTearVariableLargestDerivative(model, boxNo):
+def getTearVariableLargestDerivative(model, boxNo, subset):
     '''finds variable with highest derivative*equation_appearance for splitting
 
     Args:
@@ -144,7 +144,7 @@ def getTearVariableLargestDerivative(model, boxNo):
         :splitVar:  list with index of variable to split
     '''
     
-    subset = numpy.arange(len(model.xBounds[boxNo]))
+    if subset==[]: subset = numpy.arange(len(model.xBounds[boxNo]))
     
     if model.VarFrequency==[]:
         model.VarFrequency = numpy.zeros((len(model.xBounds[boxNo])))
@@ -172,7 +172,8 @@ def getTearVariableLargestDerivative(model, boxNo):
     maxJacpoint = model.VarFrequency*numpy.max(maxJacpoint, axis=0)
 
     #sum of derivatives
-    largestJacIVVal = -numpy.inf;
+    largestJacIVVal = -numpy.inf
+    largestJacIVVarID = [0]
     for i in subset:
            if abs(maxJacpoint[i])>largestJacIVVal and float(
                    mpmath.convert(model.xBounds[boxNo][i].delta))>0.0001:
@@ -2923,9 +2924,9 @@ def HC4(model, xBounds):
     currentIntervalVector = HC4reduced_IvV
     for f in model.fSymbolic: 
         stringF = str(f).replace('log', 'ln').replace('**', '^')
-        for i,s in enumerate(model.xSymbolic):
+        for i,s in enumerate(tuple(reversed(tuple(sympy.ordered(model.xSymbolic))))):
             if s in f.free_symbols:
-                stringF = stringF.replace(str(s), 'x['+str(i)+']')
+                stringF = stringF.replace(str(s), 'x['+str(model.xSymbolic.index(s))+']')
            
         pyibexFun = pyibex.Function('x['+str(len(xBounds))+']', stringF)
         ctc = pyibex.CtcFwdBwd(pyibexFun)
