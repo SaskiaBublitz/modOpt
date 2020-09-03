@@ -20,7 +20,7 @@ import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivm
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
            'checkWidths', 'getPrecision', 'getNewtonIntervalSystem', 'saveFailedSystem', 
-           'solutionInFunctionRange', 'variableSolved']
+            'variableSolved']
 
 """
 ***************************************************
@@ -79,15 +79,16 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         xNewBounds = output["xNewBounds"]
         xAlmostEqual[k] = output["xAlmostEqual"]
         xSolved[k] = output["xSolved"]
-        
+
+
         if output["xAlmostEqual"] and not output["xSolved"]:
             boxNo_split = dict_options["maxBoxNo"] - boxNo
             #if model.tearVarsID == []: getTearVariables(model)
             #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-            splitVar = getTearVariableLargestDerivative(model, k)
+            splitVar = getTearVariableLargestDerivative(model, k, [])
             xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                                        model.xBounds[k], boxNo_split, dict_options)
-            xAlmostEqual[k] = False
+            #xAlmostEqual[k] = False
 
 
         if output.__contains__("noSolution") :
@@ -96,7 +97,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
             continue
         
         for box in xNewBounds: allBoxes.append(numpy.array(box, dtype=object))
-                
+     
         boxNo = len(allBoxes) + (nl - (k+1))
   
         if boxNo >= dict_options["maxBoxNo"]:
@@ -133,7 +134,7 @@ def getTearVariables(model):
     model.tearVarsID =res_permutation["Column Permutation"][-tearsCount:]  
 
 
-def getTearVariableLargestDerivative(model, boxNo):
+def getTearVariableLargestDerivative(model, boxNo, subset):
     '''finds variable with highest derivative*equation_appearance for splitting
 
     Args:
@@ -143,6 +144,7 @@ def getTearVariableLargestDerivative(model, boxNo):
         :splitVar:  list with index of variable to split
     '''
     
+    if subset==[]: subset = numpy.arange(len(model.xBounds[boxNo]))
     
     if model.VarFrequency==[]:
         model.VarFrequency = numpy.zeros((len(model.xBounds[boxNo])))
@@ -151,7 +153,12 @@ def getTearVariableLargestDerivative(model, boxNo):
             for f in model.fSymbolic:
                 if model.xSymbolic[i] in f.free_symbols:
                     model.VarFrequency[i] = model.VarFrequency[i] + 1
-       
+            ''' frequency i jacobian
+            for j in jacobian:
+                    model.VarFrequency[i] = model.VarFrequency[i] + j.count(model.xSymbolic[i])
+            '''
+    
+    
     jaclamb = model.jacobianLambNumpy
     
     maxJacpoint = []
@@ -161,12 +168,12 @@ def getTearVariableLargestDerivative(model, boxNo):
         Jacpoint = jaclamb(*Boxpoint)
         Jacpoint = numpy.nan_to_num(Jacpoint)
         maxJacpoint.append(numpy.max(abs(Jacpoint), axis=0))
-        
-    maxJacpoint = model.VarFrequency*numpy.max(maxJacpoint, axis=0)  
+   
+    maxJacpoint = model.VarFrequency*numpy.max(maxJacpoint, axis=0)
 
     #sum of derivatives
     largestJacIVVal = -numpy.inf;
-    for i in range(len(model.xBounds[boxNo])):
+    for i in subset:
            if abs(maxJacpoint[i])>largestJacIVVal and float(
                    mpmath.convert(model.xBounds[boxNo][i].delta))>0.0001:
                largestJacIVVal = abs(maxJacpoint[i])
@@ -318,9 +325,9 @@ def getPointInBox(xBounds, pointIndicator):
     
     Boxpoint = numpy.zeros(len(xBounds), dtype=float)
     for i in range(len(xBounds)):
-        if pointIndicator=='a':
+        if pointIndicator[i]=='a':
             Boxpoint[i] = sympy.Float(xBounds[i].a)
-        elif pointIndicator=='b':
+        elif pointIndicator[i]=='b':
             Boxpoint[i] = sympy.Float(xBounds[i].b)
         else:
             Boxpoint[i] = sympy.Float(xBounds[i].mid)
@@ -1018,7 +1025,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
             return output 
         else:
             for i in range(0, len(model.xSymbolic)):
-                xNewBounds[i] = mpmath.mpi(list(HC4_IvV[i]))
+                xNewBounds[i] = mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))
 
     
     for i in range(0, len(model.xSymbolic)):
@@ -1075,7 +1082,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
         xNewBounds[i] = y
         if not variableSolved(y, dict_options): xSolved = False
         xUnchanged = checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
-                                       dict_options_temp)
+                                       {"absTol":0.001, 'relTol':0.001})
         
         dict_options_temp["relTol"] = dict_options["relTol"]
         dict_options_temp["absTol"] = dict_options["absTol"]  
