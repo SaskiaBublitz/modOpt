@@ -103,11 +103,18 @@ def doIntervalNesting(res_solver, dict_options):
         elif xSolved.all():
             break
         
-        else: continue
+        else: 
+            continue
         
     # Updating model:
     # TODO: if some boxes share same lb or ub they should be unified
-    newModel.setXBounds(model.xBounds)
+    validXBounds = []
+    for xBounds in model.xBounds:
+        if iNes_procedure.solutionInFunctionRange(model, xBounds, dict_options):
+            validXBounds.append(xBounds)
+    
+    #newModel.setXBounds(model.xBounds)
+    newModel.setXBounds(validXBounds)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
     
