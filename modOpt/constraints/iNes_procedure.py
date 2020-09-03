@@ -85,7 +85,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
             boxNo_split = dict_options["maxBoxNo"] - boxNo
             #if model.tearVarsID == []: getTearVariables(model)
             #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-            splitVar = getTearVariableLargestDerivative(model, k, [])
+            splitVar = getTearVariableLargestDerivative(model, k)
             xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                                        model.xBounds[k], boxNo_split, dict_options)
             #xAlmostEqual[k] = False
@@ -134,7 +134,7 @@ def getTearVariables(model):
     model.tearVarsID =res_permutation["Column Permutation"][-tearsCount:]  
 
 
-def getTearVariableLargestDerivative(model, boxNo, subset):
+def getTearVariableLargestDerivative(model, boxNo):
     '''finds variable with highest derivative*equation_appearance for splitting
 
     Args:
@@ -144,7 +144,7 @@ def getTearVariableLargestDerivative(model, boxNo, subset):
         :splitVar:  list with index of variable to split
     '''
     
-    if subset==[]: subset = numpy.arange(len(model.xBounds[boxNo]))
+    subset = numpy.arange(len(model.xBounds[boxNo]))
     
     if model.VarFrequency==[]:
         model.VarFrequency = numpy.zeros((len(model.xBounds[boxNo])))
