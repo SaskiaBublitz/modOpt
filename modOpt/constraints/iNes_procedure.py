@@ -1234,75 +1234,49 @@ def lambdifyToMpmathIvComplex(x, f):
 def ivsqrt(iv):
     """calculates the square root of an interval iv, stripping it from the imaginary part"""
 
-    if iv.a >= 0 and iv.b >= 0:
-        sqrtiv = mpmath.mpi(mpmath.sqrt(iv.a), mpmath.sqrt(iv.b))
-    elif iv.a < 0 and iv.b >= 0:
-        sqrtiv = mpmath.mpi(0., mpmath.sqrt(iv.b))
+    if iv.a >= 0 and iv.b >= 0: return mpmath.iv.sqrt(iv)# sqrtiv = mpmath.mpi(mpmath.sqrt(iv.a), mpmath.sqrt(iv.b))
+    elif iv.a < 0 and iv.b >= 0:return mpmath.mpi.iv.sqrt(mpmath.mpi(0.0, iv.b))
     else:
         # this case should not occur, the solution can not be in this interval
-        sqrtiv = mpmath.mpi('-inf', '+inf')
-
-    return sqrtiv
-
+        return mpmath.mpi('-inf', '+inf')
 
 def ivlog(iv):
     """calculates the ln root of an interval iv, stripping it from the imaginary part"""
     
-    if iv.a > 0 and iv.b > 0:
-        ivlog=mpmath.mpi(mpmath.log(iv.a),mpmath.log(iv.b))
-    elif iv.a <= 0 and iv.b > 0:
-        ivlog=mpmath.mpi('-inf',mpmath.log(iv.b))
+    if iv.a > 0 and iv.b > 0: return mpmath.iv.log(iv) #mpmath.mpi(mpmath.log(iv.a),mpmath.log(iv.b))
+    elif iv.a <= 0 and iv.b > 0: return mpmath.iv.log(mpmath.mpi(0.0, iv.b))#mpmath.mpi('-inf',mpmath.iv.log(iv.b))
     elif iv.a <= 0 and iv.b <= 0:
         #this case should not occur, the solution can not be in this interval
         #print('Negative ln! Solution can not be in this Interval!')
-        ivlog=mpmath.mpi('-inf', '+inf')
-
-    return ivlog
-
+        return mpmath.mpi('-inf', '+inf')
 
 def ivacos(iv):
     """calculates the acos of an interval iv, stripping it from the imaginary part"""
 
-    if iv.a>=-1 and iv.b<=1:
-        ivacos = mpmath.mpi(mpmath.acos(iv.b),mpmath.acos(iv.a))
-    elif iv.a<-1 and iv.b<=1 and iv.b>=-1:
-        ivacos = mpmath.mpi(mpmath.acos(iv.b),mpmath.pi)
-    elif iv.a>=-1 and iv.a<=1 and iv.b>1:
-        ivacos = mpmath.mpi(0, mpmath.acos(iv.a))
-    else:
-        ivacos = mpmath.mpi(0, mpmath.pi)
-        
-    return ivacos
+    if iv.a>=-1 and iv.b<=1: return mpmath.mpi(mpmath.acos(iv.b),mpmath.acos(iv.a))
+    elif iv.a<-1 and iv.b<=1 and iv.b>=-1: return mpmath.mpi(mpmath.acos(iv.b),mpmath.pi)
+    elif iv.a>=-1 and iv.a<=1 and iv.b>1: return mpmath.mpi(0, mpmath.acos(iv.a))
+    else: return mpmath.mpi(0, mpmath.pi)
 
 
 def ivasin(iv):
     """calculates the asin of an interval iv, stripping it from the imaginary part"""
 
-    if iv.a>=-1 and iv.b<=1:
-        ivasin = mpmath.mpi(mpmath.asin(iv.a),mpmath.asin(iv.b))
-    elif iv.a<-1 and iv.b<=1 and iv.b>=-1:
-        ivasin = mpmath.mpi(mpmath.asin(-1),mpmath.asin(iv.b))
-    elif iv.a>=-1 and iv.a<=1 and iv.b>1:
-        ivasin = mpmath.mpi(mpmath.asin(iv.a),mpmath.asin(1))
-    else:
-        ivasin = mpmath.mpi(mpmath.asin(-1), mpmath.asin(1))
+    if iv.a>=-1 and iv.b<=1: return mpmath.mpi(mpmath.asin(iv.a),mpmath.asin(iv.b))
+    elif iv.a<-1 and iv.b<=1 and iv.b>=-1: return mpmath.mpi(mpmath.asin(-1),mpmath.asin(iv.b))
+    elif iv.a>=-1 and iv.a<=1 and iv.b>1: return mpmath.mpi(mpmath.asin(iv.a),mpmath.asin(1))
+    else: return mpmath.mpi(mpmath.asin(-1), mpmath.asin(1))
         
-    return ivasin
-
-
 def ivatan(iv):
     """calculates the atan of an interval iv, stripping it from the imaginary part"""
 
     if iv.a>=-mpmath.pi/2 and iv.b<=mpmath.pi/2:
-        ivatan = mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(iv.b))
+        return mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(iv.b))
     elif iv.a<-mpmath.pi/2 and iv.b<=mpmath.pi/2 and iv.b>=-mpmath.pi/2:
-        ivatan = mpmath.mpi(mpmath.atan(-mpmath.pi/2),mpmath.atan(iv.b))
+        return mpmath.mpi(mpmath.atan(-mpmath.pi/2),mpmath.atan(iv.b))
     elif iv.a>=-mpmath.pi/2 and iv.a<=mpmath.pi/2 and iv.b>mpmath.pi/2:
-        ivatan = mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(mpmath.pi/2))
-    else:
-        ivatan = mpmath.mpi(mpmath.atan(-mpmath.pi/2), mpmath.atan(mpmath.pi/2))
-        
-    return ivatan
+        return mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(mpmath.pi/2))
+    else: return mpmath.mpi(mpmath.atan(-mpmath.pi/2), mpmath.atan(mpmath.pi/2))
 
 
 def calculateCurrentBounds(f, i, xBounds, dict_options):
@@ -1875,7 +1849,7 @@ def getReducedIntervalOfNonlinearFunction(gx, dgdx, dgdXInterval, i, xBounds, bi
     return reducedIntervals
 
 
-def getContinuousFunctionSections(dgdx, i, xBounds, dict_options, dgdx_aff=None):
+def getContinuousFunctionSections(dgdx, i, xBounds, dict_options):
     """filters out discontinuities which either have a +/- inf derrivative.
 
     Args:
@@ -1883,7 +1857,6 @@ def getContinuousFunctionSections(dgdx, i, xBounds, dict_options, dgdx_aff=None)
         :i:                   index of differential variable
         :xBounds:             numpy array with variable bounds
         :dict_options:        dictionary with variable and function interval tolerances
-        :dgdX_aff:            optional derivative in affine arithmetic
 
     Return:
         :continuousZone:      list with continuous sections
@@ -1902,7 +1875,7 @@ def getContinuousFunctionSections(dgdx, i, xBounds, dict_options, dgdx_aff=None)
         discontinuousZone = []
 
         for curInterval in interval:
-            newContinuousZone = testIntervalOnContinuity(dgdx, curInterval, xBounds, i, discontinuousZone, dgdx_aff)
+            newContinuousZone = testIntervalOnContinuity(dgdx, curInterval, xBounds, i, discontinuousZone)
             if newContinuousZone == False: return continuousZone, joinIntervalSet(interval, relEpsX, absEpsX)
             continuousZone = addIntervaltoZone(newContinuousZone, continuousZone, dict_options)  
                
@@ -2185,7 +2158,7 @@ def residualBoundOperator(bi, increasing, lowerXBound):
     if not increasing and not lowerXBound: return bi.a
 
 
-def getMonotoneFunctionSections(dgdx, i, xBounds, dict_options, dgdx_aff=None):
+def getMonotoneFunctionSections(dgdx, i, xBounds, dict_options):
     """seperates variable interval into variable interval sets where a function
     with derivative dfdx is monontoneous
 
@@ -2335,7 +2308,7 @@ def convertIntervalBoundsToFloatValues(interval):
     return [float(mpmath.mpf(interval.a)), float(mpmath.mpf(interval.b))]
 
 
-def testIntervalOnContinuity(dgdx, interval, xBounds, i, discontinuousZone, dgdx_aff=None):
+def testIntervalOnContinuity(dgdx, interval, xBounds, i, discontinuousZone):
     """ splits interval into 2 halfs and orders them regarding their continuity
    in the first derrivative.
 
