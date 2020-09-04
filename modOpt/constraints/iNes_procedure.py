@@ -348,9 +348,9 @@ def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds):
         :chosenFunc: 	function evaluated at chosen Point
     '''
     
-    lowerPoint = getPointInBox(xBounds, 'a')
-    midPoint = getPointInBox(xBounds, 'mid')
-    upperPoint = getPointInBox(xBounds, 'b')
+    lowerPoint = getPointInBox(xBounds, len(xBounds)*['a'])
+    midPoint = getPointInBox(xBounds, len(xBounds)*['mid'])
+    upperPoint = getPointInBox(xBounds, len(xBounds)*['b'])
     TestingPoints = [lowerPoint, midPoint, upperPoint]
     
     biggestDValue = -numpy.inf    
