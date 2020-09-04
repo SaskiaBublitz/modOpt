@@ -1382,7 +1382,7 @@ def ivsqrt(iv):
     """calculates the square root of an interval iv, stripping it from the imaginary part"""
 
     if iv.a >= 0 and iv.b >= 0: return mpmath.iv.sqrt(iv)# sqrtiv = mpmath.mpi(mpmath.sqrt(iv.a), mpmath.sqrt(iv.b))
-    elif iv.a < 0 and iv.b >= 0:return mpmath.mpi.iv.sqrt(mpmath.mpi(0.0, iv.b))
+    elif iv.a < 0 and iv.b >= 0:return mpmath.iv.sqrt(mpmath.mpi(0.0, iv.b))
     else:
         # this case should not occur, the solution can not be in this interval
         return mpmath.mpi('-inf', '+inf')
