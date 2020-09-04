@@ -248,33 +248,32 @@ def reduceMultipleXBounds_Worker(k, model, functions, dict_varId_fIds, dict_opti
     
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
     if dict_options['newton_method'] in newtonMethods:
-        newtonSystemDic = iNes_procedure.getNewtonIntervalSystem(xBounds, model.xSymbolic,
-                                                  model.fSymbolic, model.getSympySymbolicJacobian(),
-                                                  dict_options)  
+        newtonSystemDic = iNes_procedure.getNewtonIntervalSystem(xBounds, model, dict_options) 
     else:
         newtonSystemDic = {}
 
     #if dict_options['method'] == 'b_tight':
     #    output = iNes_procedure.reduceXbounds_b_tight(functions, model.xBounds[k], dict_options)
             
-
-    if not dict_options["Parallel Variables"]:
-
-        output = iNes_procedure.reduceBox(xBounds, model, functions, 
-                                              dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-
-    else: 
-        output = reduceBox(xBounds, model, functions, dict_varId_fIds, 
-                               boxNo, dict_options, newtonSystemDic)         
+    if dict_options["combined_algorithm"]==True:
+        output = iNes_procedure.reduceBoxCombined(xBounds, model, functions, dict_options)
+    else:
+        if not dict_options["Parallel Variables"]:
+            output = iNes_procedure.reduceBox(xBounds, model, functions, 
+                                                  dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+        else: 
+            output = reduceBox(xBounds, model, functions, dict_varId_fIds, 
+                                   boxNo, dict_options, newtonSystemDic)         
      
     xNewBounds = output["xNewBounds"]
     
     if output["xAlmostEqual"] and not output["xSolved"]:
         boxNo_split = dict_options["maxBoxNo"] - boxNo
-        if model.tearVarsID == []: iNes_procedure.getTearVariables(model)
+        #if model.tearVarsID == []: iNes_procedure.getTearVariables(model)
         #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-        xNewBounds, dict_options["tear_id"] = iNes_procedure.splitTearVars(model.tearVarsID, 
-                                   model.xBounds[k], boxNo_split, dict_options)
+        splitVar = iNes_procedure.getTearVariableLargestDerivative(model, k)
+        xNewBounds, dict_options["tear_id"] = iNes_procedure.splitTearVars(splitVar, 
+                                       model.xBounds[k], boxNo_split, dict_options)
         output["xAlmostEqual"] = False
 
     for box in xNewBounds:
@@ -369,9 +368,14 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     xUnchanged = []
     xSolved = []
     
-    if not iNes_procedure.solutionInFunctionRange(model, xBounds, dict_options):
-        iNes_procedure.saveFailedSystem(output, functions[0], model, 0) 
-        return output 
+    if dict_options['hc_method']=='HC4':
+        HC4_IvV = iNes_procedure.HC4(model, xBounds)
+        if HC4_IvV.is_empty():
+            iNes_procedure.saveFailedSystem(output, functions[0], model, 0)
+            return output 
+        else:
+            for i in range(0, len(model.xSymbolic)):
+                xNewBounds[i] = mpmath.mpi(HC4_IvV[i][0],HC4_IvV[i][1])
     
     jobs = []
     manager = Manager()
@@ -433,14 +437,14 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
     """
     xUnchanged = True
     xSolved = True
-    y = [xBounds[i]]
+    y = [xNewBounds[i]]
     dict_options_temp = copy.deepcopy(dict_options)
     if dict_options["Debug-Modus"]: print(i)
         
     #if iNes_procedure.checkVariableBound(xBounds[i], dict_options): #
     
-    if xBounds[i].delta == 0:
-        results['%d' % i] = (convertMpiToList([xBounds[i]]),[], True, True)
+    if xNewBounds[i].delta == 0:
+        results['%d' % i] = (convertMpiToList([xNewBounds[i]]),[], True, True)
         return True
 
     if iNes_procedure.variableSolved([xBounds[i]], dict_options) and y[0].delta > 1.0e-15:
@@ -448,13 +452,19 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
             dict_options_temp["absTol"] = 0.1 * y[0].delta
 
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
-    if dict_options['newton_method'] in newtonMethods:        
-        y = iNes_procedure.NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)
-        if y == [] or y ==[[]]: 
-            results['%d' % i] = ([], FailedSystem(functions[0], i),False, False)
-            return True 
+    if not iNes_procedure.variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:   
+        if dict_options['InverseOrHybrid']!='Hybrid':     
+            y = iNes_procedure.setOfIvSetIntersection([y, iNes_procedure.NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
+            if y == [] or y ==[[]]: 
+                iNes_procedure.saveFailedSystem(output, functions[0], model, 0)
+                return output 
+        if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not iNes_procedure.variableSolved(y, dict_options_temp):  
+            y = iNes_procedure.setOfIvSetIntersection([y, iNes_procedure.HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
+            if y == [] or y ==[[]]: 
+                iNes_procedure.saveFailedSystem(output, functions[0], model, 0)
+                return output 
 
-    if not iNes_procedure.variableSolved(y, dict_options_temp):
+    if not iNes_procedure.variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
         for j in dict_varId_fIds[i]:
                 f = functions[j]
                 y = iNes_procedure.setOfIvSetIntersection([y, 
@@ -466,8 +476,8 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
                         results['%d' % i] = ([], FailedSystem(f.f_sym, f.x_sym[f.glb_ID.index(i)]), False, False)
                         
                         return True
-                if iNes_procedure.variableSolved(y, dict_options): break
-                else: xSolved = False 
+    if not iNes_procedure.variableSolved(y, dict_options): xSolved = False 
+
     
             #if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
             #    assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)

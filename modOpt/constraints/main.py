@@ -7,6 +7,8 @@ Import packages
 """
 import time
 import copy
+import sympy
+import numpy
 from modOpt.constraints import iNes_procedure, parallelization 
 from modOpt.constraints.function import Function
 
@@ -75,6 +77,8 @@ def doIntervalNesting(res_solver, dict_options):
     newModel = copy.deepcopy(model)
     functions = []
     dict_varId_fIds = {}
+
+    createNewtonSystem(model)
     
     for i in range(0, len(model.fSymbolic)):
         functions.append(Function(model.fSymbolic[i], model.xSymbolic))
@@ -82,7 +86,7 @@ def doIntervalNesting(res_solver, dict_options):
     
      
     for l in range(0, dict_options["redStepMax"]): 
-        
+
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
@@ -134,5 +138,18 @@ def nestBlocks(model):
     for item in model.blocks:
         nestedBlocks.append([item])
     model.blocks = nestedBlocks
+
+
+def createNewtonSystem(model):
+    '''creates lambdified functions for Newton Interval reduction and saves it as model parameter
+    Args:
+        :model: model of equation system
+    '''
+    
+    model.fLamb = sympy.lambdify(model.xSymbolic, model.fSymbolic)
+    model.jacobianSympy = model.getSympySymbolicJacobian()
+    model.jacobianLambNumpy = sympy.lambdify(model.xSymbolic, model.jacobianSympy,'numpy')
+    model.jacobianLambMpmath = iNes_procedure.lambdifyToMpmathIvComplex(model.xSymbolic,
+                                                    list(numpy.array(model.jacobianSympy)))
     
     

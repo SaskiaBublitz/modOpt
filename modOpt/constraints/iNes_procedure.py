@@ -8,6 +8,7 @@ import copy
 import numpy
 import sympy
 import mpmath
+import pyibex
 import itertools
 import warnings
 from modOpt.constraints import affineArithmetic
@@ -20,7 +21,7 @@ import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivm
 
 __all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
            'checkWidths', 'getPrecision', 'getNewtonIntervalSystem', 'saveFailedSystem', 
-           'solutionInFunctionRange', 'variableSolved']
+            'variableSolved']
 
 """
 ***************************************************
@@ -57,18 +58,21 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         xBounds = model.xBounds[k]
 
         newtonMethods = {'newton', 'detNewton', '3PNewton'}
-        if dict_options['newton_method'] in newtonMethods:
-            newtonSystemDic = getNewtonIntervalSystem(xBounds, model.xSymbolic,
-                                        model.fSymbolic, model.getSympySymbolicJacobian(),
-                                        dict_options)  
+        if dict_options['newton_method'] in newtonMethods and dict_options['combined_algorithm']==False:
+            newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)  
+            if nl==len(xBounds)-1: nl = 0
+            else: nl = nl+1 
         else:
             newtonSystemDic = {}
         
         #if dict_options['method'] == 'b_tight':
         #    output = reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options)
         #else:
-        if not dict_options["Parallel Variables"]:             
-            output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+        if not dict_options["Parallel Variables"]:
+            if dict_options["combined_algorithm"]==True:
+                output = reduceBoxCombined(xBounds, model, functions, dict_options)
+            else:             
+                output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         else: 
             output = parallelization.reduceBox(xBounds, model, functions, 
                                                        dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
@@ -76,14 +80,16 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         xNewBounds = output["xNewBounds"]
         xAlmostEqual[k] = output["xAlmostEqual"]
         xSolved[k] = output["xSolved"]
-        
+
+
         if output["xAlmostEqual"] and not output["xSolved"]:
             boxNo_split = dict_options["maxBoxNo"] - boxNo
-            if model.tearVarsID == []: getTearVariables(model)
+            #if model.tearVarsID == []: getTearVariables(model)
             #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-            xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
+            splitVar = getTearVariableLargestDerivative(model, k)
+            xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                                        model.xBounds[k], boxNo_split, dict_options)
-            xAlmostEqual[k] = False
+            #xAlmostEqual[k] = False
 
 
         if output.__contains__("noSolution") :
@@ -92,7 +98,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
             continue
         
         for box in xNewBounds: allBoxes.append(numpy.array(box, dtype=object))
-                
+     
         boxNo = len(allBoxes) + (nl - (k+1))
   
         if boxNo >= dict_options["maxBoxNo"]:
@@ -126,7 +132,57 @@ def getTearVariables(model):
     jacobian = model.getCasadiJacobian()
     res_permutation = MC33.doMC33(jacobian)  
     tearsCount = max(res_permutation["Border Width"],1)
-    model.tearVarsID =res_permutation["Column Permutation"][-tearsCount:]    
+    model.tearVarsID =res_permutation["Column Permutation"][-tearsCount:]  
+
+
+def getTearVariableLargestDerivative(model, boxNo):
+    '''finds variable with highest derivative*equation_appearance for splitting
+
+    Args:
+        :model:     instance of type model
+        :boxNo:     index of current box
+    Return:
+        :splitVar:  list with index of variable to split
+    '''
+    
+    subset = numpy.arange(len(model.xBounds[boxNo]))
+    
+    if model.VarFrequency==[]:
+        model.VarFrequency = numpy.zeros((len(model.xBounds[boxNo])))
+        for i in range(len(model.xSymbolic)):
+            #frequency of equation apperances
+            for f in model.fSymbolic:
+                if model.xSymbolic[i] in f.free_symbols:
+                    model.VarFrequency[i] = model.VarFrequency[i] + 1
+            ''' frequency i jacobian
+            for j in jacobian:
+                    model.VarFrequency[i] = model.VarFrequency[i] + j.count(model.xSymbolic[i])
+            '''
+    
+    
+    jaclamb = model.jacobianLambNumpy
+    
+    maxJacpoint = []
+    for p in ['a','mid','b']:
+        PointIndicator = len(model.xBounds[boxNo])*[p]
+        Boxpoint = getPointInBox(model.xBounds[boxNo], PointIndicator)
+        Jacpoint = jaclamb(*Boxpoint)
+        Jacpoint = numpy.nan_to_num(Jacpoint)
+        maxJacpoint.append(numpy.max(abs(Jacpoint), axis=0))
+   
+    maxJacpoint = model.VarFrequency*numpy.max(maxJacpoint, axis=0)
+
+    #sum of derivatives
+    largestJacIVVal = -numpy.inf
+    largestJacIVVarID = [0]
+    for i in subset:
+           if abs(maxJacpoint[i])>largestJacIVVal and float(
+                   mpmath.convert(model.xBounds[boxNo][i].delta))>0.0001:
+               largestJacIVVal = abs(maxJacpoint[i])
+               largestJacIVVarID = [i]
+    splitVar = largestJacIVVarID
+    
+    return splitVar
 
 
 def splitTearVars(tearVarIds, box, boxNo_max, dict_options):
@@ -197,13 +253,12 @@ def separateBox(box, varID):
     return list(itertools.product(*box))
 
 
-def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
+def getNewtonIntervalSystem(xBounds, model, options):
     '''calculates all necessary System matrices for the Newton-Interval reduction
     Args:
         :xBounds:           list with variable bounds in mpmath.mpi formate
-        :xSymbolic:         list with symbols in sympy format
-        :fSymbolic:         list with functions in sympy format
-        :jacobian:          jacobian as sympy.matrix in sympy format
+        :model:             instance of type model
+        :options:           dictionary options
 
     Return:
         :Boxpoint:          list with Boxpoint/s values
@@ -213,30 +268,17 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
         :JacInv:            inverse of Jacpoint in numpy array, stripped of inf Parts
     '''
     
-    flamb = sympy.lambdify(xSymbolic, fSymbolic)
-    jaclamb = sympy.lambdify(xSymbolic, jacobian,'numpy')
-    jacIvLamb = lambdifyToMpmathIvComplex(xSymbolic, list(numpy.array(jacobian)))
+    flamb = model.fLamb
+    jaclamb = model.jacobianLambNumpy
+    jacIvLamb = model.jacobianLambMpmath
+    
 
     if options['newton_method'] == "detNewton":
         Boxpoint, Jacpoint, fpoint = findPointWithHighestDeterminant(jaclamb, flamb, xBounds)
     elif options['newton_method'] == "3PNewton":
-        Boxpoint = [getPointInBox(xBounds, 'a'), getPointInBox(xBounds, 'mid'),
-                    getPointInBox(xBounds, 'b')]
-        Jacpoint = []
-        fpoint = []
-        warnings.filterwarnings("ignore", category=RuntimeWarning)
-        for bp in range(len(Boxpoint)):
-            Jacpoint.append(removeInfAndConvertToFloat(jaclamb(*Boxpoint[bp]), 1))
-            fpoint.append(removeInfAndConvertToFloat(numpy.array([flamb(*Boxpoint[bp])]), 1)[0])
-        warnings.filterwarnings("default", category=RuntimeWarning)
+        Boxpoint, Jacpoint, fpoint = getFunctionPoint(jaclamb, flamb, xBounds, ['a','mid','b'])
     else:
-        Boxpoint = [getPointInBox(xBounds, 'mid')]
-        warnings.filterwarnings("ignore", category=RuntimeWarning)
-        Jacpoint = jaclamb(*Boxpoint[0])
-        Jacpoint= [removeInfAndConvertToFloat(Jacpoint, 1)]
-        fpoint = numpy.array([flamb(*Boxpoint[0])])
-        fpoint = [removeInfAndConvertToFloat(fpoint, 1)[0]] 
-        warnings.filterwarnings("default", category=RuntimeWarning)
+        Boxpoint, Jacpoint, fpoint = getFunctionPoint(jaclamb, flamb, xBounds, ['mid'])
     
     JacInterval = numpy.array(jacIvLamb(*xBounds))
 
@@ -255,19 +297,22 @@ def getNewtonIntervalSystem(xBounds, xSymbolic, fSymbolic, jacobian, options):
                     JacInterval[l][n] = mpmath.mpi(iv.a, numpy.nan_to_num(numpy.inf))
     
     JacInv = []
-    for J in Jacpoint:
-        try:
-            JacInv.append(numpy.linalg.inv(J))
-        except: 
-            JacInv.append(numpy.array(numpy.matrix(J).getH())) # if singular return adjunct 
-
-    #remove inf parts in inverse
-    for inf in infRows:
-        for Ji in JacInv:
-            Ji[:,inf] = numpy.zeros(len(Ji))
+    if options["InverseOrHybrid"]!='Hybrid':
+        for J in Jacpoint:
+            try:
+                JacInv.append(numpy.linalg.inv(J))
+            except: 
+                print('singular point')
+                JacInv.append(numpy.array(numpy.matrix(J).getH())) # if singular return adjunct 
+        
+        #remove inf parts in inverse
+        for inf in infRows:
+            for Ji in JacInv:
+                Ji[:,inf] = numpy.zeros(len(Ji))
           
     return {'Boxpoint':Boxpoint, 'f(Boxpoint)':fpoint, 'J(Boxpoint)':Jacpoint,
-            'J(Box)':JacInterval, 'J(Boxpoint)-1':JacInv}
+            'J(Box)':JacInterval, 'J(Boxpoint)-1':JacInv,
+            'infRows': infRows}
 
 
 def getPointInBox(xBounds, pointIndicator):
@@ -282,9 +327,9 @@ def getPointInBox(xBounds, pointIndicator):
     
     Boxpoint = numpy.zeros(len(xBounds), dtype=float)
     for i in range(len(xBounds)):
-        if pointIndicator=='a':
+        if pointIndicator[i]=='a':
             Boxpoint[i] = sympy.Float(xBounds[i].a)
-        elif pointIndicator=='b':
+        elif pointIndicator[i]=='b':
             Boxpoint[i] = sympy.Float(xBounds[i].b)
         else:
             Boxpoint[i] = sympy.Float(xBounds[i].mid)
@@ -304,9 +349,9 @@ def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds):
         :chosenFunc: 	function evaluated at chosen Point
     '''
     
-    lowerPoint = getPointInBox(xBounds, 'a')
-    midPoint = getPointInBox(xBounds, 'mid')
-    upperPoint = getPointInBox(xBounds, 'b')
+    lowerPoint = getPointInBox(xBounds, len(xBounds)*['a'])
+    midPoint = getPointInBox(xBounds, len(xBounds)*['mid'])
+    upperPoint = getPointInBox(xBounds, len(xBounds)*['b'])
     TestingPoints = [lowerPoint, midPoint, upperPoint]
     
     biggestDValue = -numpy.inf    
@@ -326,6 +371,23 @@ def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds):
             chosenFunc = currentFunc
      
     return [chosenPoint], [chosenJacobi], [chosenFunc[0]]
+
+
+def getFunctionPoint(jacLamb, fLamb, xBounds, points):
+    
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    Boxpoint = []
+    Jacpoint = []
+    fpoint = []
+    for p in points:
+        PointIndicator = len(xBounds)*[p]
+        singlePoint = getPointInBox(xBounds, PointIndicator)
+        Boxpoint.append(singlePoint)
+        Jacpoint.append(removeInfAndConvertToFloat(jacLamb(*singlePoint), 1))
+        fpoint.append(removeInfAndConvertToFloat(numpy.array([fLamb(*singlePoint)]), 1)[0])
+    warnings.filterwarnings("default", category=RuntimeWarning)
+    
+    return Boxpoint, Jacpoint, fpoint
 
 
 def removeInfAndConvertToFloat(array, subs):
@@ -862,6 +924,75 @@ def getPrecision(xBounds):
     return 5*10**(numpy.floor(numpy.log10(minValue))-2)
 
 
+def reduceBoxCombined(xBounds, model, functions, dict_options):
+
+
+    subBoxNo = 1
+    output = {} 
+    xNewBounds = copy.deepcopy(xBounds)
+    xNewListBounds = copy.deepcopy(xBounds)
+    xUnchanged = True
+    xSolved = True
+    dict_options_temp = copy.deepcopy(dict_options)
+    eps = dict_options["relTol"]
+    
+    
+    HC4_IvV = HC4(model, xBounds)
+    if HC4_IvV.is_empty():
+        saveFailedSystem(output, functions[0], model, 0)
+        return output 
+    else:
+        for i in range(0, len(model.xSymbolic)):
+            xNewListBounds[i] = [mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))]
+            xNewBounds[i] = mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))
+            xUnchanged = checkXforEquality(xBounds[i], xNewListBounds[i], xUnchanged, {"absTol":eps, 'relTol':0.1})
+            if not variableSolved(xNewListBounds[i], dict_options): xSolved = False
+    
+    if xUnchanged:
+        xSolved = True
+        dict_options_temp.update({"newton_method":"3PNewton","InverseOrHybrid":"both"})
+        newtonSystemDic = getNewtonIntervalSystem(xNewBounds, model, dict_options_temp)
+        for i in range(0, len(model.xSymbolic)):
+            y = xNewListBounds[i]
+            if dict_options["Debug-Modus"]: 
+                print(i)
+
+            
+            if xBounds[i].delta == 0:
+                xNewBounds[i] = xBounds[i]
+                continue
+            
+            if variableSolved(y, dict_options) and y[0].delta > 1.0e-15:
+                dict_options_temp["relTol"] = 0.1 * y[0].delta
+                dict_options_temp["absTol"] = 0.1 * y[0].delta
+                
+            if not variableSolved(y, dict_options_temp):        
+                y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xNewBounds, i, dict_options_temp)])
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output 
+            if not variableSolved(y, dict_options_temp):  
+                    y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xNewBounds, i, dict_options_temp)])
+                    if y == [] or y ==[[]]: 
+                        saveFailedSystem(output, functions[0], model, 0)
+                        return output 
+                    
+            if not variableSolved(y, dict_options): xSolved = False
+            subBoxNo = subBoxNo * len(y) 
+            xNewListBounds[i] = y
+            if len(y)==1: xNewBounds[i] = y[0]
+            xUnchanged = checkXforEquality(xBounds[i], xNewListBounds[i], xUnchanged, 
+                                           {"absTol":0.001, 'relTol':0.001})
+        
+        
+        
+    output["xAlmostEqual"] = xUnchanged 
+    output["xSolved"] = xSolved    
+    output["xNewBounds"] = list(itertools.product(*xNewListBounds))
+    
+    return output
+
+
 def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic):
     """ reduce box spanned by current intervals of xBounds.
      
@@ -887,15 +1018,21 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     xUnchanged = True
     xSolved = True
     dict_options_temp = copy.deepcopy(dict_options)
-    
-    if not solutionInFunctionRange(model, xBounds, dict_options):
-        saveFailedSystem(output, functions[0], model, 0)
-        return output 
+
+
+    if dict_options['hc_method']=='HC4':
+        HC4_IvV = HC4(model, xBounds)
+        if HC4_IvV.is_empty():
+            saveFailedSystem(output, functions[0], model, 0)
+            return output 
+        else:
+            for i in range(0, len(model.xSymbolic)):
+                xNewBounds[i] = mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))
+
     
     for i in range(0, len(model.xSymbolic)):
-        y = [xBounds[i]]
-
-        
+        y = [xNewBounds[i]]
+     
         if dict_options["Debug-Modus"]: print(i)
         
         #if checkVariableBound(xBounds[i], dict_options):
@@ -907,21 +1044,30 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
             dict_options_temp["relTol"] = 0.1 * y[0].delta
             dict_options_temp["absTol"] = 0.1 * y[0].delta
        
-        newtonMethods = {'newton', 'detNewton', '3PNewton'}
-        if dict_options['newton_method'] in newtonMethods:        
-            y = NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)
-            if y == [] or y ==[[]]: 
-                saveFailedSystem(output, functions[0], model, 0)
-                return output 
 
-        if not variableSolved(y, dict_options_temp):
+        newtonMethods = {'newton', 'detNewton', '3PNewton'}
+        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:   
+            if dict_options['InverseOrHybrid']!='Hybrid':     
+                y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output 
+            if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options_temp):  
+                y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output 
+
+
+        if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
                 f = functions[j]
                 y = setOfIvSetIntersection([y, 
                                             reduceXIntervalByFunction(xBounds[f.glb_ID],
                                                                       f,
                                                                       f.glb_ID.index(i),
-                                                                      dict_options_temp)])      
+                                                                      dict_options_temp)]) 
+   
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, f, model, i)
                     return output    
@@ -936,8 +1082,9 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
   
         subBoxNo = subBoxNo * len(y) 
         xNewBounds[i] = y
+        if not variableSolved(y, dict_options): xSolved = False
         xUnchanged = checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
-                                       dict_options_temp)
+                                       {"absTol":0.001, 'relTol':0.001})
         
         dict_options_temp["relTol"] = dict_options["relTol"]
         dict_options_temp["absTol"] = dict_options["absTol"]  
@@ -2837,5 +2984,83 @@ def solutionInFunctionRange(model, xBounds, dict_options):
     for f in fInterval:
         if not(f.a<=0+absTol and f.b>=0-absTol):
             solutionInRange = False
-            
+
     return solutionInRange
+
+
+def HC4(model, xBounds):
+    """reduces the bounds of all variables in every model function based on HC4 hull-consistency
+    Args:
+        :model: instance of class-Model
+        :xBounds:   current Bounds of Box
+    Return: 
+        :pyibex IntervalVector with reduced bounds 
+    """
+
+    HC4reduced_IvV = pyibex.IntervalVector(eval(mpmath.nstr(xBounds.tolist())))
+    currentIntervalVector = HC4reduced_IvV
+    for f in model.fSymbolic: 
+        stringF = str(f).replace('log', 'ln').replace('**', '^')
+        for i,s in enumerate(tuple(reversed(tuple(sympy.ordered(model.xSymbolic))))):
+            if s in f.free_symbols:
+                stringF = stringF.replace(str(s), 'x['+str(model.xSymbolic.index(s))+']')
+           
+        pyibexFun = pyibex.Function('x['+str(len(xBounds))+']', stringF)
+        ctc = pyibex.CtcFwdBwd(pyibexFun)
+        ctc.contract(currentIntervalVector)
+        HC4reduced_IvV = HC4reduced_IvV & currentIntervalVector
+
+        if HC4reduced_IvV.is_empty():
+            return HC4reduced_IvV
+
+    return HC4reduced_IvV
+
+
+
+def HybridGS(newtonSystemDic, xBounds, i, dict_options):
+        """ Computation of the Interval-Newton Method with hybrid approach to reduce the single interval xBounds[i]: 
+        Args: 
+            :newtonSystemDic:   dictionary, containing:
+                :Boxpoint:      Point in IntervalBox
+                :f(Boxpoint):   functionvalues at Boxpoint
+                :JacInterval:   evaluated jacobimatrix with Bounds
+            :xBounds:       current Bounds
+            :i:             index of reducing Bound           
+        Return:
+            :interval:   interval(s) of mpi format from mpmath library where
+                         solution for x can be in, if interval remains [] there
+                         is no solution within the initially guessed interval of x                  
+        """
+
+        interval=[]
+                 
+        Boundspoint = newtonSystemDic['Boxpoint']
+        fpoint = newtonSystemDic['f(Boxpoint)']
+        JacInterval = newtonSystemDic['J(Box)']
+        #Y = newtonSystemDic['J(Boxpoint)-1']
+
+        intersection = xBounds[i]
+        for bp in range(len(Boundspoint)):
+            for y in range(len(xBounds)):
+                Yfmid = fpoint[bp][y]
+                D = JacInterval[y,i]
+                ivsum=0
+                if D!=0 and D!=mpmath.mpi('-inf','+inf'):
+                    for j in range(0, len(JacInterval[i])):
+                        if j!=i:
+                            ivsum = ivsum + numpy.dot(JacInterval[y,j], (xBounds[j]-Boundspoint[bp][j]))
+                    
+                    try:    N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
+                    except: N = mpmath.mpi('-inf', '+inf')
+                
+                    if N.a == '-inf' or N.b=='+inf':
+                        N = xBounds[i]
+                        
+                    intersection = ivIntersection(N, intersection)
+                    if intersection == []:
+                        return intersection
+                    if checkVariableBound(intersection, dict_options):
+                        return [intersection]
+
+        if intersection !=[]: interval.append(intersection)
+        return interval

@@ -86,8 +86,13 @@ class Model:
         self.colSca = numpy.ones(len(X))
         self.failed = False
         self.constraints = CONSTRAINTS
+        self.fLamb = []
         self.jacobianSympy = []
+        self.jacobianLambNumpy = []
+        self.jacobianLambMpmath = []
         self.tearVarsID=[]
+        self.initialxBounds = [BOUNDS]
+        self.VarFrequency = []
 
 
     def getBoundsOfPermutedModel(self, xBounds, xSymbolic, parameter):
