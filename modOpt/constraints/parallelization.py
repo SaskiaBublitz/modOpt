@@ -268,13 +268,22 @@ def reduceMultipleXBounds_Worker(k, model, functions, dict_varId_fIds, dict_opti
     xNewBounds = output["xNewBounds"]
     
     if output["xAlmostEqual"] and not output["xSolved"]:
-        boxNo_split = dict_options["maxBoxNo"] - boxNo
-        #if model.tearVarsID == []: iNes_procedure.getTearVariables(model)
-        #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-        splitVar = iNes_procedure.getTearVariableLargestDerivative(model, k)
-        xNewBounds, dict_options["tear_id"] = iNes_procedure.splitTearVars(splitVar, 
-                                       model.xBounds[k], boxNo_split, dict_options)
-        output["xAlmostEqual"] = False
+        possibleCutOffs = False
+            if dict_options["cut_Box"]:
+                xNewBounds, possibleCutOffs = iNes_procedure.cutOffBox(model, xNewBounds, k,
+                                                        functions, dict_options)
+            if possibleCutOffs: 
+                output = iNes_procedure.reduceBoxCombined(numpy.array(xNewBounds[0]), model, functions, dict_options)
+                xNewBounds = output["xNewBounds"]
+
+        if not possibleCutOffs or output["xAlmostEqual"]:
+            boxNo_split = dict_options["maxBoxNo"] - boxNo
+            if model.tearVarsID == []: iNes_procedure.getTearVariables(model)
+            #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
+            #splitVar = iNes_procedure.getTearVariableLargestDerivative(model, k)
+            xNewBounds, dict_options["tear_id"] = iNes_procedure.splitTearVars(model.tearVarsID, 
+                                           model.xBounds[k], boxNo_split, dict_options)
+            output["xAlmostEqual"] = False
 
     for box in xNewBounds:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))

@@ -83,13 +83,24 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
 
 
         if output["xAlmostEqual"] and not output["xSolved"]:
-            boxNo_split = dict_options["maxBoxNo"] - boxNo
-            #if model.tearVarsID == []: getTearVariables(model)
-            #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-            splitVar = getTearVariableLargestDerivative(model, k)
-            xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
-                                       model.xBounds[k], boxNo_split, dict_options)
-            #xAlmostEqual[k] = False
+            possibleCutOffs = False
+            if dict_options["cut_Box"]:
+                xNewBounds, possibleCutOffs = cutOffBox(model, xNewBounds, k,
+                                                        functions, dict_options)
+            if possibleCutOffs: 
+                output = reduceBoxCombined(numpy.array(xNewBounds[0]), model, functions, dict_options)
+                xNewBounds = output["xNewBounds"]
+                xAlmostEqual[k] = output["xAlmostEqual"]
+                xSolved[k] = output["xSolved"]
+
+            if not possibleCutOffs or output["xAlmostEqual"]:
+                boxNo_split = dict_options["maxBoxNo"] - boxNo
+                if model.tearVarsID == []: getTearVariables(model)
+                #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
+                #splitVar = getTearVariableLargestDerivative(model, k)
+                xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
+                                           model.xBounds[k], boxNo_split, dict_options)
+                #xAlmostEqual[k] = False
 
 
         if output.__contains__("noSolution") :
@@ -119,6 +130,41 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     results["xAlmostEqual"] = xAlmostEqual
     results["xSolved"] = xSolved
     return results
+
+
+def cutOffBox(model, xBounds, boxNo, functions, dict_options):
+    xNewBounds = copy.deepcopy(list(xBounds[0]))
+    
+    cutOff=False
+
+    for u in range(len(model.xSymbolic)):
+        #try to cut off upper part
+        while True:
+            CutBoxBounds = copy.deepcopy(list(xNewBounds))
+            xu = CutBoxBounds[u]
+            if xu.delta<list(xBounds[0])[u].delta*0.03: break
+            CutBoxBounds[u] = mpmath.mpi(xu.b-list(xBounds[0])[u].delta*0.01, xu.b)
+            if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
+                xNewBounds[u] = mpmath.mpi(xu.a, xu.b-list(xBounds[0])[u].delta*0.01)
+                cutOff = True
+                continue
+            else:
+                break
+        #try to cut off lower part
+        while True:
+            CutBoxBounds = copy.deepcopy(list(xNewBounds))
+            xu = CutBoxBounds[u]
+            if xu.delta<list(xBounds[0])[u].delta*0.03: break
+            CutBoxBounds[u] = mpmath.mpi(xu.a, xu.a+list(xBounds[0])[u].delta*0.01)
+            if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
+                xNewBounds[u] = mpmath.mpi(xu.a+list(xBounds[0])[u].delta*0.01, xu.b)
+                cutOff = True
+                continue
+            else:
+                break
+    
+    return [tuple(xNewBounds)], cutOff
+
 
 def getTearVariables(model):
     """ identifies tear variables of system based on MC33 algorithm
@@ -2985,6 +3031,20 @@ def solutionInFunctionRange(model, xBounds, dict_options):
         if not(f.a<=0+absTol and f.b>=0-absTol):
             solutionInRange = False
 
+    return solutionInRange
+
+
+def solutionInFunctionRangePyibex(model, xBounds, dict_options):
+    solutionInRange = True
+    xNewBounds = copy.deepcopy(xBounds)
+    for i in range(4):
+        Intersection = HC4(model, xNewBounds)
+        if Intersection.is_empty():
+            return False 
+        else:
+            for i in range(0, len(model.xSymbolic)):
+                xNewBounds[i] = mpmath.mpi(Intersection[i][0],(Intersection[i][1]))
+    
     return solutionInRange
 
 
