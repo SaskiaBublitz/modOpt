@@ -269,12 +269,12 @@ def reduceMultipleXBounds_Worker(k, model, functions, dict_varId_fIds, dict_opti
     
     if output["xAlmostEqual"] and not output["xSolved"]:
         possibleCutOffs = False
-            if dict_options["cut_Box"]:
-                xNewBounds, possibleCutOffs = iNes_procedure.cutOffBox(model, xNewBounds, k,
-                                                        functions, dict_options)
-            if possibleCutOffs: 
-                output = iNes_procedure.reduceBoxCombined(numpy.array(xNewBounds[0]), model, functions, dict_options)
-                xNewBounds = output["xNewBounds"]
+        if dict_options["cut_Box"]:
+            xNewBounds, possibleCutOffs = iNes_procedure.cutOffBox(model, xNewBounds, k,
+                                                    functions, dict_options)
+        if possibleCutOffs: 
+            output = iNes_procedure.reduceBoxCombined(numpy.array(xNewBounds[0]), model, functions, dict_options)
+            xNewBounds = output["xNewBounds"]
 
         if not possibleCutOffs or output["xAlmostEqual"]:
             boxNo_split = dict_options["maxBoxNo"] - boxNo
