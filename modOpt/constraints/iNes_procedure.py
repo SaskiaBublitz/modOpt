@@ -139,7 +139,8 @@ def cutOffBox(model, xBounds, boxNo, functions, dict_options):
 
     for u in range(len(model.xSymbolic)):
         #try to cut off upper part
-        while True:
+        i=1
+        while i<100:
             CutBoxBounds = copy.deepcopy(list(xNewBounds))
             xu = CutBoxBounds[u]
             if xu.delta<list(xBounds[0])[u].delta*0.03: break
@@ -147,11 +148,13 @@ def cutOffBox(model, xBounds, boxNo, functions, dict_options):
             if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
                 xNewBounds[u] = mpmath.mpi(xu.a, xu.b-list(xBounds[0])[u].delta*0.01)
                 cutOff = True
+                i=i+1
                 continue
             else:
                 break
         #try to cut off lower part
-        while True:
+        i=1
+        while i<100:
             CutBoxBounds = copy.deepcopy(list(xNewBounds))
             xu = CutBoxBounds[u]
             if xu.delta<list(xBounds[0])[u].delta*0.03: break
@@ -159,6 +162,7 @@ def cutOffBox(model, xBounds, boxNo, functions, dict_options):
             if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
                 xNewBounds[u] = mpmath.mpi(xu.a+list(xBounds[0])[u].delta*0.01, xu.b)
                 cutOff = True
+                i=i+1
                 continue
             else:
                 break
