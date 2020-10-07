@@ -95,12 +95,16 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
 
             if not possibleCutOffs or output["xAlmostEqual"]:
                 boxNo_split = dict_options["maxBoxNo"] - boxNo
-                if model.tearVarsID == []: getTearVariables(model)
-                #xNewBounds = separateBox(model.xBounds[k], model.tearVarsID, boxNo_split)
-                #splitVar = getTearVariableLargestDerivative(model, k)
-                xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
-                                           model.xBounds[k], boxNo_split, dict_options)
-                #xAlmostEqual[k] = False
+                if dict_options["split_Box"]=="TearVar":   
+                    if model.tearVarsID == []: getTearVariables(model)
+                    xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
+                                           numpy.array(xNewBounds[0]), boxNo_split, dict_options)
+                elif dict_options["split_Box"]=="LargestDer":  
+                    splitVar = getTearVariableLargestDerivative(model, k, [])
+                    xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
+                                           numpy.array(xNewBounds[0]), boxNo_split, dict_options)
+                elif dict_options["split_Box"]=="forecastSplit": 
+                    xNewBounds = getBestSplit(xNewBounds, model, k, functions, dict_options)
 
 
         if output.__contains__("noSolution") :
@@ -233,6 +237,55 @@ def getTearVariableLargestDerivative(model, boxNo):
     splitVar = largestJacIVVarID
     
     return splitVar
+
+
+def getBestSplit(xBounds,model, boxNo, functions, dict_options):
+    
+    oldBounds = copy.deepcopy(numpy.array(xBounds)[0])  
+    smallestAvrSide = numpy.Inf
+    
+    for i in range(len(model.xSymbolic)):
+        BoundsToSplit = copy.deepcopy(numpy.array(xBounds)[0])
+        splittedBox = separateBox(BoundsToSplit, [i])
+        output0 = reduceBoxCombined(numpy.array(splittedBox[0]), model, functions, dict_options)
+        if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
+            output0 = reduceBoxCombined(numpy.array(output0["xNewBounds"][0]), model, functions, dict_options)
+            if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
+                avrSide0 = identifyReduction(output0["xNewBounds"], oldBounds)
+            else:
+                return [tuple(splittedBox[1])]
+        else:
+            return [tuple(splittedBox[1])]
+            
+        output1 = reduceBoxCombined(numpy.array(splittedBox[1]), model, functions, dict_options)
+        if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
+            output1 = reduceBoxCombined(numpy.array(output1["xNewBounds"][0]), model, functions, dict_options)
+            if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
+                avrSide1 = identifyReduction(output1["xNewBounds"], oldBounds)
+            else:
+                return [tuple(splittedBox[0])]
+        else:
+            return [tuple(splittedBox[0])]
+            
+        avrSide = avrSide0 + avrSide1
+        if avrSide<smallestAvrSide:
+            smallestAvrSide = avrSide
+            xNewBounds = [output0["xNewBounds"][0], output1["xNewBounds"][0]]
+            
+    return xNewBounds
+    
+        
+def identifyReduction(newBox,oldBox):
+    
+    avrSideLength = 0
+    for i in range(len(oldBox)):
+        if (float(mpmath.convert(oldBox[i].b))-float(mpmath.convert(oldBox[i].a)))>0:
+            avrSideLength = avrSideLength + (float(mpmath.convert(newBox[0][i].b))-
+                                             float(mpmath.convert(newBox[0][i].a)))/(
+                                             float(mpmath.convert(oldBox[i].b))-
+                                             float(mpmath.convert(oldBox[i].a)))
+                                             
+    return avrSideLength/len(oldBox)
 
 
 def splitTearVars(tearVarIds, box, boxNo_max, dict_options):
