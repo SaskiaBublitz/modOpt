@@ -2836,8 +2836,9 @@ def solutionInFunctionRange(model, xBounds, dict_options):
     solutionInRange = True
     
     fIvLamb = lambdifyToMpmathIvComplex(model.xSymbolic, model.fSymbolic)
-    fInterval = numpy.array(fIvLamb(*xBounds)) 
-    fInterval = intersectWithAffineFunctionIntervals(model.xSymbolic, xBounds, model.fSymbolic, fInterval)
+    fInterval = numpy.array(fIvLamb(*xBounds))
+    if dict_options["Affine_arithmetic"]:
+        fInterval = intersectWithAffineFunctionIntervals(model.xSymbolic, xBounds, model.fSymbolic, fInterval)
     
     for f in fInterval:
         if not(f.a<=0+absTol and f.b>=0-absTol):
