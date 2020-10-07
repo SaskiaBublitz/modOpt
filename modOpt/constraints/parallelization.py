@@ -106,7 +106,7 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
         b interval in mpmath.mpi formate and [] if error occured (check for complex b) 
     
     """
-    b = iNes_procedure.getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)  
+    b = iNes_procedure.getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds, dict_options)  
     if mpmath.almosteq(b.a, b.b, dict_options["relTol"], dict_options["absTol"]):
         return b
     

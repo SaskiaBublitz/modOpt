@@ -627,7 +627,7 @@ def get_tight_bBounds(f, x_id, xBounds, dict_options):
     b_max = []
     b_min = []
     #digits = int(abs(numpy.floor(numpy.log10(dict_options['absTol']))))
-    b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)
+    b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds, dict_options)
 
     if b == []: return []
 
@@ -681,7 +681,7 @@ def get_tight_bBounds_y(f, x_id, y_id, xBounds, b_min, b_max, dict_options):
     """
 
     if f.dbdx_sym[x_id][y_id] == 0:
-        b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds)
+        b = getBoundsOfFunctionExpression(f.b_sym[x_id], f.x_sym, xBounds, dict_options)
         if not b == []:
             b_min.append(float(mpmath.mpf(b.a)))
             b_max.append(float(mpmath.mpf(b.b)))      
@@ -724,7 +724,8 @@ def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_m
                                              copy.deepcopy(xBounds),
                                              incr_zone,
                                              cur_b_min,
-                                             cur_b_max)
+                                             cur_b_max,
+                                             dict_options)
 
     if decr_zone != []: get_bounds_decr_zone(f.b_sym[x_id],
                                              f.x_sym,
@@ -732,7 +733,8 @@ def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_m
                                              copy.deepcopy(xBounds),
                                              decr_zone,
                                              cur_b_min,
-                                             cur_b_max)
+                                             cur_b_max,
+                                             dict_options)
 
     if nonmon_zone != []: get_bounds_nonmon_zone(f.b_sym[x_id],
                                                  f.x_sym,
@@ -747,7 +749,7 @@ def add_b_min_max(f, incr_zone, decr_zone, nonmon_zone, x_id, y_id, xBounds, b_m
     if cur_b_min != []:  b_min.append(min(cur_b_min))
 
 
-def get_bounds_incr_zone(b_sym, x_sym, i, xBounds, incr_zone, b_min, b_max):
+def get_bounds_incr_zone(b_sym, x_sym, i, xBounds, incr_zone, b_min, b_max, dict_options):
     """ stores maximum and minimum value of b(y) in b_max and b_min for an
     interval y = x_sym[i], where b is increasing. If y occurs multiple times
     in b for example b(y) = a*y + c/y it is important to evaluate b at lower
@@ -761,22 +763,23 @@ def get_bounds_incr_zone(b_sym, x_sym, i, xBounds, incr_zone, b_min, b_max):
         :incr_zone:     list with increasing intervals of b(y) in mpmath.mpi logic
         :b_min:         list with minimum values of b(y) for different y of b(x,y)
         :b_max:         list with maximun values of b(y) for different y of b(x,y)
+        :dict_options:  dictionary with algorithm settings
 
     """
     cur_max = []
     cur_min = []
     for interval in incr_zone:
         xBounds[i] = mpmath.mpi(interval.b)
-        cur_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).b)))
+        cur_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds, dict_options).b)))
         xBounds[i] = mpmath.mpi(interval.a)
-        cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))
+        cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds, dict_options).a)))
 
     if cur_max != []: b_max.append(max(cur_max))
     if cur_min != []: b_min.append(min(cur_min))
 
 
 
-def get_bounds_decr_zone(b_sym, x_sym, i, xBounds, decr_zone, b_min, b_max):
+def get_bounds_decr_zone(b_sym, x_sym, i, xBounds, decr_zone, b_min, b_max, dict_options):
     """ stores maximum and minimum value of b(y) in b_max and b_min for an
     interval y = x_sym[i], where b is decreasing. If y occurs multiple times
     in b for example b(y) = a*y + c/y it is important to evaluate b at lower
@@ -790,15 +793,16 @@ def get_bounds_decr_zone(b_sym, x_sym, i, xBounds, decr_zone, b_min, b_max):
         :decr_zone:     list with decreasing intervals of b(y) in mpmath.mpi logic
         :b_min:         list with minimum values of b(y) for different y of b(x,y)
         :b_max:         list with maximun values of b(y) for different y of b(x,y)
+        :dict_options:  dictionary with algorithm settings
 
     """
     cur_max = []
     cur_min = []
     for interval in decr_zone:
         xBounds[i] = mpmath.mpi(interval.a)
-        cur_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).b)))
+        cur_max.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds, dict_options).b)))
         xBounds[i] = mpmath.mpi(interval.b)
-        cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds).a)))
+        cur_min.append(float(mpmath.mpf(getBoundsOfFunctionExpression(b_sym, x_sym, xBounds, dict_options).a)))
 
     if cur_max != []: b_max.append(max(cur_max))
     if cur_min != []: b_min.append(min(cur_min))
@@ -1057,8 +1061,8 @@ def reduce_x_by_gb(g_sym, dgdx_sym, b, x_sym, i, xBounds, dict_options):
     Return:             reduced x interval in mpmath.mpi formate 
     """
 
-    g = getBoundsOfFunctionExpression(g_sym, x_sym, xBounds)
-    dgdx = getBoundsOfFunctionExpression(dgdx_sym, x_sym, xBounds)
+    g = getBoundsOfFunctionExpression(g_sym, x_sym, xBounds, dict_options)
+    dgdx = getBoundsOfFunctionExpression(dgdx_sym, x_sym, xBounds, dict_options)
     
     g_sym = lambdifyToMpmathIvComplex(x_sym, g_sym)
 
@@ -1313,19 +1317,19 @@ def calculateCurrentBounds(f, i, xBounds, dict_options):
     else:
         try:
             bInterval = getBoundsOfFunctionExpression(f.b_sym[i], 
-                                                      f.x_sym, xBounds)
+                                                      f.x_sym, xBounds, dict_options)
         except: return [], [], []
       
     try:
        gxInterval = getBoundsOfFunctionExpression(f.g_sym[i], 
-                                                  f.x_sym, xBounds)
+                                                  f.x_sym, xBounds, dict_options)
        if type(gxInterval) == mpmath.iv.mpc: gxInterval = []
       
     except: return [], [], bInterval
 
     try:
        dgdxInterval = getBoundsOfFunctionExpression(f.dgdx_sym[i], 
-                                                    f.x_sym, xBounds)
+                                                    f.x_sym, xBounds, dict_options)
        if type(dgdxInterval) == mpmath.iv.mpc: dgdxInterval = []
 
     except: return gxInterval, [], bInterval
@@ -1333,14 +1337,14 @@ def calculateCurrentBounds(f, i, xBounds, dict_options):
     return gxInterval, dgdxInterval, bInterval  
     
     
-def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
+def getBoundsOfFunctionExpression(f, xSymbolic, xBounds, dict_options):
     """ evaluates function expression f for variable bounds xBounds
 
     Args:
         :f:                  scalar function in sympy logic
         :xSymbolic:          list with symbolic variables in sympy logic
         :xBounds:            numpy array with variable bounds
-
+        :dict_options:       dictionary with algorithm settings
 
     Return:
         :interval:           of function expression at xBounds in mpmath.mpi logic
@@ -1358,7 +1362,8 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds):
     except:
         return []
     
-    fInterval = intersectWithAffineFunctionIntervals(xSymbolic, xBounds, [f], [fInterval])
+    if dict_options["Affine_arithmetic"]: 
+        fInterval = intersectWithAffineFunctionIntervals(xSymbolic, xBounds, [f], [fInterval])
     return mpmath.mpi(str(fInterval[0]))
         
         
@@ -1744,7 +1749,7 @@ def get_conti_monotone_intervals(dfdx_sym, x_sym, i, xBounds, dict_options):
     nonMonotoneZones = []
     cur_xiBounds = [xBounds[i]]
 
-    dfdx = getBoundsOfFunctionExpression(dfdx_sym, x_sym, xBounds)
+    dfdx = getBoundsOfFunctionExpression(dfdx_sym, x_sym, xBounds, dict_options)
 
     if type(dfdx) == mpmath.iv.mpc or dfdx == []: return [], [], cur_xiBounds
     
