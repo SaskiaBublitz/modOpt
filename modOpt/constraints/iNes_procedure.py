@@ -83,6 +83,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
 
 
         if output["xAlmostEqual"] and not output["xSolved"]:
+            
             possibleCutOffs = False
             if dict_options["cut_Box"]:
                 xNewBounds, possibleCutOffs = cutOffBox(model, xNewBounds, k,

@@ -465,13 +465,15 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
         if dict_options['InverseOrHybrid']!='Hybrid':     
             y = iNes_procedure.setOfIvSetIntersection([y, iNes_procedure.NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
             if y == [] or y ==[[]]: 
-                iNes_procedure.saveFailedSystem(output, functions[0], model, 0)
-                return output 
+                j=dict_varId_fIds[i][0]
+                results['%d' % i] = ([], FailedSystem(functions[j].f_sym, functions[j].x_sym[functions[j].glb_ID.index(i)]), False, False)            
+                return True 
         if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not iNes_procedure.variableSolved(y, dict_options_temp):  
             y = iNes_procedure.setOfIvSetIntersection([y, iNes_procedure.HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
             if y == [] or y ==[[]]: 
-                iNes_procedure.saveFailedSystem(output, functions[0], model, 0)
-                return output 
+                j=dict_varId_fIds[i][0]
+                results['%d' % i] = ([], FailedSystem(functions[j].f_sym, functions[j].x_sym[functions[j].glb_ID.index(i)]), False, False)  
+                return True 
 
     if not iNes_procedure.variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
         for j in dict_varId_fIds[i]:
