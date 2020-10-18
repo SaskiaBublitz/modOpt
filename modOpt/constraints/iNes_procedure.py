@@ -70,6 +70,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
         #else:
         if not dict_options["Parallel Variables"]:
             if dict_options["combined_algorithm"]==True:
+                # if combined_algorithm is True, all other choices for box_reduction is neglected
                 output = reduceBoxCombined(xBounds, model, functions, dict_options)
             else:             
                 output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
@@ -84,27 +85,32 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
 
         if output["xAlmostEqual"] and not output["xSolved"]:
             possibleCutOffs = False
+            # if cut_Box is chosen,parts of the box are now tried to cut off 
             if dict_options["cut_Box"]:
-                xNewBounds, possibleCutOffs = cutOffBox(model, xNewBounds, k,
-                                                        functions, dict_options)
+                xNewBounds, possibleCutOffs = cutOffBox(model, xNewBounds, dict_options)
+            # if cut_Box was successful,the box is now tried to be reduced again
             if possibleCutOffs: 
                 output = reduceBoxCombined(numpy.array(xNewBounds[0]), model, functions, dict_options)
                 xNewBounds = output["xNewBounds"]
                 xAlmostEqual[k] = output["xAlmostEqual"]
                 xSolved[k] = output["xSolved"]
 
+            # if cut_Box was not successful or it didn't help to reduce the box, then the box is now splitted
             if not possibleCutOffs or output["xAlmostEqual"]:
                 boxNo_split = dict_options["maxBoxNo"] - boxNo
-                if dict_options["split_Box"]=="TearVar":   
+                if dict_options["split_Box"]=="TearVar": 
+                    # splits box by tear variables  
                     if model.tearVarsID == []: getTearVariables(model)
                     xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
                                            numpy.array(xNewBounds[0]), boxNo_split, dict_options)
                 elif dict_options["split_Box"]=="LargestDer":  
-                    splitVar = getTearVariableLargestDerivative(model, k, [])
+                    #splits box by largest derivative
+                    splitVar = getTearVariableLargestDerivative(model, k)
                     xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                                            numpy.array(xNewBounds[0]), boxNo_split, dict_options)
                 elif dict_options["split_Box"]=="forecastSplit": 
-                    xNewBounds = getBestSplit(xNewBounds, model, k, functions, dict_options)
+                    # splits box by best variable
+                    xNewBounds = getBestSplit(xNewBounds, model, functions, dict_options)
 
 
         if output.__contains__("noSolution") :
@@ -136,21 +142,31 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     return results
 
 
-def cutOffBox(model, xBounds, boxNo, functions, dict_options):
+def cutOffBox(model, xBounds, dict_options):
+    '''trys to cut off all empty sides of the box, to reduce the box without splitting
+
+    Args:
+        :model:         instance of type model
+        :xBounds:       current boxbounds in iv.mpmath
+        :dict_options:  dictionary of options
+    Return:
+        :xNewBounds:    new xBounds with cut off sides
+        :cutOff:        boolean if any cut offs are possible
+    '''
     xNewBounds = copy.deepcopy(list(xBounds[0]))
     
     cutOff=False
 
     for u in range(len(model.xSymbolic)):
-        #try to cut off upper part
+        #try to cut off upper variable parts
         i=1
-        while i<100:
+        while i<100: #number of cutt offs are limited to 100
             CutBoxBounds = copy.deepcopy(list(xNewBounds))
             xu = CutBoxBounds[u]
-            if xu.delta<list(xBounds[0])[u].delta*0.03: break
-            CutBoxBounds[u] = mpmath.mpi(xu.b-list(xBounds[0])[u].delta*0.01, xu.b)
-            if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
-                xNewBounds[u] = mpmath.mpi(xu.a, xu.b-list(xBounds[0])[u].delta*0.01)
+            if xu.delta<list(xBounds[0])[u].delta*0.02*i: break #if total box is to small for further cutt offs
+            CutBoxBounds[u] = mpmath.mpi(xu.b-list(xBounds[0])[u].delta*0.01*i, xu.b) #define small box to cut
+            if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options): #check,if small box is empty
+                xNewBounds[u] = mpmath.mpi(xu.a, xu.b-list(xBounds[0])[u].delta*0.01*i)
                 cutOff = True
                 i=i+1
                 continue
@@ -161,10 +177,10 @@ def cutOffBox(model, xBounds, boxNo, functions, dict_options):
         while i<100:
             CutBoxBounds = copy.deepcopy(list(xNewBounds))
             xu = CutBoxBounds[u]
-            if xu.delta<list(xBounds[0])[u].delta*0.03: break
-            CutBoxBounds[u] = mpmath.mpi(xu.a, xu.a+list(xBounds[0])[u].delta*0.01)
+            if xu.delta<list(xBounds[0])[u].delta*0.02*i: break
+            CutBoxBounds[u] = mpmath.mpi(xu.a, xu.a+list(xBounds[0])[u].delta*0.01*i)
             if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
-                xNewBounds[u] = mpmath.mpi(xu.a+list(xBounds[0])[u].delta*0.01, xu.b)
+                xNewBounds[u] = mpmath.mpi(xu.a+list(xBounds[0])[u].delta*0.01*i, xu.b)
                 cutOff = True
                 i=i+1
                 continue
@@ -216,6 +232,7 @@ def getTearVariableLargestDerivative(model, boxNo):
     
     jaclamb = model.jacobianLambNumpy
     
+    #finds largest derivative of smallest, mid and largest boxpoint
     maxJacpoint = []
     for p in ['a','mid','b']:
         PointIndicator = len(model.xBounds[boxNo])*[p]
@@ -223,10 +240,11 @@ def getTearVariableLargestDerivative(model, boxNo):
         Jacpoint = jaclamb(*Boxpoint)
         Jacpoint = numpy.nan_to_num(Jacpoint)
         maxJacpoint.append(numpy.max(abs(Jacpoint), axis=0))
-   
+    
+    #multiplies largest jacobian value of each component with its equation frequency   
     maxJacpoint = model.VarFrequency*numpy.max(maxJacpoint, axis=0)
 
-    #sum of derivatives
+    #sum of derivatives*frequency
     largestJacIVVal = -numpy.inf
     largestJacIVVarID = [0]
     for i in subset:
@@ -239,7 +257,17 @@ def getTearVariableLargestDerivative(model, boxNo):
     return splitVar
 
 
-def getBestSplit(xBounds,model, boxNo, functions, dict_options):
+def getBestSplit(xBounds,model, functions, dict_options):
+    '''finds variable, which splitting causes the best reduction
+
+    Args:
+        :xBounds:       variable bounds of class momath.iv
+        :model:         instance of type model
+        :functions:     list with instances of class function
+        :dict_options:  dictionary of options
+    Return:
+        :xNewBounds:    best reduced two variable boxes
+    '''
     
     oldBounds = copy.deepcopy(numpy.array(xBounds)[0])  
     smallestAvrSide = numpy.Inf
@@ -247,27 +275,24 @@ def getBestSplit(xBounds,model, boxNo, functions, dict_options):
     for i in range(len(model.xSymbolic)):
         BoundsToSplit = copy.deepcopy(numpy.array(xBounds)[0])
         splittedBox = separateBox(BoundsToSplit, [i])
+
+        # reduces first splitted box
         output0 = reduceBoxCombined(numpy.array(splittedBox[0]), model, functions, dict_options)
         if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
-            output0 = reduceBoxCombined(numpy.array(output0["xNewBounds"][0]), model, functions, dict_options)
-            if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
-                avrSide0 = identifyReduction(output0["xNewBounds"], oldBounds)
-            else:
-                return [tuple(splittedBox[1])]
+            avrSide0 = identifyReduction(output0["xNewBounds"], oldBounds)
         else:
             return [tuple(splittedBox[1])]
-            
+        
+        # reduces second splitted box
         output1 = reduceBoxCombined(numpy.array(splittedBox[1]), model, functions, dict_options)
         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
-            output1 = reduceBoxCombined(numpy.array(output1["xNewBounds"][0]), model, functions, dict_options)
-            if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
-                avrSide1 = identifyReduction(output1["xNewBounds"], oldBounds)
-            else:
-                return [tuple(splittedBox[0])]
+            avrSide1 = identifyReduction(output1["xNewBounds"], oldBounds)
         else:
             return [tuple(splittedBox[0])]
-            
+        
+        # sum of both boxreductions
         avrSide = avrSide0 + avrSide1
+        # find best overall boxredution
         if avrSide<smallestAvrSide:
             smallestAvrSide = avrSide
             xNewBounds = [output0["xNewBounds"][0], output1["xNewBounds"][0]]
@@ -276,6 +301,14 @@ def getBestSplit(xBounds,model, boxNo, functions, dict_options):
     
         
 def identifyReduction(newBox,oldBox):
+    '''calculates the average side length reductin from old to new Box
+
+    Args:
+        :newBox:        new variable bounds of class momath.iv
+        :oldBox:        old variable bounds of class momath.iv
+    Return:
+        :avrSideLength/len(oldBox):    average sidelength reduction
+    '''
     
     avrSideLength = 0
     for i in range(len(oldBox)):
@@ -477,6 +510,17 @@ def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds):
 
 
 def getFunctionPoint(jacLamb, fLamb, xBounds, points):
+    '''finds Boxpoint with highest determinant of J(Boxpoint)
+    Args:
+        :jacLamb:       lambdifyed Jacobian 
+        :fLamb:         lambdifyed function
+        :xBounds:       current xBounds as iv.mpi
+        :points:        list of strings with "a" and/or "mid" and/or "b"
+    Return:
+        :Boxpoint:  variable values of points
+        :Jacpoint:  Jacobian values of chosen points
+        :fpoint:    function values of chosen points
+    '''
     
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     Boxpoint = []
@@ -1032,6 +1076,20 @@ def getPrecision(xBounds):
 
 
 def reduceBoxCombined(xBounds, model, functions, dict_options):
+    """ reduce box spanned by current intervals of xBounds with defined combination of methods.
+     
+    Args: 
+        :xBounds:            numpy array with box
+        :model:              instance of class Model
+        :functions:          list with instances of class Function
+        :dict_options:       dictionary with user specified algorithm settings
+            
+        Returns:
+        :output:             dictionary with new boxes in a list and
+                             eventually an instance of class failedSystem if
+                             the procedure failed.
+                        
+    """ 
 
 
     subBoxNo = 1
@@ -1043,7 +1101,7 @@ def reduceBoxCombined(xBounds, model, functions, dict_options):
     dict_options_temp = copy.deepcopy(dict_options)
     eps = dict_options["relTol"]
     
-    
+    # first it is tried to reduce bounds by HC4
     HC4_IvV = HC4(model, xBounds)
     if HC4_IvV.is_empty():
         saveFailedSystem(output, functions[0], model, 0)
@@ -1055,6 +1113,7 @@ def reduceBoxCombined(xBounds, model, functions, dict_options):
             xUnchanged = checkXforEquality(xBounds[i], xNewListBounds[i], xUnchanged, {"absTol":eps, 'relTol':0.1})
             if not variableSolved(xNewListBounds[i], dict_options): xSolved = False
     
+    # if HC4 could not reduce box sufficiently, now newton is used
     if xUnchanged:
         xSolved = True
         dict_options_temp.update({"newton_method":"3PNewton","InverseOrHybrid":"both"})
@@ -1073,16 +1132,18 @@ def reduceBoxCombined(xBounds, model, functions, dict_options):
                 dict_options_temp["relTol"] = 0.1 * y[0].delta
                 dict_options_temp["absTol"] = 0.1 * y[0].delta
                 
-            if not variableSolved(y, dict_options_temp):        
+            if not variableSolved(y, dict_options_temp):     
+                # use three point inverse newton   
                 y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xNewBounds, i, dict_options_temp)])
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, functions[0], model, 0)
                     return output 
             if not variableSolved(y, dict_options_temp):  
-                    y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xNewBounds, i, dict_options_temp)])
-                    if y == [] or y ==[[]]: 
-                        saveFailedSystem(output, functions[0], model, 0)
-                        return output 
+                # use three point hybrid newton
+                y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xNewBounds, i, dict_options_temp)])
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output 
                     
             if not variableSolved(y, dict_options): xSolved = False
             subBoxNo = subBoxNo * len(y) 
@@ -1126,7 +1187,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     xSolved = True
     dict_options_temp = copy.deepcopy(dict_options)
 
-
+    # if HC4 is active
     if dict_options['hc_method']=='HC4':
         HC4_IvV = HC4(model, xBounds)
         if HC4_IvV.is_empty():
@@ -1151,21 +1212,23 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
             dict_options_temp["relTol"] = 0.1 * y[0].delta
             dict_options_temp["absTol"] = 0.1 * y[0].delta
        
-
+        # if any newton method is active
         newtonMethods = {'newton', 'detNewton', '3PNewton'}
-        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:   
+        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:  
+            # if hybrid is not active
             if dict_options['InverseOrHybrid']!='Hybrid':     
                 y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, functions[0], model, 0)
                     return output 
+            # if hybrid or both are active
             if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options_temp):  
                 y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, functions[0], model, 0)
                     return output 
 
-
+        # if b_normal is active
         if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
                 f = functions[j]
@@ -1611,7 +1674,7 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds, dict_options):
         
     except:
         return []
-    
+
     if dict_options["Affine_arithmetic"]: 
         fInterval = intersectWithAffineFunctionIntervals(xSymbolic, xBounds, [f], [fInterval])
     return mpmath.mpi(str(fInterval[0]))
@@ -3097,9 +3160,19 @@ def solutionInFunctionRange(model, xBounds, dict_options):
 
 
 def solutionInFunctionRangePyibex(model, xBounds, dict_options):
+    """checks, if box is empty by reducing it three times with HC4 method
+    Args: 
+        :model:             instance of class-Model
+        :xBounds:           current Bounds of Box
+        :dict_options:      options with absTolerance for deviation from the solution
+        
+    Returns:
+        :solutionRange:     boolean that is true if solution in the range
+    """
+
     solutionInRange = True
     xNewBounds = copy.deepcopy(xBounds)
-    for i in range(4):
+    for i in range(3):
         Intersection = HC4(model, xNewBounds)
         if Intersection.is_empty():
             return False 
@@ -3119,7 +3192,12 @@ def HC4(model, xBounds):
         :pyibex IntervalVector with reduced bounds 
     """
 
-    HC4reduced_IvV = pyibex.IntervalVector(eval(mpmath.nstr(xBounds.tolist())))
+    #keep Bounds in max tolerance to prevent rounding error
+    toleranceXBounds = copy.deepcopy(xBounds)
+    for i in range(len(xBounds)):
+        toleranceXBounds[i] = mpmath.mpi(xBounds[i].a-1e-7, xBounds[i].b+1e-7)
+
+    HC4reduced_IvV = pyibex.IntervalVector(eval(mpmath.nstr(toleranceXBounds.tolist())))
     currentIntervalVector = HC4reduced_IvV
     for f in model.fSymbolic: 
         stringF = str(f).replace('log', 'ln').replace('**', '^')
