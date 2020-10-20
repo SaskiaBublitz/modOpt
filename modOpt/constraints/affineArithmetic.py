@@ -77,7 +77,7 @@ class Affine:
 
     """
     _weightCount = 1
-    _approxMethod = 'minRange' #Alternatively, minCheb
+    _approxMethod = 'minRange' #Alternatively, minCheb, minRange
 
     def __init__(self, interval=None, x0=None, xi=None):
         """
@@ -662,14 +662,14 @@ class Affine:
 
         """
         if isinstance(n, int):
-        
+            
+            x = self.copy()
             if n < 0:
                 x = self.inv()
                 n = -n
             if n == 0:
                 return Affine([1, 1])
             y = 1
-            x = self.copy()
             while n > 1:
                 if n % 2 == 0:
                     x = x * x
