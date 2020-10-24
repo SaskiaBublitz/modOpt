@@ -1,7 +1,6 @@
 Test report from module: flash
 
-Tolerance:	 1e-08
+Tolerance:	 1e-10
 
 Case	 Status	 CPU in s	 Comparison with seq. process
-b_normal_newton/flash	 Ok	 24.77578639984131	 -
-b_normal_newton/flash_par_b	 Ok	 30.140336513519287	 Ok
+HC4_HC4/flash_aa_both_forecast_cut	 Ok	 23.22539258003235	 -

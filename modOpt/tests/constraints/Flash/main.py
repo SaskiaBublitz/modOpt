@@ -39,19 +39,31 @@ User settings
 
 def main():
     dict_file = {'modul_name': "flash",   # requires python module with this name
-                 'modus': "all",                # "all" := testing all cases, "single" :=testing a specific case
+                 'modus': "single",                # "all" := testing all cases, "single" :=testing a specific case
                  'tol': 1e-10,                   # for hypercubic length comparison
                  } 
     
     dict_options_all = {'bc_method': ["None", "b_normal", "b_tight"],
                     'newton_method': ["None", "newton", "detNewton", "newton3P"],
                     'parallel_branches': [False, True],
-                    'parallel_variables': [False, True]}
+                    'parallel_variables': [False, True],
+		    'hc_method': ["None", "HC4"],
+		    'Affine_arithmetic': [False, True],
+		    'InverseOrHybrid': ["None", "Hybrid", "both"],
+		    'cut_Box': [False, True],
+		    'split_Box': ["TearVar", "Largester", "forecastSplit"]
+}
 
-    dict_options_single = {'bc_method': ["b_normal"],
-                    'newton_method': ["newton"],
-                    'parallel_branches': [False, True],
-                    'parallel_variables': [False]}
+    dict_options_single = {'bc_method': ["None"],
+                    'newton_method': ["None"],
+                    'parallel_branches': [False],
+                    'parallel_variables': [False],
+        		    'hc_method': ["HC4"],
+        		    'Affine_arithmetic': [True],
+        		    'InverseOrHybrid': ["both"],
+        		    'cut_Box': [True],
+        		    'split_Box': ["forecastSplit"]
+}
 
     if dict_file['modus'] == "single": testMethods(dict_file, dict_options_single)
     if dict_file['modus'] == "all": testMethods(dict_file, dict_options_all)
@@ -74,54 +86,54 @@ def testMethods(dict_file, dict_options):
         
     for bc_method in dict_options['bc_method']:
         for newton_method in dict_options['newton_method']:
+            for hc_method in dict_options['hc_method']:
             
-            if bc_method == "None" and newton_method == "None": continue
-            dirName = createMethodDirectory(bc_method, newton_method)                    
+                if bc_method == "None" and newton_method == "None" and hc_method == "None": continue
+                dirName = createMethodDirectory(bc_method, newton_method, hc_method)                    
             
-            for par_var in dict_options["parallel_variables"]:
-                for par_branch in dict_options["parallel_branches"]:
-                    
-                    filePath = dirName + "/" + dict_file['modul_name']
-                    caseName = getResultFileName(filePath, par_var, par_branch)
-                    refCaseName = getResultFileName(filePath, False, False)
-                    
-                    try:
-                        testOneCase(dict_file['modul_name'], 
-                                    [caseName, bc_method, newton_method,
-                                                par_var, par_branch])
-                        
-                        results[caseName]=["Ok"]
-                        results = compareOutput(caseName, refCaseName, 
-                                                results, dict_file["tol"])
-
-                    except:
-                        results[caseName]=["Failed", "Failed", 
-                                                 "Failed", "Failed"]
-                        
-                    print(caseName + " finished.")
+                for par_var in dict_options["parallel_variables"]: 
+                    for par_branch in dict_options["parallel_branches"]:
+                        for aa in dict_options["Affine_arithmetic"]:
+                            for invNewton in dict_options["InverseOrHybrid"]:
+                                for cut in dict_options["cut_Box"]: 
+                                    for split in dict_options["split_Box"]:
+                                                               filePath = dirName + "/" + dict_file['modul_name']
+                                                               caseName = getResultFileName(filePath, par_var, par_branch, aa, invNewton, cut, split)
+                                                               refCaseName = getResultFileName(filePath, False,  False, aa, invNewton, cut, split)
+                                                               try: 
+                                                                   testOneCase(dict_file['modul_name'], [caseName, bc_method, newton_method, 
+                                                                                                         par_var, par_branch, hc_method, aa, invNewton, cut, split])
+                                                                        
+                                                                   results[caseName]=["Ok"]
+                                                                   results = compareOutput(caseName, refCaseName, 
+                                                                                                results, dict_file["tol"])
+                                                               except: 
+                                                                   results[caseName]=["Failed", "Failed", "Failed"]
+    
+                                                               print(caseName + " finished.")
                     
     writeReport(dict_file, results)
 
 
-def createMethodDirectory(bc_method, newton_method):
+def createMethodDirectory(bc_method, newton_method, hc_method):
     """ creates directory for test case.
     
     Args:
         :bc_method:         string with box consistency method or "None"
-        :newton_methdo:     string with interval newon method or "None" 
+        :newton_method:     string with interval newon method or "None"
+        :newton_method:     string with hull consistency method or "None"  
     
     Return:
         :path:              string with relative case directory path
 
     """
-    
-    if bc_method != "None": 
-        if newton_method != "None": dirName = bc_method +"_" + newton_method
-        else: dirName = bc_method
-    
-    else:
-        if newton_method != "None": dirName = newton_method 
-        else: return "This case does not exist."
+    dirName = ""
+
+    if bc_method != "None": dirName = bc_method
+    if newton_method != "None" and dirName != "": dirName += "_" + newton_method
+    if newton_method != "None" and dirName == "": dirName = newton_method
+    if hc_method != "None" and dirName != "": dirName += "_" + hc_method
+    if hc_method != "None" and dirName == "": dirName = hc_method
     
     return createDirectory([dirName])
     
@@ -148,24 +160,36 @@ def createDirectory(args):
     return path
 
 
-def getResultFileName(fileName, par_var, par_branch):
+def getResultFileName(fileName, par_var, par_branch, aa, invNewton, cut, split):
     """ creates result file name for investigated case.
     
     Args:
         :fileName:      string with general file name
         :par_var:       boolean True/False variable reduction parallelization
         :par_branch:    boolean True/False branch process parallelization
-    
+	:aa: 		booliean True/False affine arithmetic
+	:invNewton: 	string how the inverse of newton is build
+	:cut:		boolean cut box edges on/off
+	:split: 	string method to split the box if consistency is reached
 
     Return:
         case specific result file name as string
 
     """
     
-    if par_var and par_branch: return fileName + "_par_vb"
-    if par_var and not par_branch: return fileName + "_par_v"
-    if not par_var and par_branch: return fileName + "_par_b"
-    if not par_var and not par_branch: return fileName    
+    if par_var and par_branch: fileName += "_par_vb"
+    if par_var and not par_branch: fileName += "_par_v"
+    if not par_var and par_branch: fileName += "_par_b"
+    #if not par_var and not par_branch: fileName    
+
+    if aa: fileName += "_aa"
+    if invNewton == "Hybrid": fileName += "_hybrid"
+    if invNewton == "both": fileName += "_both"
+    if split == "TearVar": fileName += "_tearVar"  
+    if split == "Largester": fileName += "_largester"
+    if split == "forecastSplit": fileName += "_forecast"
+    if cut: fileName += "_cut"
+    return fileName  
 
 
 def testOneCase(modulName, args): 

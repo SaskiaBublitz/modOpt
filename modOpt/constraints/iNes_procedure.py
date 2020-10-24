@@ -53,15 +53,16 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
 
     boxNo = len(model.xBounds)
     nl = len(model.xBounds)
-    for k in range(0, len(model.xBounds)):
-        
+
+    for k in range(0, nl):
+
         xBounds = model.xBounds[k]
 
         newtonMethods = {'newton', 'detNewton', '3PNewton'}
         if dict_options['newton_method'] in newtonMethods and dict_options['combined_algorithm']==False:
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)  
-            if nl==len(xBounds)-1: nl = 0
-            else: nl = nl+1 
+            #if nl==len(xBounds)-1: nl = 0
+            #else: nl = nl+1 
         else:
             newtonSystemDic = {}
         
@@ -74,10 +75,9 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
                 output = reduceBoxCombined(xBounds, model, functions, dict_options)
             else:             
                 output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-        else: 
+        else:
             output = parallelization.reduceBox(xBounds, model, functions, 
                                                        dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-
         xNewBounds = output["xNewBounds"]
         xAlmostEqual[k] = output["xAlmostEqual"]
         xSolved[k] = output["xSolved"]
@@ -99,49 +99,51 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
             # if cut_Box was not successful or it didn't help to reduce the box, then the box is now splitted
             if not possibleCutOffs or output["xAlmostEqual"]:
                 boxNo_split = dict_options["maxBoxNo"] - boxNo
-                if dict_options["split_Box"]=="TearVar": 
-                    # splits box by tear variables  
-                    if model.tearVarsID == []: getTearVariables(model)
-                    xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
+                if boxNo_split > 0:
+                    if dict_options["split_Box"]=="TearVar": 
+                        # splits box by tear variables  
+                        if model.tearVarsID == []: getTearVariables(model)
+                        xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
                                            numpy.array(xNewBounds[0]), boxNo_split, dict_options)
-                elif dict_options["split_Box"]=="LargestDer":  
-                    #splits box by largest derivative
-                    splitVar = getTearVariableLargestDerivative(model, k)
-                    xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
+                    elif dict_options["split_Box"]=="LargestDer":  
+                        #splits box by largest derivative
+                        splitVar = getTearVariableLargestDerivative(model, k)
+                        xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                                            numpy.array(xNewBounds[0]), boxNo_split, dict_options)
-                elif dict_options["split_Box"]=="forecastSplit": 
-                    # splits box by best variable
-                    xNewBounds = getBestSplit(xNewBounds, model, functions, dict_options)
+                    elif dict_options["split_Box"]=="forecastSplit": 
+                        # splits box by best variable
+                        xNewBounds = getBestSplit(xNewBounds, model, functions, dict_options)
+                    xAlmostEqual[k] = False
 
-
+        
         if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             boxNo = len(allBoxes) + (nl - (k+1))
             continue
         
-        for box in xNewBounds: allBoxes.append(numpy.array(box, dtype=object))
+        boxNo = len(allBoxes) + len(xNewBounds) + (nl - (k+1))
+        
+        if boxNo <= dict_options["maxBoxNo"]:
+            for box in xNewBounds: allBoxes.append(numpy.array(box, dtype=object))
      
-        boxNo = len(allBoxes) + (nl - (k+1))
-  
-        if boxNo >= dict_options["maxBoxNo"]:
-            print("Note: Algorithm stops because the current number of boxes is ",
+        else:# boxNo > dict_options["maxBoxNo"]:
+            print("Warning: Algorithm stops the current box reduction because the current number of boxes is ",
                   boxNo,
-                  "and exceeds or equals the maximum number of boxes that is ",
+                  "and exceeds the maximum number of boxes that is ",
                   dict_options["maxBoxNo"], "." )
-            for l in range(k+1, nl):
-                allBoxes.append(model.xBounds[l])
-            break
+            allBoxes.append(xBounds)
+            xAlmostEqual[k] = True
         
     if allBoxes == []: 
         results["noSolution"] = saveFailedIntervalSet
-
+      
     else:
-        model.xBounds = allBoxes    
-        
+        model.xBounds = allBoxes 
+            
     results["xAlmostEqual"] = xAlmostEqual
     results["xSolved"] = xSolved
     return results
-
+    
 
 def cutOffBox(model, xBounds, dict_options):
     '''trys to cut off all empty sides of the box, to reduce the box without splitting
@@ -336,10 +338,10 @@ def splitTearVars(tearVarIds, box, boxNo_max, dict_options):
     """
     
     if tearVarIds == [] or boxNo_max <= 0 : return [box], dict_options["tear_id"]
-    
     iN = getCurrentVarToSplit(tearVarIds, box, dict_options)
+
     if iN == []: return [box], dict_options["tear_id"]
-    
+
     return separateBox(box, [tearVarIds[iN]]), iN + 1
 
 
@@ -1196,23 +1198,25 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
             return output 
         else:
             for i in range(0, len(model.xSymbolic)):
-                xNewBounds[i] = mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))
-
-    
+                
+                xNewBounds[i] = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
+                if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output 
+           
     for i in range(0, len(model.xSymbolic)):
         y = [xNewBounds[i]]
-     
         if dict_options["Debug-Modus"]: print(i)
         
         #if checkVariableBound(xBounds[i], dict_options):
         if xBounds[i].delta == 0:
             xNewBounds[i] = [xBounds[i]]
-            continue
-
-        if variableSolved(y, dict_options) and y[0].delta > 1.0e-15:
+        accurate = variableSolved(y, dict_options)
+        notdegenerate = y[0].delta > 1.0e-15
+        if accurate and notdegenerate:
             dict_options_temp["relTol"] = 0.1 * y[0].delta
             dict_options_temp["absTol"] = 0.1 * y[0].delta
-       
+
         # if any newton method is active
         newtonMethods = {'newton', 'detNewton', '3PNewton'}
         if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:  
@@ -1228,29 +1232,30 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, functions[0], model, 0)
                     return output 
-
+        
         # if b_normal is active
         if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
                 f = functions[j]
+                
                 y = setOfIvSetIntersection([y, 
                                             reduceXIntervalByFunction(xBounds[f.glb_ID],
                                                                       f,
                                                                       f.glb_ID.index(i),
                                                                       dict_options_temp)]) 
-   
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, f, model, i)
                     return output    
-        
+                
                 if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-                    assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
-                    return output 
+                    #assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
+                    y = xBounds[f.glb_ID]
+                    #return output 
     
-                if variableSolved(y, dict_options): break
+                if variableSolved(y, dict_options_temp): break
                 else: xSolved = False 
 
-  
+        
         subBoxNo = subBoxNo * len(y) 
         xNewBounds[i] = y
         if not variableSolved(y, dict_options): xSolved = False
