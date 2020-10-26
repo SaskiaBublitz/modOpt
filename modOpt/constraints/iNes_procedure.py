@@ -1692,7 +1692,8 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds, dict_options):
 
     if dict_options["Affine_arithmetic"]: 
         fInterval = intersectWithAffineFunctionIntervals(xSymbolic, xBounds, [f], [fInterval])
-    return mpmath.mpi(str(fInterval[0]))
+        return mpmath.mpi(str(fInterval[0]))
+    return fInterval
         
         
 def intersectWithAffineFunctionIntervals(xSymbolic, xBounds, f, fIntervals):
@@ -1954,12 +1955,12 @@ def getReducedIntervalOfLinearFunction(a, i, xBounds, bi):
     Return:                  reduced x-Interval(s)   
     """        
     
-    if bool(0 in bi - a * xBounds[i]) == False: return [] # if this is the case, there is no solution in xBoundsi
+    if bool(0.0 in bi - a * xBounds[i]) == False: return [] # if this is the case, there is no solution in xBoundsi
 
-    if bool(0 in bi) and bool(0 in a):  # if this is the case, bi/aInterval would return [-inf, +inf]. Hence the approximation of x is already smaller
+    if bool(0.0 in bi) and bool(0.0 in mpmath.mpi(a)):  # if this is the case, bi/aInterval would return [-inf, +inf]. Hence the approximation of x is already smaller
                 return [xBounds[i]]
     else: 
-        return gaussSeidelOperator(a, bi, xBounds[i]) # bi/aInterval  
+        return gaussSeidelOperator(mpmath.mpi(a), bi, xBounds[i]) # bi/aInterval  
 
 
 def checkAndRemoveComplexPart(interval):
@@ -3164,8 +3165,9 @@ def solutionInFunctionRange(model, xBounds, dict_options):
     solutionInRange = True
     
     fIvLamb = lambdifyToMpmathIvComplex(model.xSymbolic, model.fSymbolic)
-    fInterval = numpy.array(fIvLamb(*xBounds)) 
-    fInterval = intersectWithAffineFunctionIntervals(model.xSymbolic, xBounds, model.fSymbolic, fInterval)
+    fInterval = numpy.array(fIvLamb(*xBounds))
+    if dict_options["Affine_arithmetic"]:
+        fInterval = intersectWithAffineFunctionIntervals(model.xSymbolic, xBounds, model.fSymbolic, fInterval)
     
     for f in fInterval:
         if not(f.a<=0+absTol and f.b>=0-absTol):
