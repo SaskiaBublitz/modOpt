@@ -86,7 +86,6 @@ def doIntervalNesting(res_solver, dict_options):
     
      
     for l in range(0, dict_options["redStepMax"]): 
-
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
@@ -96,6 +95,7 @@ def doIntervalNesting(res_solver, dict_options):
             output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options)
 
         xSolved = output["xSolved"]
+        xAlmostEqual = output["xAlmostEqual"]
 
               
         if output.__contains__("noSolution"):
@@ -104,9 +104,9 @@ def doIntervalNesting(res_solver, dict_options):
             res_solver["noSolution"] = output["noSolution"]
             break
         
-        elif xSolved.all():
+        elif xSolved.all() or xAlmostEqual.all():
             break
-        
+                
         else: 
             continue
         
