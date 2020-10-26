@@ -36,7 +36,13 @@ def main():
                     "Parallel Variables": bool(sys.argv[4]),
                     "Parallel b's": False,
                     "newton_method": str(sys.argv[3]),
+		    "InverseOrHybrid": str(sys.argv[8]), # 'Hybrid', 'both', 'None'
+                    "Affine_arithmetic": bool(sys.argv[7]),
+		    "combined_algorithm": False,
+        	    "hc_method": str(sys.argv[6]), # 'HC4', 'None'
                     "bc_method": str(sys.argv[2]),#'b_normal', 'b_tight', 'b_normal_newton', 'b_normal_detNewton', 'b_normal_3PNewton'
+                    "cut_Box": bool(sys.argv[9]),
+                    "split_Box": str(sys.argv[10]), # 'TearVar', 'Largester', 'forecastSplit'
                     "Debug-Modus": False,
                     "timer": True,
                     "analysis": True,
@@ -177,14 +183,14 @@ def getSymbolicFunctions(x, p):
 
 
    # Getting function values:
-    e0_p_LV_i2 = fun_84405(e0_T,e0_ApLV_i2,e0_BpLV_i2,e0_CpLV_i2)
-    e0_h_V_i1 = fun_84404(e0_T,e0_greek_DeltahhV_i1,e0_AhV_i1,e0_BhV_i1,e0_ChV_i1,e0_DhV_i1,e0_EhV_i1,e0_FhV_i1)
     e0_h_L_i1 = fun_84404(e0_T,e0_greek_DeltahhL_i1,e0_AhL_i1,e0_BhL_i1,e0_ChL_i1,e0_DhL_i1,e0_EhL_i1,e0_FhL_i1)
-    e0_h_F_i2 = fun_84404(e0_T_F,e0_greek_DeltahhL_i2,e0_AhL_i2,e0_BhL_i2,e0_ChL_i2,e0_DhL_i2,e0_EhL_i2,e0_FhL_i2)
-    e0_h_V_i2 = fun_84404(e0_T,e0_greek_DeltahhV_i2,e0_AhV_i2,e0_BhV_i2,e0_ChV_i2,e0_DhV_i2,e0_EhV_i2,e0_FhV_i2)
-    e0_p_LV_i1 = fun_84405(e0_T,e0_ApLV_i1,e0_BpLV_i1,e0_CpLV_i1)
     e0_h_F_i1 = fun_84404(e0_T_F,e0_greek_DeltahhL_i1,e0_AhL_i1,e0_BhL_i1,e0_ChL_i1,e0_DhL_i1,e0_EhL_i1,e0_FhL_i1)
+    e0_h_V_i2 = fun_84404(e0_T,e0_greek_DeltahhV_i2,e0_AhV_i2,e0_BhV_i2,e0_ChV_i2,e0_DhV_i2,e0_EhV_i2,e0_FhV_i2)
+    e0_p_LV_i2 = fun_84405(e0_T,e0_ApLV_i2,e0_BpLV_i2,e0_CpLV_i2)
+    e0_h_F_i2 = fun_84404(e0_T_F,e0_greek_DeltahhL_i2,e0_AhL_i2,e0_BhL_i2,e0_ChL_i2,e0_DhL_i2,e0_EhL_i2,e0_FhL_i2)
     e0_h_L_i2 = fun_84404(e0_T,e0_greek_DeltahhL_i2,e0_AhL_i2,e0_BhL_i2,e0_ChL_i2,e0_DhL_i2,e0_EhL_i2,e0_FhL_i2)
+    e0_p_LV_i1 = fun_84405(e0_T,e0_ApLV_i1,e0_BpLV_i1,e0_CpLV_i1)
+    e0_h_V_i1 = fun_84404(e0_T,e0_greek_DeltahhV_i1,e0_AhV_i1,e0_BhV_i1,e0_ChV_i1,e0_DhV_i1,e0_EhV_i1,e0_FhV_i1)
 
 
 
@@ -250,34 +256,34 @@ def getEquationsVariablesAndParameters(dict_options):
     dict_variables = {}
 
     # Iteration variable initializatio
-    x[0] = 1.1 	# e0_K_LV_i1
-    x[1] = 1.1 	# e0_h_V
-    x[2] = 1.1 	# e0_p
-    x[3] = 1.1 	# e0_x_i1
-    x[4] = 1.1 	# e0_x_i2
-    x[5] = 1.1 	# e0_K_LV_i2
-    x[6] = 1.1 	# e0_x_F_i2
-    x[7] = 1.1 	# e0_y_i1
-    x[8] = 1.1 	# e0_y_i2
-    x[9] = 1.1 	# e0_greek_alpha_L_i1
-    x[10] = 1.1 	# e0_greek_alpha_L_i2
-    x[11] = 1.1 	# e0_greek_gamma_L_i1
-    x[12] = 1.1 	# e0_greek_gamma_L_i2
-    x[13] = 1.1 	# e0_h_F
-    x[14] = 1.1 	# e0_L
-    x[15] = 1.1 	# e0_Q
-    x[16] = 1.1 	# e0_V
-    x[17] = 1.1 	# e0_HU_i1
-    x[18] = 1.1 	# e0_HU_i2
-    x[19] = 1.1 	# e0_HU_L
-    x[20] = 1.1 	# e0_HU_V
-    x[21] = 1.1 	# e0_U
-    x[22] = 1.1 	# e0_V_L
-    x[23] = 1.1 	# e0_V_V
-    x[24] = 1.1 	# e0_V_total
-    x[25] = 1.1 	# e0_A
-    x[26] = 1.1 	# e0_r_DH
-    x[27] = 1.1 	# e0_h_L
+    x[0] = 4.765042675000055 	# e0_K_LV_i1
+    x[1] = -258094.26993687975 	# e0_h_V
+    x[2] = 0.75 	# e0_p
+    x[3] = 0.08623918313240278 	# e0_x_i1
+    x[4] = 0.9137608168675972 	# e0_x_i2
+    x[5] = 0.6446617114959804 	# e0_K_LV_i2
+    x[6] = 0.8500000000000001 	# e0_x_F_i2
+    x[7] = 0.4109333879002062 	# e0_y_i1
+    x[8] = 0.5890666120997938 	# e0_y_i2
+    x[9] = 0.234816885021621 	# e0_greek_alpha_L_i1
+    x[10] = 0.7735346403527421 	# e0_greek_alpha_L_i2
+    x[11] = 3.2992389348994497 	# e0_greek_gamma_L_i1
+    x[12] = 1.0206509500593823 	# e0_greek_gamma_L_i2
+    x[13] = -279145.96188862144 	# e0_h_F
+    x[14] = 64.2902482563353 	# e0_L
+    x[15] = 140954.3206736957 	# e0_Q
+    x[16] = 15.70975174423166 	# e0_V
+    x[17] = 0.10587242913467494 	# e0_HU_i1
+    x[18] = 0.15494381305139918 	# e0_HU_i2
+    x[19] = 0.004021238596595202 	# e0_HU_L
+    x[20] = 0.2567950035558242 	# e0_HU_V
+    x[21] = -68165.68029483859 	# e0_U
+    x[22] = 8.675032358590718E-8 	# e0_V_L
+    x[23] = 0.010053003727326607 	# e0_V_V
+    x[24] = 0.010053096491488 	# e0_V_total
+    x[25] = 0.020106192982976 	# e0_A
+    x[26] = 0.32 	# e0_r_DH
+    x[27] = -282097.6153456678 	# e0_h_L
 
 
     # Constant parameter setting:
@@ -342,34 +348,34 @@ def getEquationsVariablesAndParameters(dict_options):
     fSymbolic = getSymbolicFunctions(xSymbolic, parameter)
 
     # Intial variable bounds:
-    xInitial[0] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_K_LV_i1
-    xInitial[1] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_h_V
-    xInitial[2] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_p
-    xInitial[3] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_x_i1
-    xInitial[4] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_x_i2
-    xInitial[5] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_K_LV_i2
-    xInitial[6] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_x_F_i2
-    xInitial[7] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_y_i1
-    xInitial[8] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_y_i2
-    xInitial[9] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_greek_alpha_L_i1
-    xInitial[10] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_greek_alpha_L_i2
-    xInitial[11] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_greek_gamma_L_i1
-    xInitial[12] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_greek_gamma_L_i2
-    xInitial[13] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_h_F
-    xInitial[14] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_L
-    xInitial[15] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_Q
-    xInitial[16] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_V
-    xInitial[17] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_HU_i1
-    xInitial[18] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_HU_i2
-    xInitial[19] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_HU_L
-    xInitial[20] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_HU_V
-    xInitial[21] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_U
-    xInitial[22] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_V_L
-    xInitial[23] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_V_V
-    xInitial[24] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_V_total
-    xInitial[25] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_A
-    xInitial[26] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_r_DH
-    xInitial[27] = mpmath.mpi(-1.0E9, 1.0E9)  	# e0_h_L
+    xInitial[0] = mpmath.mpi(4.765039628586259, 4.765045721413851)  	# e0_K_LV_i1
+    xInitial[1] = mpmath.mpi(-258094.36698106228, -258094.17289269718)  	# e0_h_V
+    xInitial[2] = mpmath.mpi(0.75, 0.75)  	# e0_p
+    xInitial[3] = mpmath.mpi(0.08623907649423744, 0.08623928977056813)  	# e0_x_i1
+    xInitial[4] = mpmath.mpi(0.913760710229432, 0.9137609235057627)  	# e0_x_i2
+    xInitial[5] = mpmath.mpi(0.6446616721648352, 0.6446617508271256)  	# e0_K_LV_i2
+    xInitial[6] = mpmath.mpi(0.8500000000000001, 0.8500000000000001)  	# e0_x_F_i2
+    xInitial[7] = mpmath.mpi(0.41093314264636815, 0.4109336331540443)  	# e0_y_i1
+    xInitial[8] = mpmath.mpi(0.5890664668459558, 0.5890667573536318)  	# e0_y_i2
+    xInitial[9] = mpmath.mpi(0.234816885021621, 0.234816885021621)  	# e0_greek_alpha_L_i1
+    xInitial[10] = mpmath.mpi(0.7735346403527421, 0.7735346403527421)  	# e0_greek_alpha_L_i2
+    xInitial[11] = mpmath.mpi(3.299236883033394, 3.2992409867655055)  	# e0_greek_gamma_L_i1
+    xInitial[12] = mpmath.mpi(1.0206508891418737, 1.020651010976891)  	# e0_greek_gamma_L_i2
+    xInitial[13] = mpmath.mpi(-279145.9618886215, -279145.9618886214)  	# e0_h_F
+    xInitial[14] = mpmath.mpi(64.29021172317461, 64.29028478949601)  	# e0_L
+    xInitial[15] = mpmath.mpi(140929.21645457848, 140979.42489281297)  	# e0_Q
+    xInitial[16] = mpmath.mpi(15.709715837241236, 15.709787651222083)  	# e0_V
+    xInitial[17] = mpmath.mpi(0.10587155649080934, 0.10587330177854054)  	# e0_HU_i1
+    xInitial[18] = mpmath.mpi(0.15494256910316406, 0.1549450569996343)  	# e0_HU_i2
+    xInitial[19] = mpmath.mpi(0.004021238596595201, 0.004021238596595202)  	# e0_HU_L
+    xInitial[20] = mpmath.mpi(0.2567930346090042, 0.2567969725026441)  	# e0_HU_V
+    xInitial[21] = mpmath.mpi(-68166.22155603062, -68165.13903364656)  	# e0_U
+    xInitial[22] = mpmath.mpi(8.67501304173479E-8, 8.675051675446647E-8)  	# e0_V_L
+    xInitial[23] = mpmath.mpi(0.0100529963982856, 0.010053011056367614)  	# e0_V_V
+    xInitial[24] = mpmath.mpi(0.010053096491488, 0.010053096491488)  	# e0_V_total
+    xInitial[25] = mpmath.mpi(0.020106192982976, 0.020106192982976)  	# e0_A
+    xInitial[26] = mpmath.mpi(0.32, 0.32)  	# e0_r_DH
+    xInitial[27] = mpmath.mpi(-282097.677662632, -282097.55302870355)  	# e0_h_L
 
 
     for i in range(0,len(x)):

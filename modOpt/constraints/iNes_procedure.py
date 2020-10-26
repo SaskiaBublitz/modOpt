@@ -284,7 +284,7 @@ def getBestSplit(xBounds,model, functions, dict_varId_fIds, boxNo, dict_options,
 
         # reduces first splitted box
         if dict_options["combined_algorithm"]:
-            output0 = reduceBoxCombined(numpy.array(splittedBox[0]), model, functions, dict_varId_fIds, dict_options)
+            output0 = reduceBoxCombined(numpy.array(splittedBox[0]), model, functions, dict_options)
         else:
             output0 = reduceBox(numpy.array(splittedBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
@@ -294,7 +294,7 @@ def getBestSplit(xBounds,model, functions, dict_varId_fIds, boxNo, dict_options,
         
         # reduces second splitted box
         if dict_options["combined_algorithm"]:
-            output1 = reduceBoxCombined(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, dict_options)
+            output1 = reduceBoxCombined(numpy.array(splittedBox[1]), model, functions, dict_options)
         else:
             output1 = reduceBox(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
