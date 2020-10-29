@@ -60,7 +60,7 @@ spyder_crash.log
 .coverage*
 Results_*/
 Tests/
-
+/modopt/tests/constraints/**/**/
 # git .orig files
 *.orig
 
