@@ -39,7 +39,7 @@ def reduceVariableBounds(model, options):
     res_solver["Model"] = copy.deepcopy(model)
     
     if options['timer'] == True: 
-        tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
+        tic = time.time() # time.clock() measures only CPU which is in parallelized programms not the time determining step 
         doIntervalNesting(res_solver, options)
         toc = time.time()
         t = toc - tic
@@ -50,12 +50,6 @@ def reduceVariableBounds(model, options):
         doIntervalNesting(res_solver, options)
         res_solver["time"] = []
         return res_solver
-
-
-def sort_fId_to_varIds(fId, varIds, dict_varId_fIds):
-    for varId in varIds:
-        if not varId in dict_varId_fIds: dict_varId_fIds[varId]=[fId]
-        else: dict_varId_fIds[varId].append(fId)
 
 
 def doIntervalNesting(res_solver, dict_options):
@@ -89,10 +83,10 @@ def doIntervalNesting(res_solver, dict_options):
         iterNo = l + 1
        
         if dict_options["Parallel Branches"]:
-            output = parallelization.reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options)
+            output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
         
         else: 
-            output = iNes_procedure.reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options)
+            output = iNes_procedure.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
 
         xSolved = output["xSolved"]
         xAlmostEqual = output["xAlmostEqual"]
@@ -117,12 +111,30 @@ def doIntervalNesting(res_solver, dict_options):
         if iNes_procedure.solutionInFunctionRange(model, xBounds, dict_options):
             validXBounds.append(xBounds)
     
-    #newModel.setXBounds(model.xBounds)
     newModel.setXBounds(validXBounds)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
     
     return True
+
+
+def sort_fId_to_varIds(fId, varIds, dict_varId_fIds):
+    """ writes current function's global id to a dictionary whose keys equal
+    the global id's of the variables. Hence, all variables that occur in the 
+    current function get an additional value (fId).
+    
+    Args:
+        :fId:               integer with global id of current function
+        :varIds:            list with global id of variables that occur in the 
+                            current function
+        :dict_varId_fIds:   dictionary that stores global id of current function 
+                            (value) to global id of the variables (key(s))
+
+    """
+    
+    for varId in varIds:
+        if not varId in dict_varId_fIds: dict_varId_fIds[varId]=[fId]
+        else: dict_varId_fIds[varId].append(fId)
 
   
 def nestBlocks(model):
