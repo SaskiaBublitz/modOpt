@@ -98,8 +98,12 @@ def doIntervalNesting(res_solver, dict_options):
             res_solver["noSolution"] = output["noSolution"]
             break
         
-        elif xSolved.all() or xAlmostEqual.all():
+        
+        elif xSolved.all():
             break
+        
+        elif xAlmostEqual.all():
+            dict_options["maxBoxNo"] +=1
                 
         else: 
             continue

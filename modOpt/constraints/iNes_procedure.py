@@ -21,7 +21,8 @@ import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivm
 
 __all__ = ['reduceBoxes', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
            'checkWidths', 'getPrecision', 'getNewtonIntervalSystem', 'saveFailedSystem', 
-            'variableSolved', 'contractBox', 'reduceConsistentBox','updateSetOfBoxes']
+            'variableSolved', 'contractBox', 'reduceConsistentBox','updateSetOfBoxes',
+            'doHC4', 'checkIntervalAccuracy', 'doIntervalNewton', 'doBoxReduction']
 
 """
 ***************************************************
@@ -77,9 +78,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         updateSetOfBoxes(allBoxes, xBounds, output, boxNo, k, dict_options)
         xAlmostEqual[k] = output["xAlmostEqual"]
         xSolved[k] = output["xSolved"]
-        
-
-        
+                
     if allBoxes == []: 
         results["noSolution"] = saveFailedIntervalSet
       
@@ -1284,93 +1283,169 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
                              the procedure failed.
                         
     """  
-
     subBoxNo = 1
     output = {}            
     xNewBounds = copy.deepcopy(xBounds)
     xUnchanged = True
     xSolved = True
     dict_options_temp = copy.deepcopy(dict_options)
-
+    newtonMethods = {'newton', 'detNewton', '3PNewton'}
+    
     # if HC4 is active
     if dict_options['hc_method']=='HC4':
-        HC4_IvV = HC4(model, xBounds)
-        if HC4_IvV.is_empty():
-            saveFailedSystem(output, functions[0], model, 0)
-            return output 
-        else:
-            for i in range(0, len(model.xSymbolic)):
-                
-                xNewBounds[i] = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
-                if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-           
+        output, empty = doHC4(model, functions, xBounds, xNewBounds, output)
+        if empty: return output
+                   
     for i in range(0, len(model.xSymbolic)):
         y = [xNewBounds[i]]
         if dict_options["Debug-Modus"]: print(i)
+        checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
         
-        #if checkVariableBound(xBounds[i], dict_options):
-        if xBounds[i].delta == 0:
-            xNewBounds[i] = [xBounds[i]]
-        accurate = variableSolved(y, dict_options)
-        notdegenerate = y[0].delta > 1.0e-15
-        if accurate and notdegenerate:
-            dict_options_temp["relTol"] = 0.1 * y[0].delta
-            dict_options_temp["absTol"] = 0.1 * y[0].delta
-
-        # if any newton method is active
-        newtonMethods = {'newton', 'detNewton', '3PNewton'}
-        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:  
-            # if hybrid is not active
-            if dict_options['InverseOrHybrid']!='Hybrid':     
-                y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
-                if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-            # if hybrid or both are active
-            if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options_temp):  
-                y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
-                if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-        
+        # if any newton method is active       
+        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:
+            y = doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options_temp)
+            if y == [] or y ==[[]]: 
+                saveFailedSystem(output, functions[0], model, 0)
+                return output
+                    
         # if b_normal is active
         if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
-                f = functions[j]
                 
-                y = setOfIvSetIntersection([y, 
-                                            reduceXIntervalByFunction(xBounds[f.glb_ID],
-                                                                      f,
-                                                                      f.glb_ID.index(i),
-                                                                      dict_options_temp)]) 
+                y = doBoxReduction(functions[j], xBounds, y, i, j, 
+                                   dict_options_temp)
                 if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, f, model, i)
-                    return output    
-                
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output
+
                 if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-                    #assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
-                    y = xBounds[f.glb_ID]
-                    #return output 
+                    y = xBounds[functions[j].glb_ID]
     
                 if variableSolved(y, dict_options_temp): break
                 else: xSolved = False 
 
-        
+        # Update quantities
         subBoxNo = subBoxNo * len(y) 
         xNewBounds[i] = y
         if not variableSolved(y, dict_options): xSolved = False
-        xUnchanged = checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
-                                       {"absTol":0.001, 'relTol':0.001})
-        
+        xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
+                                       {"absTol":0.001, 'relTol':0.001})   
         dict_options_temp["relTol"] = dict_options["relTol"]
         dict_options_temp["absTol"] = dict_options["absTol"]  
-
+        
+    # Prepare output dictionary for return
     output["xAlmostEqual"] = xUnchanged
     output["xSolved"] = xSolved       
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
     return output
+
+    
+def doBoxReduction(f, xBounds, y, i, dict_options):
+    """ excecutes box consistency method for a variable with global index i in
+    function f and intersects is with its former interval. 
+    
+    Args:
+        :f:             instance of type function
+        :xBounds:       numpy array with currently reduced box
+        :y:             currently reduced interval in mpmath.mpi formate
+        :i:             global index of the current variable
+        :dict_options:  dictionary with user-settings such as tolerances
+    
+    Returns:
+        :y:             current interval after reduction in mpmath.mpi formate
+
+    """
+    y = setOfIvSetIntersection([y, reduceXIntervalByFunction(xBounds[f.glb_ID],
+                                                          f,
+                                                          f.glb_ID.index(i),
+                                                          dict_options)])         
+    return y
+
+
+def doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options):
+    """ excecutes box consistency method for a variable with global index i in
+    function f and intersects is with its former interval. 
+    
+    Args:
+        :newtonSystemDic:   dictionary with system's information for Newton
+        :xBounds:           numpy array with currently reduced box
+        :y:                 currently reduced interval in mpmath.mpi formate
+        :i:                 global index of the current variable
+        :dict_options:      dictionary with user-settings such as tolerances
+    
+    Returns:
+        :y:             current interval after reduction in mpmath.mpi formate
+
+    """    
+    if dict_options['InverseOrHybrid']!='Hybrid':     
+        y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options)])
+
+    # if hybrid or both are active
+    if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options):  
+        y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options)])
+        
+    return y
+     
+
+def doHC4(model, functions, xBounds, xNewBounds, output):
+    """ excecutes HC4revise hull consistency method and returns output with
+    failure information in case of an empty box. Otherwise the initial output
+    dictionary is returned.
+    
+    Args:
+        :model:         instance of type model
+        :functions:     list with instances of type function
+        :xBounds:       numpy array with currently reduced box
+        :xNewBounds:    numpy array for reduced box
+        :output:        dictionary that stores information of current box reduction
+    
+    Returns:
+        :output:        unchanged dictionary (successful reduction) or dictionary
+                        with failure outpot (unsuccessful reduction)
+        :empty:         boolean, that is true for empty boxes
+
+    """
+    empty = False
+    HC4_IvV = HC4(model, xBounds)
+    if HC4_IvV.is_empty():
+        saveFailedSystem(output, functions[0], model, 0)
+        empty = True
+    else:
+        for i in range(0, len(model.xSymbolic)):
+                xNewBounds[i] = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
+                if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    empty = True
+                    break            
+    return output, empty
+
+       
+def checkIntervalAccuracy(xNewBounds, i, dict_options):
+    """ checks the accuracy of the current box before reduction creates a nested 
+    box for all intervals that are already degenerate. If some variable's 
+    interval widths are degenerate in the current tolerance but they are not below
+    1e-15 the tolerance for the width is stepwise decreased until only widths
+    below 1e-15 are degenerate. This is sometimes necessary to decrease "solved"
+    variables further on as other variables might be highly sensitive to their value
+    and their interval would otherwise be not further reduced. Splitting would not
+    help in this case as all sub-intervals of the sensitive variable would still be 
+    solutions.
+    
+    Args:
+    :xNewBounds:    numpy. array for new reduced intervals
+    :i:             integer with current variable's global index
+    :dict_options:  dictionary with current relative and absolute tolerance of 
+                    variable
+    """
+    
+    if xNewBounds[i].delta == 0:
+        xNewBounds[i] = [xNewBounds[i]]
+    else:
+        accurate = variableSolved([xNewBounds[i]], dict_options)
+        notdegenerate = xNewBounds[i].delta > 1.0e-15
+        if accurate and notdegenerate:
+            dict_options["relTol"] = 0.1 * xNewBounds[i][0].delta
+            dict_options["absTol"] = 0.1 * xNewBounds[i][0].delta    
 
 
 def variableSolved(BoundsList, dict_options):

@@ -184,7 +184,6 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
                                 analysis.
             
     """
-    #dim = len(model.xBounds)
     output = {}
     CPU_count = dict_options["CPU count Branches"]
     jobs = []
@@ -193,7 +192,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
     done = numpy.zeros(len(model.xBounds))
     started = numpy.zeros(len(model.xBounds))
     output["xSolved"]  = False * numpy.ones(len(model.xBounds), dtype=bool)
-    output["xAlmostEqual"] = True * numpy.ones(len(model.xBounds), dtype=bool)   
+    output["xAlmostEqual"] = False * numpy.ones(len(model.xBounds), dtype=bool)   
     
     for k in range(0,len(model.xBounds)):  
         p = Process(target=reduceBoxes_Worker, args=(k, model,
@@ -236,7 +235,7 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
     allBoxes = []
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
     boxNo = len(model.xBounds)
-    xBounds = model.xBounds[k] #numpy.array(model.xBounds[k])
+    xBounds = model.xBounds[k]
     
     
     if dict_options['newton_method'] in newtonMethods:
@@ -353,17 +352,15 @@ def getReducedXBoundsResults(results, model, maxBoxNo):
     xAlmostEqual = False * numpy.ones(noOfxBounds, dtype=bool) 
     xSolved = False * numpy.ones(noOfxBounds, dtype=bool) 
     newXBounds = []
-    
+        
     for k in range(0, noOfxBounds):
-        if noOfxBounds < 1: return [], [], []        
+        if noOfxBounds < 1: return [], [], []             
         if results['%d' %k][0] != []: 
             curNewXBounds = results['%d' %k][0] # [[[a1], [b1], [c1]], [[a2], [b2], [c2]]]
             boxNo = len(newXBounds) + len(curNewXBounds) + (noOfxBounds - (k+1))
             if boxNo <= maxBoxNo:
                 for curNewXBound in curNewXBounds:
-                
                     newXBounds.append(numpy.array(convertListToMpi(curNewXBound), dtype=object))
-                
                 xAlmostEqual[k] = (results['%d' %k][1])
                 xSolved[k] = (results['%d' %k][2])   
             else:
@@ -404,17 +401,9 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     xSolved = []
     
     if dict_options['hc_method']=='HC4':
-        HC4_IvV = iNes_procedure.HC4(model, xBounds)
-        if HC4_IvV.is_empty():
-            iNes_procedure.saveFailedSystem(output, functions[0], model, 0)
-            return output 
-        else:
-            for i in range(0, len(model.xSymbolic)):
-                xNewBounds[i] = iNes_procedure.ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],HC4_IvV[i][1]))
-                
-                if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
-                    iNes_procedure.saveFailedSystem(output, functions[0], model, 0)
-                    return output    
+        output, empty = iNes_procedure.doHC4(model, functions, xBounds, xNewBounds, output)
+        if empty: return output
+          
     jobs = []
     manager = Manager()
     results = manager.dict()
@@ -473,69 +462,41 @@ def reduceBox_Worker(xBounds, xNewBounds, functions, i, dict_varId_fIds, dict_op
         :True:                  If method finishes regulary
                                 
     """
+
     xUnchanged = True
     xSolved = True
-    y = [xNewBounds[i]]
-    
+    y = [xNewBounds[i]]   
     dict_options_temp = copy.deepcopy(dict_options)
-    if dict_options["Debug-Modus"]: print(i)
-        
-    #if iNes_procedure.checkVariableBound(xBounds[i], dict_options): #
-    
-    if xNewBounds[i].delta == 0:
-        results['%d' % i] = (convertMpiToList([xNewBounds[i]]),[], True, True)
-        return True
-    
-    accurate = iNes_procedure.variableSolved([xNewBounds[i]], dict_options)
-    notDegenerate = y[0].delta > 1.0e-15
-    if accurate and notDegenerate:
-            dict_options_temp["relTol"] = 0.1 * y[0].delta
-            dict_options_temp["absTol"] = 0.1 * y[0].delta
-            
-
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
-    if not iNes_procedure.variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:   
-        if dict_options['InverseOrHybrid']!='Hybrid':     
-            y = iNes_procedure.setOfIvSetIntersection([y, iNes_procedure.NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
-            if y == [] or y ==[[]]: 
-                j=dict_varId_fIds[i][0]
-                results['%d' % i] = ([], FailedSystem(functions[j].f_sym, functions[j].x_sym[functions[j].glb_ID.index(i)]), False, False)            
-                return True 
-        if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not iNes_procedure.variableSolved(y, dict_options_temp):  
-            y = iNes_procedure.setOfIvSetIntersection([y, iNes_procedure.HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
-            
-            if y == [] or y ==[[]]: 
-                j=dict_varId_fIds[i][0]
-                results['%d' % i] = ([], FailedSystem(functions[j].f_sym, functions[j].x_sym[functions[j].glb_ID.index(i)]), False, False)  
-                return True  
+    
+    if dict_options["Debug-Modus"]: print(i)
+    iNes_procedure.checkIntervalAccuracy(xNewBounds, i, dict_options_temp) 
+
+    if not iNes_procedure.variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods: 
+        y = iNes_procedure.doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options_temp)
+                    
+        if y == [] or y ==[[]]: 
+            j=dict_varId_fIds[i][0]
+            results['%d' % i] = ([], FailedSystem(functions[j].f_sym, functions[j].x_sym[functions[j].glb_ID.index(i)]), 
+                                 False, False)  
+            return True  
            
-            
     if not iNes_procedure.variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
         for j in dict_varId_fIds[i]:
-                f = functions[j]
-
-                y = iNes_procedure.setOfIvSetIntersection([y, 
-                                            iNes_procedure.reduceXIntervalByFunction(xBounds[f.glb_ID],
-                                                                      f,
-                                                                      f.glb_ID.index(i),
-                                                                      dict_options_temp)])      
-                
-                if y == [] or y ==[[]]: 
-                        results['%d' % i] = ([], FailedSystem(f.f_sym, f.x_sym[f.glb_ID.index(i)]), False, False)
-                        
-                        return True               
+            f = functions[j]
+            y = iNes_procedure.doBoxReduction(f, xBounds, y, i, dict_options_temp)
+                    
+            if y == [] or y ==[[]]: 
+                results['%d' % i] = ([], FailedSystem(f.f_sym, f.x_sym[f.glb_ID.index(i)]), 
+                                     False, False)
+                return True      
+    
+    # Update quantities        
     if not iNes_procedure.variableSolved(y, dict_options): xSolved = False 
-
-    
-            #if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-            #    assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
-            #    return output
-    
     xNewBounds[i] = y
     xUnchanged = iNes_procedure.checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
                                        dict_options_temp)    
     results['%d' % i] = (convertMpiToList(xNewBounds[i]),[], xUnchanged, xSolved)
-
     return True
 
     
