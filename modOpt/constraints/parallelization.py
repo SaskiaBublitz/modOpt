@@ -12,7 +12,7 @@ from multiprocessing import Manager, Process #cpu_count
 from modOpt.constraints.FailedSystem import FailedSystem
 
 __all__ = ['reduceBoxes', 'reduceBox', 'get_tight_bBounds',
-           'reduceXBounds_byFunction']
+           'reduceXBounds_byFunction', 'convertMpiToList']
 
 """
 ***************************************************

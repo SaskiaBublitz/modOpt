@@ -9,7 +9,7 @@ import time
 import copy
 import sympy
 import numpy
-from modOpt.constraints import iNes_procedure, parallelization 
+from modOpt.constraints import iNes_procedure, parallelization, update
 from modOpt.constraints.function import Function
 
 """
@@ -66,7 +66,7 @@ def doIntervalNesting(res_solver, dict_options):
     
     model = res_solver["Model"]
     #dict_options["maxBoxNo"] =  int((len(model.xBounds[0]))**0.5)
-    iterNo = 0
+    #iterNo = 0
     dict_options["tear_id"] = 0
     newModel = copy.deepcopy(model)
     functions = []
@@ -79,8 +79,7 @@ def doIntervalNesting(res_solver, dict_options):
         sort_fId_to_varIds(i, functions[i].glb_ID, dict_varId_fIds)
     
      
-    for l in range(0, dict_options["redStepMax"]): 
-        iterNo = l + 1
+    for iterNo in range(1, dict_options["redStepMax"]+1): 
 
         if dict_options["Parallel Branches"]:
             output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
@@ -97,9 +96,10 @@ def doIntervalNesting(res_solver, dict_options):
             newModel.failed = True
             res_solver["noSolution"] = output["noSolution"]
             break
+
+        update.storeNewBoxesInNPZ(dict_options["fileName"]+".npz", model, iterNo)
         
-        
-        elif xSolved.all():
+        if xSolved.all():
             break
         
         elif xAlmostEqual.all():
@@ -116,6 +116,7 @@ def doIntervalNesting(res_solver, dict_options):
             validXBounds.append(xBounds)
     
     newModel.setXBounds(validXBounds)
+ 
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
     
