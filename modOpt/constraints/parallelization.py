@@ -203,12 +203,18 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
     # TODO: Check current boxNo = len(newXBounds) + (nl - (k+1))
     
     startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
-    if results.__contains__("tear_id"): dict_options["tear_id"] = results["tear_id"]
+    #if results.__contains__("tear_id"): dict_options["tear_id"] = results["tear_id"]
     
-    output["newXBounds"], output["xAlmostEqual"], output["xSolved"]  = getReducedXBoundsResults(results, model, dict_options["maxBoxNo"])
+    output["newXBounds"], output["xAlmostEqual"], output["xSolved"], tearVarIds  = getReducedXBoundsResults(results, model, dict_options["maxBoxNo"])
+    
+    if tearVarIds != []:
+        for curId in tearVarIds:
+            if curId != dict_options["tear_id"]:
+                dict_options["tear_id"] = curId
+                break
   
     if output["newXBounds"] == []:
-        output["noSolution"] = results["noSolution"]
+        output["noSolution"] = results["0"][1]
     else:
         model.xBounds = output["newXBounds"] 
     return output
@@ -305,7 +311,7 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
         results['%d' %k] = ([], output["noSolution"])
     else:
                  
-        results['%d' %k] = (allBoxes, output["xAlmostEqual"], output["xSolved"])
+        results['%d' %k] = (allBoxes, output["xAlmostEqual"], output["xSolved"],dict_options["tear_id"])
 
     return True
 
@@ -352,9 +358,10 @@ def getReducedXBoundsResults(results, model, maxBoxNo):
     xAlmostEqual = False * numpy.ones(noOfxBounds, dtype=bool) 
     xSolved = False * numpy.ones(noOfxBounds, dtype=bool) 
     newXBounds = []
-        
+    tearVarIds = []
+    
     for k in range(0, noOfxBounds):
-        if noOfxBounds < 1: return [], [], []             
+        if noOfxBounds < 1: return [], [], [], []             
         if results['%d' %k][0] != []: 
             curNewXBounds = results['%d' %k][0] # [[[a1], [b1], [c1]], [[a2], [b2], [c2]]]
             boxNo = len(newXBounds) + len(curNewXBounds) + (noOfxBounds - (k+1))
@@ -363,6 +370,7 @@ def getReducedXBoundsResults(results, model, maxBoxNo):
                     newXBounds.append(numpy.array(convertListToMpi(curNewXBound), dtype=object))
                 xAlmostEqual[k] = (results['%d' %k][1])
                 xSolved[k] = (results['%d' %k][2])   
+                tearVarIds.append(results['%d' %k][3])
             else:
                 newXBounds.append(model.xBounds[k])
                 xAlmostEqual[k] = (True)
@@ -372,7 +380,7 @@ def getReducedXBoundsResults(results, model, maxBoxNo):
             xAlmostEqual[k] = (False)
             xSolved[k] = (False) 
             
-    return newXBounds, xAlmostEqual, xSolved
+    return newXBounds, xAlmostEqual, xSolved, tearVarIds
     
 
 def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic): #boundsAlmostEqual):
