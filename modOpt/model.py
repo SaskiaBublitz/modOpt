@@ -93,6 +93,7 @@ class Model:
         self.tearVarsID=[]
         self.initialxBounds = [BOUNDS]
         self.VarFrequency = []
+        self.FoundSolutions = []
 
 
     def getBoundsOfPermutedModel(self, xBounds, xSymbolic, parameter):
