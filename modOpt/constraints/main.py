@@ -9,7 +9,8 @@ import time
 import copy
 import sympy
 import numpy
-from modOpt.constraints import iNes_procedure, parallelization, update
+from modOpt import storage
+from modOpt.constraints import iNes_procedure, parallelization
 from modOpt.constraints.function import Function
 
 """
@@ -68,6 +69,7 @@ def doIntervalNesting(res_solver, dict_options):
     #dict_options["maxBoxNo"] =  int((len(model.xBounds[0]))**0.5)
     #iterNo = 0
     dict_options["tear_id"] = 0
+    npzFileName = dict_options["fileName"] + "_r" + str(dict_options["redStepMax"]) + "_boxes.npz"
     newModel = copy.deepcopy(model)
     functions = []
     dict_varId_fIds = {}
@@ -97,7 +99,7 @@ def doIntervalNesting(res_solver, dict_options):
             res_solver["noSolution"] = output["noSolution"]
             break
 
-        update.storeNewBoxesInNPZ(dict_options["fileName"]+".npz", model, iterNo)
+        storage.storeNewBoxesInNPZ(npzFileName, model, iterNo)
         
         if xSolved.all():
             break

@@ -4,44 +4,14 @@ Import packages
 ***************************************************
 """
 import mpmath
-from modOpt.constraints import parallelization
-import numpy
+
 """
 ***************************************************
 Update directories
 ***************************************************
 """
 
-__all__ = ['updateDictToModel', 'storeNewBoxesInNPZ', 'get_entry_from_npz_dict']
-
-
-
-def storeNewBoxesInNPZ(dict_name, model, iterNo):
-    newBoxes = model.xBounds
-    listNewBoxes = []
-    for box in newBoxes:
-        listNewBoxes.append(numpy.array(parallelization.convertMpiToList(box)))
-    if iterNo ==1: numpy.savez_compressed(dict_name, numpy.array(listNewBoxes))
-    else: append_npz_dict(dict_name, numpy.array(listNewBoxes))
-    
-    
-def append_npz_dict(dict_name, array):
-    arrays = load_npz_dict(dict_name)
-    arrays.append(array)
-    numpy.savez_compressed(dict_name, *arrays)
-
-    
-def load_npz_dict(dict_name):
-    arrays = []
-    dict_data = numpy.load(dict_name)
-    for key in dict_data.keys():
-       arrays.append(dict_data[key])
-    return arrays
-
-
-def get_entry_from_npz_dict(dict_name, position):
-    return load_npz_dict(dict_name)[position]
-
+__all__ = ['updateDictToModel']
 
 def updateDictToModel(dict_variables, res_solver):
     """ updates variable dictionary to current model values

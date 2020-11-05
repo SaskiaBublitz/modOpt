@@ -250,60 +250,13 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
         newtonSystemDic = {}
 
     output = iNes_procedure.contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-            
-    # if dict_options["combined_algorithm"]==True:
-    #     # if combined_algorithm is True, all other choices for box_reduction is neglected
-    #     output = iNes_procedure.reduceBoxCombined(xBounds, model, functions, dict_options)
-    # else:
-    #     if not dict_options["Parallel Variables"]:
-    #         output = iNes_procedure.reduceBox(xBounds, model, functions, 
-    #                                               dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-    #     else: 
-
-    #         output = reduceBox(xBounds, model, functions, dict_varId_fIds, 
-    #                                boxNo, dict_options, newtonSystemDic)         
-    #xNewBounds = output["xNewBounds"]
- 
+             
     if output["xAlmostEqual"] and not output["xSolved"]: 
         output = iNes_procedure.reduceConsistentBox(output, model, functions, 
                                                     dict_options, k, 
                                                     dict_varId_fIds, 
                                                     newtonSystemDic, boxNo)    
-        print("This is the length of the new xBounds after splitting: ", len(output["xNewBounds"]))    
-    # if output["xAlmostEqual"] and not output["xSolved"]:
-    #     possibleCutOffs = False
-    #     # if cut_Box is chosen,parts of the box are now tried to cut off 
-    #     if dict_options["cut_Box"]:
-    #         xNewBounds, possibleCutOffs = iNes_procedure.cutOffBox(model, xNewBounds, dict_options)
-    #     # if cut_Box was successful,the box is now tried to be reduced again
-    #     if possibleCutOffs: 
-    #         if dict_options["combined_algorithm"]==True:
-    #            output = iNes_procedure.reduceBoxCombined(numpy.array(xNewBounds[0]), model, functions, dict_options)
-    #         else:
-    #            output = iNes_procedure.reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-    #         xNewBounds = output["xNewBounds"]
-
-    #     # if cut_Box was not successful or it didn't help to reduce the box, then the box is now splitted
-    #     if not possibleCutOffs or output["xAlmostEqual"]:
-    #         boxNo_split = dict_options["maxBoxNo"] - boxNo
-
-    #         if boxNo_split > 0:
-    #             if dict_options["split_Box"]=="TearVar": 
-    #                 # splits box by tear variables  
-    #                 if model.tearVarsID == []: iNes_procedure.getTearVariables(model)
-                                       
-    #                 xNewBounds, results["tear_id"] = iNes_procedure.splitTearVars(model.tearVarsID, 
-    #                                    numpy.array(xNewBounds[0]), boxNo_split, dict_options)
-    #             elif dict_options["split_Box"]=="LargestDer":  
-    #                 #splits box by largest derivative
-    #                 splitVar = iNes_procedure.getTearVariableLargestDerivative(model, k)
-    #                 xNewBounds, results["tear_id"] = iNes_procedure.splitTearVars(splitVar, 
-    #                                    numpy.array(xNewBounds[0]), boxNo_split, dict_options)
-    #             elif dict_options["split_Box"]=="forecastSplit": 
-    #                 # splits box by best variable
-    #                 xNewBounds = iNes_procedure.getBestSplit(xNewBounds, model, functions, dict_options)
-    #             output["xAlmostEqual"] = False
-
+   
     for box in output["xNewBounds"]:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
 

@@ -17,7 +17,7 @@ import time
 Main that starts solving procedure in decomposed NLE
 ****************************************************
 """
-__all__ = ['solveSamples', 'solveSystem_NLE']
+__all__ = ['solveSamples', 'solveSystem_NLE', 'get_samples_with_n_lowest_residuals']
 
 def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_options):
     """ solve samples from array sampleData and returns number of converged samples. The converged
