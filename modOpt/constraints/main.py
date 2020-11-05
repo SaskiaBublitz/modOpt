@@ -81,7 +81,7 @@ def doIntervalNesting(res_solver, dict_options):
      
     for l in range(0, dict_options["redStepMax"]): 
         iterNo = l + 1
-       
+
         if dict_options["Parallel Branches"]:
             output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
         

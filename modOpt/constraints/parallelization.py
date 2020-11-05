@@ -269,7 +269,7 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
                                                     dict_options, k, 
                                                     dict_varId_fIds, 
                                                     newtonSystemDic, boxNo)    
- 
+        print("This is the length of the new xBounds after splitting: ", len(output["xNewBounds"]))    
     # if output["xAlmostEqual"] and not output["xSolved"]:
     #     possibleCutOffs = False
     #     # if cut_Box is chosen,parts of the box are now tried to cut off 

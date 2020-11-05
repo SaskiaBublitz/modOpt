@@ -64,11 +64,11 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)  
 
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-
+        
         if output["xAlmostEqual"] and not output["xSolved"]:     
             output = reduceConsistentBox(output, model, functions, dict_options, 
                                          k, dict_varId_fIds, newtonSystemDic, boxNo)
-                    
+                
         if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             boxNo = len(allBoxes) + (nl - (k+1))
@@ -140,7 +140,7 @@ def contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options,
         if dict_options["combined_algorithm"]==True:
             # if combined_algorithm is True, all other choices for box_reduction are neglected
             output = reduceBoxCombined(xBounds, model, functions, dict_options)
-        else:             
+        else:
             output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
     else:
         output = parallelization.reduceBox(xBounds, model, functions, 
@@ -1312,7 +1312,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
         if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
                 
-                y = doBoxReduction(functions[j], xBounds, y, i, j, 
+                y = doBoxReduction(functions[j], xBounds, y, i, 
                                    dict_options_temp)
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, functions[0], model, 0)
@@ -1339,7 +1339,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
     return output
 
-    
+
 def doBoxReduction(f, xBounds, y, i, dict_options):
     """ excecutes box consistency method for a variable with global index i in
     function f and intersects is with its former interval. 
@@ -1407,6 +1407,7 @@ def doHC4(model, functions, xBounds, xNewBounds, output):
     """
     empty = False
     HC4_IvV = HC4(model, xBounds)
+
     if HC4_IvV.is_empty():
         saveFailedSystem(output, functions[0], model, 0)
         empty = True
