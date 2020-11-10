@@ -26,12 +26,22 @@ def doSampling(model, dict_options, sampling_options):
     
     for boxID in range(0, len(model.xBounds)):
     
-        iterVars = moi.VarListType.VarListType(performSampling=True, 
-                                       numberOfSamples=sampling_options["number of samples"], 
-                                       samplingMethod=sampling_options["sampling method"], 
-                                       model=model, boxID=boxID)
-        iterVarsSampler = moi.SamplingMethods(samplingMethod=iterVars.samplingMethod, numberOfSamples=iterVars.numberOfSamples, inputSpace=iterVars)
-        iterVars.sampleData = iterVarsSampler.getSamples()
+        #iterVars = moi.VarListType(performSampling=True, 
+        #                               numberOfSamples=sampling_options["number of samples"],
+        #                               samplingMethod=sampling_options["sampling method"], 
+        #                               model=model, boxID=boxID)
+        iterVars = moi.VariableList(performSampling=True, 
+                                      numberOfSamples=sampling_options["number of samples"],
+                                      samplingMethod=sampling_options["sampling method"], 
+                                      samplingDistribution='uniform',
+                                      seed=None,
+                                      distributionParams=(),
+                                      model=model, 
+                                      boxID=boxID)
+        #iterVarsSampler = moi.Variable_Sampling(samplingMethod=iterVars.samplingMethod, numberOfSamples=iterVars.numberOfSamples, seed=0, inputSpace=iterVars)
+        iterVarsSampler = moi.Variable_Sampling(iterVars, number_of_samples=iterVars.numberOfSamples)
+
+        iterVars.sampleData = numpy.array(iterVarsSampler.create_samples())
         sampleNo = sampling_options['sampleNo_min_resiudal']   
         sampleData = moi.get_samples_with_n_lowest_residuals(model, sampleNo, iterVars.sampleData)
         mostge.store_list_in_npz_dict(fileName, sampleData, boxID) 

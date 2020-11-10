@@ -17,9 +17,9 @@ import time
 Main that starts solving procedure in decomposed NLE
 ****************************************************
 """
-__all__ = ['solveSamples', 'solveSystem_NLE', 'get_samples_with_n_lowest_residuals']
+__all__ = ['solveSamples', 'solveSystem_NLE']
 
-def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_options):
+def solveSamples(model, initValues, dict_equations, dict_variables, solv_options, dict_options):
     """ solve samples from array sampleData and returns number of converged samples. The converged
     samples and their solutions are written into text files.
 
@@ -37,64 +37,25 @@ def solveSamples(model, sampleData, dict_equations, dict_variables, dict_options
         :converged:         integer with number of converged runs
        
     """
+    res_multistart = {}
+    #t = -1
+    #if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
     
-    t = -1
-    sampleNo = sampling_options['sampleNo_min_resiudal']
-    if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
-    
-    if len(sampleData) > sampleNo: 
-        sampleData = get_samples_with_n_lowest_residuals(model, sampleNo, sampleData)
-        for i in range(0, len(sampleData)):
-            model.stateVarValues = [sampleData[i]]
-            results.writeSampleWIthMinResidual(model, i, dict_options, sampling_options, solv_options)
-
-    if not solv_options["Parallel"]:
-        converged = 0
+    #if not solv_options["Parallel"]:
                 
-        for k in range(0, len(sampleData)):
-            curSample = sampleData[k]
-            model.stateVarValues = [curSample]
-            initial_sample = copy.deepcopy(model)
-            res_solver = solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
+    for k in range(0, len(initValues)):
+        model.stateVarValues = [initValues[k]]
+        res_solver = solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
+        res_multistart['%d' %k] = res_solver
 
-            # Results:  
-            if not model.failed:
-                converged +=1
-                results.writeConvergedSample(initial_sample, converged, dict_options, res_solver, sampling_options, solv_options)
-    else:
-        converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
-                                                         dict_variables, dict_options, solv_options, sampling_options)
-    if dict_options['timer'] == True: 
-        toc = time.time() 
-        t = toc - tic
-    return converged, t
+    #else:
+        #converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
+        #                                                 dict_variables, dict_options, solv_options, sampling_options)
+    #if dict_options['timer'] == True: 
+    #    toc = time.time() 
+    #    t = toc - tic
+    return res_multistart
 
-
-def get_samples_with_n_lowest_residuals(model, n, sampleData):
-    """ tests the first n samples that have the lowest function residuals from 
-    sampleData
-    
-    Args:
-        :model:             instance of class model
-        :n:                 integer with real number of tested samples
-        :sampleData:        numpy array sampling points 
-    
-    """
-    
-    residuals = []
-    
-    # Calc residuals:
-    for curSample in sampleData:
-        residuals.append(sum(abs(numpy.array(model.fSymCasadi(*curSample)))))
-    
-    # Sort samples by minimum residuals
-    residuals = numpy.array(residuals)
-    sample_index = numpy.argsort(residuals)
-    residuals = residuals[sample_index]
-    print ("Function residuals of sample points:\t", residuals[0:n])
-    
-    return sampleData[sample_index][0:n]
-    
       
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
     """ solve nonlinear algebraic equation system (NLE)
