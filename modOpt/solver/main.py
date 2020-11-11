@@ -8,52 +8,76 @@ Import packages
 import numpy
 from modOpt.solver import (newton, results, scipyMinimization, 
 parallelization, block)
+import modOpt.storage as mostg
 import modOpt.scaling as mos
 import copy
 import time
 
 """
 ****************************************************
-Main that starts solving procedure in decomposed NLE
+Main that starts solving procedure in NLE's
 ****************************************************
 """
-__all__ = ['solveSamples', 'solveSystem_NLE']
+__all__ = ['solveSamples', 'solveSystem_NLE', 'solveBoxes']
 
-def solveSamples(model, initValues, dict_equations, dict_variables, solv_options, dict_options):
-    """ solve samples from array sampleData and returns number of converged samples. The converged
-    samples and their solutions are written into text files.
+
+def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options):
+    """ solves multiple samples in boxes related to an equation system
+    
+    Args:
+        :model:             instance of class model
+        :dict_variables:    dictionary with variable related quantities
+        :dict_equations:    dictionary with function related quantities
+        :dict_options:      dictionary with user-settings for decompositon 
+                            and scaling
+        :solv_options:      dictionary with user-settings for solver                    
+
+    Returns:                None
+    
+    """
+    boxes = mostg.get_entry_from_npz_dict(dict_options["BoxReduction_fileName"], dict_options["redStep"]) 
+    
+    mainfilename = dict_options["fileName"] 
+    npzName = dict_options["fileName"]+"_"+solv_options["solver"]+".npz"
+    
+    for l in range(0, len(boxes)):
+       model.xBounds = [boxes[l]]
+       initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
+       res_multistart  = solveSamples(model, initValues, 
+                                      mainfilename, l, dict_equations, 
+                                      dict_variables, solv_options, dict_options)
+       mostg.store_list_in_npz_dict(npzName, res_multistart, l, allow_pickle=True)
+
+
+def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variables, solv_options, dict_options):
+    """ starts iteration from samples in a certain box with index l
 
     Args:
         :model:             object of class model in modOpt.model that contains all
                             information of the NLE-evaluation and decomposition
-        :sampleData:        array with samples
+        :initValues:        numpy array with sample values
+        :mainfilename:      string with general file name
+        :l:                 integer with index of current box
         :dict_equations:    dictionary with information about equations
         :dict_variables:    dictionary with information about iteration variables                            
         :solv_options:      dictionary with user defined solver settings
-        :sampling_options:  dictionary with sampling options
         :dict_options:      dictionary with user specified settings
 
-    Return:
-        :converged:         integer with number of converged runs
+    Returns:                 None.
        
     """
     res_multistart = {}
-    #t = -1
-    #if dict_options['timer'] == True: tic = time.time() # time.clock() measures only CPU which is regarding parallelized programms not the time determining step 
-    
-    #if not solv_options["Parallel"]:
                 
     for k in range(0, len(initValues)):
+        
         model.stateVarValues = [initValues[k]]
+        initial_model = copy.deepcopy(model)
         res_solver = solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
+        results.write_successfulResults(res_solver, mainfilename, k, l, 
+                                        initial_model, solv_options, dict_options)
+        
         res_multistart['%d' %k] = res_solver
 
-    #else:
-        #converged = parallelization.solveMultipleSamples(model, sampleData, dict_equations, 
-        #                                                 dict_variables, dict_options, solv_options, sampling_options)
-    #if dict_options['timer'] == True: 
-    #    toc = time.time() 
-    #    t = toc - tic
     return res_multistart
 
       
@@ -188,7 +212,7 @@ def getBlockInformation(model):
         :rBlocks:      Nested list with blocks that contain global ID's of the 
                        iteration variables
         :xInf:         Nested list with functions in global order that contains 
-                        global ID's of all variables that occur in this function
+                       global ID's of all variables that occur in this function
                         
     """
     

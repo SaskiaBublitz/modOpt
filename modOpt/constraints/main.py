@@ -35,24 +35,16 @@ def reduceVariableBounds(model, options):
     """
     
     res_solver = {}
-    
+    tic = time.time()
     model.blocks = [range(0, len(model.xSymbolic))]       
     res_solver["Model"] = copy.deepcopy(model)
-    
-    if options['timer'] == True: 
-        tic = time.time() # time.clock() measures only CPU which is in parallelized programms not the time determining step 
-        doIntervalNesting(res_solver, options)
-        toc = time.time()
-        t = toc - tic
-        res_solver["time"] = t
-        return res_solver
+    res_solver["time"] = []
+
+    doIntervalNesting(res_solver, options)
+    toc = time.time()
+    res_solver["time"] = toc - tic
+    return res_solver
         
-    else:
-        doIntervalNesting(res_solver, options)
-        res_solver["time"] = []
-        return res_solver
-
-
 def doIntervalNesting(res_solver, dict_options):
     """ iterates the state variable intervals related to model using the
     Gauss-Seidel Operator combined with an interval nesting strategy
@@ -73,14 +65,17 @@ def doIntervalNesting(res_solver, dict_options):
     newModel = copy.deepcopy(model)
     functions = []
     dict_varId_fIds = {}
-
+    timeMeasure = []
+    tic = time.time()
+    
     createNewtonSystem(model)
     
     for i in range(0, len(model.fSymbolic)):
         functions.append(Function(model.fSymbolic[i], model.xSymbolic))
         sort_fId_to_varIds(i, functions[i].glb_ID, dict_varId_fIds)
     
-     
+    storage.store_newBoxes(npzFileName, model, 0) 
+    
     for iterNo in range(1, dict_options["redStepMax"]+1): 
 
         if dict_options["Parallel Branches"]:
@@ -91,15 +86,18 @@ def doIntervalNesting(res_solver, dict_options):
 
         xSolved = output["xSolved"]
         xAlmostEqual = output["xAlmostEqual"]
+        timeMeasure.append(time.time() - tic)
 
               
         if output.__contains__("noSolution"):
 
             newModel.failed = True
             res_solver["noSolution"] = output["noSolution"]
+            storage.store_time(npzFileName, timeMeasure, iterNo)
             break
-
-        storage.storeNewBoxesInNPZ(npzFileName, model, iterNo)
+        
+        
+        storage.store_newBoxes(npzFileName, model, iterNo)
         
         if xSolved.all():
             break
@@ -118,7 +116,7 @@ def doIntervalNesting(res_solver, dict_options):
             validXBounds.append(xBounds)
     
     newModel.setXBounds(validXBounds)
- 
+    storage.store_time(npzFileName, timeMeasure, iterNo)
     res_solver["Model"] = newModel
     res_solver["iterNo"] = iterNo
     
