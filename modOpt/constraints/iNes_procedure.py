@@ -19,9 +19,10 @@ from modOpt.decomposition import dM
 import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
 
 
-__all__ = ['reduceMultipleXBounds', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
+__all__ = ['reduceBoxes', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
            'checkWidths', 'getPrecision', 'getNewtonIntervalSystem', 'saveFailedSystem', 
-            'variableSolved']
+            'variableSolved', 'contractBox', 'reduceConsistentBox','updateSetOfBoxes',
+            'doHC4', 'checkIntervalAccuracy', 'doIntervalNewton', 'doBoxReduction']
 
 """
 ***************************************************
@@ -29,8 +30,8 @@ Algorithm for interval Nesting procedure
 ***************************************************
 """
 
-def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
-    """ reduction of multiple solution interval sets  
+def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
+    """ reduction of multiple boxes
     Args:    
         :model:                 object of type model
         :functions:             list with function instances
@@ -48,6 +49,7 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     """
     results = {}
     allBoxes = []
+    newtonMethods = {'newton', 'detNewton', '3PNewton'}
     xAlmostEqual = False * numpy.ones(len(model.xBounds), dtype=bool)
     xSolved = False * numpy.ones(len(model.xBounds), dtype=bool)
 
@@ -55,88 +57,28 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     nl = len(model.xBounds)
 
     for k in range(0, nl):
-
+        newtonSystemDic = {}
         xBounds = model.xBounds[k]
-
-        newtonMethods = {'newton', 'detNewton', '3PNewton'}
+        
         if dict_options['newton_method'] in newtonMethods and dict_options['combined_algorithm']==False:
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)  
-            #if nl==len(xBounds)-1: nl = 0
-            #else: nl = nl+1 
-        else:
-            newtonSystemDic = {}
+
+        output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         
-        #if dict_options['method'] == 'b_tight':
-        #    output = reduceXbounds_b_tight(functions, xBounds, boxNo, dict_options)
-        #else:
-        if not dict_options["Parallel Variables"]:
-            if dict_options["combined_algorithm"]==True:
-                # if combined_algorithm is True, all other choices for box_reduction is neglected
-                output = reduceBoxCombined(xBounds, model, functions, dict_options)
-            else:             
-                output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-        else:
-            output = parallelization.reduceBox(xBounds, model, functions, 
-                                                       dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-        xNewBounds = output["xNewBounds"]
-        xAlmostEqual[k] = output["xAlmostEqual"]
-        xSolved[k] = output["xSolved"]
-
-
-        if output["xAlmostEqual"] and not output["xSolved"]:
-            
-            possibleCutOffs = False
-            # if cut_Box is chosen,parts of the box are now tried to cut off 
-            if dict_options["cut_Box"]:
-                xNewBounds, possibleCutOffs = cutOffBox(model, xNewBounds, dict_options)
-            # if cut_Box was successful,the box is now tried to be reduced again
-            if possibleCutOffs: 
-                if dict_options["combined_algorithm"]==True:
-                   output = reduceBoxCombined(numpy.array(xNewBounds[0]), model, functions, dict_options)
-                else:
-                   output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-                xNewBounds = output["xNewBounds"]
-                xAlmostEqual[k] = output["xAlmostEqual"]
-                xSolved[k] = output["xSolved"]
-
-            # if cut_Box was not successful or it didn't help to reduce the box, then the box is now splitted
-            if not possibleCutOffs or output["xAlmostEqual"]:
-                boxNo_split = dict_options["maxBoxNo"] - boxNo
-                if boxNo_split > 0:
-                    if dict_options["split_Box"]=="TearVar": 
-                        # splits box by tear variables  
-                        if model.tearVarsID == []: getTearVariables(model)
-                        xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
-                                           numpy.array(xNewBounds[0]), boxNo_split, dict_options)
-                    elif dict_options["split_Box"]=="LargestDer":  
-                        #splits box by largest derivative
-                        splitVar = getTearVariableLargestDerivative(model, k)
-                        xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
-                                           numpy.array(xNewBounds[0]), boxNo_split, dict_options)
-                    elif dict_options["split_Box"]=="forecastSplit": 
-                        # splits box by best variable
-                        xNewBounds = getBestSplit(xNewBounds, model, functions, dict_varId_fIds, k, dict_options, newtonSystemDic)
-                    xAlmostEqual[k] = False
-
-        
+        if output["xAlmostEqual"] and not output["xSolved"]:     
+            output = reduceConsistentBox(output, model, functions, dict_options, 
+                                         k, dict_varId_fIds, newtonSystemDic, boxNo)
+                
         if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             boxNo = len(allBoxes) + (nl - (k+1))
             continue
         
-        boxNo = len(allBoxes) + len(xNewBounds) + (nl - (k+1))
-        
-        if boxNo <= dict_options["maxBoxNo"]:
-            for box in xNewBounds: allBoxes.append(numpy.array(box, dtype=object))
-     
-        else:# boxNo > dict_options["maxBoxNo"]:
-            print("Warning: Algorithm stops the current box reduction because the current number of boxes is ",
-                  boxNo,
-                  "and exceeds the maximum number of boxes that is ",
-                  dict_options["maxBoxNo"], "." )
-            allBoxes.append(xBounds)
-            xAlmostEqual[k] = True
-        
+        boxNo = len(allBoxes) + len(output["xNewBounds"]) + (nl - (k+1))          
+        updateSetOfBoxes(allBoxes, xBounds, output, boxNo, k, dict_options)
+        xAlmostEqual[k] = output["xAlmostEqual"]
+        xSolved[k] = output["xSolved"]
+                
     if allBoxes == []: 
         results["noSolution"] = saveFailedIntervalSet
       
@@ -146,7 +88,150 @@ def reduceMultipleXBounds(model, functions, dict_varId_fIds, dict_options):
     results["xAlmostEqual"] = xAlmostEqual
     results["xSolved"] = xSolved
     return results
+
+
+def updateSetOfBoxes(allBoxes, xBounds, output, boxNo, k, dict_options):
+    """ updates set of boxes with reduced boxes from current step. If the maximum
+    number of boxes is exceeded the former will be put into the set instead.
     
+    Args:
+    :allBoxes:      list with already reduced boxes
+    :xBounds:       numpy.array with former box
+    :output:        dictionary with new box(es) and xAlmostEqual check for box
+    :boxNo:         integer with current number of boxes (including new boxes)
+    :k:             inter with index of former box
+    :dict_options:  dictionary with user-specified maximum number of boxes   
+
+    """
+    
+    if boxNo <= dict_options["maxBoxNo"]:
+        for box in output["xNewBounds"]: allBoxes.append(numpy.array(box, dtype=object))
+ 
+    else:# boxNo > dict_options["maxBoxNo"]:
+        print("Warning: Algorithm stops the current box reduction because the current number of boxes is ",
+              boxNo,
+              "and exceeds the maximum number of boxes that is ",
+              dict_options["maxBoxNo"], "." )
+        allBoxes.append(xBounds)
+        output["xAlmostEqual"] = True    
+
+
+def contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic):
+    """ general contraction step that contains newton, HC4 and box reduction method    
+
+    with and without parallelization. The combined algorithm is there for finding 
+    an "efficient" alternation strategy between the contraction step methods
+    
+    Args:
+    :xBounds:               numpy.array with current box
+    :model:                 instance of class model
+    :functions:             list with function instances
+    :dict_varId_fIds:       dictionary with variable's glb id (key) and list 
+                            with function's glb id they appear in
+    :boxNo:                 current number of boxes
+    :dict_options:          dictionary with user specified algorithm settings
+    :newtonSystemDic:       dictionary with system information for interval newton
+    
+    Return:
+        :output:            dictionary with results
+    """
+    
+    if not dict_options["Parallel Variables"]:
+        if dict_options["combined_algorithm"]==True:
+            # if combined_algorithm is True, all other choices for box_reduction are neglected
+            output = reduceBoxCombined(xBounds, model, functions, dict_options)
+        else:
+            output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+    else:
+        output = parallelization.reduceBox(xBounds, model, functions, 
+                                                   dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+
+    return output
+
+
+def reduceConsistentBox(output, model, functions, dict_options, k, dict_varId_fIds, newtonSystemDic, boxNo):
+    """ reduces a consistent box after the contraction step
+    
+    Args:
+        :output:             dictionary quantities from consistent box
+        :model:              instance of class Model
+        :functions:          list with instances of class Function
+        :dict_options:       dictionary with user-specifications
+        :k:                  index of currently reduced box
+        :dict_varId_fIds:    dictionary with function ocurrences of variables
+        :newtonSystemDic.    dictionary with system information for Interval-Newton
+        :boxNo:              integer with number of boxes
+        
+    Return:
+        :output:             modified dictionary with new split or cut box(es)
+
+
+    """
+    newBox = output["xNewBounds"]
+    possibleCutOffs = False
+            
+    if dict_options["cut_Box"]: # if cut_Box is chosen,parts of the box are now tried to cut off 
+        newBox, possibleCutOffs = cutOffBox(model, newBox, dict_options)
+        if possibleCutOffs:  # if cut_Box was successful,the box is now tried to be reduced again
+            output = contractBox(numpy.array(newBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)           
+            newBox = output["xNewBounds"]
+           
+    if not possibleCutOffs or output["xAlmostEqual"]:  # if cut_Box was not successful or it didn't help to reduce the box, then the box is now splitted
+        boxNo_split = dict_options["maxBoxNo"] - boxNo
+        if boxNo_split > 0:
+            output["xNewBounds"] = splitBox(newBox, model, functions, 
+                                            dict_options, k, dict_varId_fIds, 
+                                            newtonSystemDic, boxNo_split)
+
+            output["xAlmostEqual"] = False
+            
+    return output
+
+def checkBoxesForRootInclusion(model, boxes, dict_options):
+    if boxes == []: return []
+    nonEmptyboxes = []
+    for box in boxes:
+        if solutionInFunctionRange(model, box, dict_options):
+            nonEmptyboxes.append(box)
+    return nonEmptyboxes
+
+
+def splitBox(xNewBounds, model, functions, dict_options, k, dict_varId_fIds, newtonSystemDic, boxNo_split):
+    """ box splitting algorithm should be invoked if contraction doesn't work anymore because of consistency.
+    The user-specified splitting method is executed.
+    
+    Args:
+       :xNewBounds:         numpy.array with consistent box
+       :model:              instance of class model
+       :dict_options:       dictionary with user-specifications
+       :k:                  index of currently reduced box
+       :dict_varId_fIds:    dictionary with function ocurrences of variables
+       :newtonSystemDic.    dictionary with system information for Interval-Newton
+       :boxNo_split:        number of possible splits (maxBoxNo-boxNo) could be 
+                            used for multisection too
+    
+    Return:
+        list with split boxes
+        
+    """
+    
+    if dict_options["split_Box"]=="TearVar": 
+        # splits box by tear variables  
+        if model.tearVarsID == []: getTearVariables(model)
+        xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
+                           numpy.array(xNewBounds[0]), boxNo_split, dict_options)
+    elif dict_options["split_Box"]=="LargestDer":  
+        #splits box by largest derivative
+        splitVar = getTearVariableLargestDerivative(model, k)
+        xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
+                           numpy.array(xNewBounds[0]), boxNo_split, dict_options)
+    elif dict_options["split_Box"]=="forecastSplit": 
+        # splits box by best variable
+        xNewBounds = getBestSplit(xNewBounds, model, functions, dict_varId_fIds, k, dict_options, newtonSystemDic)
+    
+    xNewBounds = checkBoxesForRootInclusion(model, xNewBounds, dict_options)    
+    return xNewBounds
+
 
 def cutOffBox(model, xBounds, dict_options):
     '''trys to cut off all empty sides of the box, to reduce the box without splitting
@@ -159,6 +244,7 @@ def cutOffBox(model, xBounds, dict_options):
         :xNewBounds:    new xBounds with cut off sides
         :cutOff:        boolean if any cut offs are possible
     '''
+    
     xNewBounds = copy.deepcopy(list(xBounds[0]))
     
     cutOff=False
@@ -169,10 +255,12 @@ def cutOffBox(model, xBounds, dict_options):
         while i<100: #number of cutt offs are limited to 100
             CutBoxBounds = copy.deepcopy(list(xNewBounds))
             xu = CutBoxBounds[u]
-            if xu.delta<list(xBounds[0])[u].delta*0.02*i: break #if total box is to small for further cutt offs
-            CutBoxBounds[u] = mpmath.mpi(xu.b-list(xBounds[0])[u].delta*0.01*i, xu.b) #define small box to cut
+            if mpmath.mpf(xu.delta) < mpmath.mpf(xBounds[0][u].delta)*0.02*i: break #if total box is to small for further cutt offs
+            cur_x = float(mpmath.mpf(xu.b)) - float(mpmath.mpf(xBounds[0][u].delta)*0.01*i)
+            CutBoxBounds[u] = mpmath.mpi(cur_x, xu.b) #define small box to cut
+            
             if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options): #check,if small box is empty
-                xNewBounds[u] = mpmath.mpi(xu.a, xu.b-list(xBounds[0])[u].delta*0.01*i)
+                xNewBounds[u] = mpmath.mpi(xu.a, cur_x)
                 cutOff = True
                 i=i+1
                 continue
@@ -183,10 +271,12 @@ def cutOffBox(model, xBounds, dict_options):
         while i<100:
             CutBoxBounds = copy.deepcopy(list(xNewBounds))
             xu = CutBoxBounds[u]
-            if xu.delta<list(xBounds[0])[u].delta*0.02*i: break
-            CutBoxBounds[u] = mpmath.mpi(xu.a, xu.a+list(xBounds[0])[u].delta*0.01*i)
+            if mpmath.mpf(xu.delta) < mpmath.mpf(xBounds[0][u].delta)*0.02*i: break
+            cur_x = float(mpmath.mpf(xu.a)) + float(mpmath.mpf(xBounds[0][u].delta)*0.01*i)
+            CutBoxBounds[u] = mpmath.mpi(xu.a, cur_x)
+            
             if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
-                xNewBounds[u] = mpmath.mpi(xu.a+list(xBounds[0])[u].delta*0.01*i, xu.b)
+                xNewBounds[u] = mpmath.mpi(cur_x, xu.b)
                 cutOff = True
                 i=i+1
                 continue
@@ -356,7 +446,7 @@ def splitTearVars(tearVarIds, box, boxNo_max, dict_options):
 
 def getCurrentVarToSplit(tearVarIds, box, dict_options):
     """ returns current tear variable id in tearVarIds for bisection. Only tear
-    variables with nonzero widths are selectd. 
+    variables with nonzero widths are selected. 
     
     Args:
         :tearVarIds:    list with global id's of tear variables
@@ -369,20 +459,22 @@ def getCurrentVarToSplit(tearVarIds, box, dict_options):
     """
     
     i = dict_options["tear_id"]
-    while checkIntervalWidth([box[i]], dict_options["absTol"],
-                             dict_options["relTol"]) == [] and \
-                            i  <= len(tearVarIds) - 1:
-                                i+=1
-    if i > len(tearVarIds)-1:     
-        nondeg_intervals = checkIntervalWidth(box[tearVarIds], dict_options["absTol"],
-                            dict_options["relTol"])
-        if nondeg_intervals == []: return []
-        else: return tearVarIds.index(list(box).index(nondeg_intervals[0]))
+    
+    if i  > len(tearVarIds) - 1: i = 0   
+    if checkIntervalWidth(box[tearVarIds], dict_options["absTol"],
+                            dict_options["relTol"]) == []:
+        return []
+         
+    while checkIntervalWidth([box[tearVarIds[i]]], dict_options["absTol"],
+                             dict_options["relTol"]) == []:
+        if i  < len(tearVarIds) - 1: i+=1
+        else: i = 0
+
     else: return i
     
         
 def separateBox(box, varID):
-    """ bisects a box by variables with globalID in varID
+    """ bi/multisects a box by variables with globalID in varID
     
     Args:
         :box:       numpy.array with variable bounds
@@ -1191,93 +1283,170 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
                              the procedure failed.
                         
     """  
-
     subBoxNo = 1
     output = {}            
     xNewBounds = copy.deepcopy(xBounds)
     xUnchanged = True
     xSolved = True
     dict_options_temp = copy.deepcopy(dict_options)
-
+    newtonMethods = {'newton', 'detNewton', '3PNewton'}
+    
     # if HC4 is active
     if dict_options['hc_method']=='HC4':
-        HC4_IvV = HC4(model, xBounds)
-        if HC4_IvV.is_empty():
-            saveFailedSystem(output, functions[0], model, 0)
-            return output 
-        else:
-            for i in range(0, len(model.xSymbolic)):
-                
-                xNewBounds[i] = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
-                if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-           
+        output, empty = doHC4(model, functions, xBounds, xNewBounds, output)
+        if empty: return output
+                   
     for i in range(0, len(model.xSymbolic)):
         y = [xNewBounds[i]]
         if dict_options["Debug-Modus"]: print(i)
+        checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
         
-        #if checkVariableBound(xBounds[i], dict_options):
-        if xBounds[i].delta == 0:
-            xNewBounds[i] = [xBounds[i]]
-        accurate = variableSolved(y, dict_options)
-        notdegenerate = y[0].delta > 1.0e-15
-        if accurate and notdegenerate:
-            dict_options_temp["relTol"] = 0.1 * y[0].delta
-            dict_options_temp["absTol"] = 0.1 * y[0].delta
-
-        # if any newton method is active
-        newtonMethods = {'newton', 'detNewton', '3PNewton'}
-        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:  
-            # if hybrid is not active
-            if dict_options['InverseOrHybrid']!='Hybrid':     
-                y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options_temp)])
-                if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-            # if hybrid or both are active
-            if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options_temp):  
-                y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options_temp)])
-                if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-        
+        # if any newton method is active       
+        if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:
+            y = doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options_temp)
+            if y == [] or y ==[[]]: 
+                saveFailedSystem(output, functions[0], model, 0)
+                return output
+                    
         # if b_normal is active
         if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
-                f = functions[j]
                 
-                y = setOfIvSetIntersection([y, 
-                                            reduceXIntervalByFunction(xBounds[f.glb_ID],
-                                                                      f,
-                                                                      f.glb_ID.index(i),
-                                                                      dict_options_temp)]) 
+                y = doBoxReduction(functions[j], xBounds, y, i, 
+                                   dict_options_temp)
                 if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, f, model, i)
-                    return output    
-                
+                    saveFailedSystem(output, functions[0], model, 0)
+                    return output
+
                 if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-                    #assignIvsWithoutSplit(output, xUnchanged, i, xBounds, xNewBounds)
-                    y = xBounds[f.glb_ID]
-                    #return output 
+                    y = xBounds[functions[j].glb_ID]
     
                 if variableSolved(y, dict_options_temp): break
                 else: xSolved = False 
 
-        
+        # Update quantities
         subBoxNo = subBoxNo * len(y) 
         xNewBounds[i] = y
         if not variableSolved(y, dict_options): xSolved = False
-        xUnchanged = checkXforEquality(xBounds[i], xNewBounds[i], xUnchanged, 
-                                       {"absTol":0.001, 'relTol':0.001})
-        
+        xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
+                                       {"absTol":0.001, 'relTol':0.001})   
         dict_options_temp["relTol"] = dict_options["relTol"]
         dict_options_temp["absTol"] = dict_options["absTol"]  
-
+        
+    # Prepare output dictionary for return
     output["xAlmostEqual"] = xUnchanged
     output["xSolved"] = xSolved       
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
     return output
+
+
+def doBoxReduction(f, xBounds, y, i, dict_options):
+    """ excecutes box consistency method for a variable with global index i in
+    function f and intersects is with its former interval. 
+    
+    Args:
+        :f:             instance of type function
+        :xBounds:       numpy array with currently reduced box
+        :y:             currently reduced interval in mpmath.mpi formate
+        :i:             global index of the current variable
+        :dict_options:  dictionary with user-settings such as tolerances
+    
+    Returns:
+        :y:             current interval after reduction in mpmath.mpi formate
+
+    """
+    y = setOfIvSetIntersection([y, reduceXIntervalByFunction(xBounds[f.glb_ID],
+                                                          f,
+                                                          f.glb_ID.index(i),
+                                                          dict_options)])         
+    return y
+
+
+def doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options):
+    """ excecutes box consistency method for a variable with global index i in
+    function f and intersects is with its former interval. 
+    
+    Args:
+        :newtonSystemDic:   dictionary with system's information for Newton
+        :xBounds:           numpy array with currently reduced box
+        :y:                 currently reduced interval in mpmath.mpi formate
+        :i:                 global index of the current variable
+        :dict_options:      dictionary with user-settings such as tolerances
+    
+    Returns:
+        :y:             current interval after reduction in mpmath.mpi formate
+
+    """    
+    if dict_options['InverseOrHybrid']!='Hybrid':     
+        y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options)])
+
+    # if hybrid or both are active
+    if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options):  
+        y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options)])
+        
+    return y
+     
+
+def doHC4(model, functions, xBounds, xNewBounds, output):
+    """ excecutes HC4revise hull consistency method and returns output with
+    failure information in case of an empty box. Otherwise the initial output
+    dictionary is returned.
+    
+    Args:
+        :model:         instance of type model
+        :functions:     list with instances of type function
+        :xBounds:       numpy array with currently reduced box
+        :xNewBounds:    numpy array for reduced box
+        :output:        dictionary that stores information of current box reduction
+    
+    Returns:
+        :output:        unchanged dictionary (successful reduction) or dictionary
+                        with failure outpot (unsuccessful reduction)
+        :empty:         boolean, that is true for empty boxes
+
+    """
+    empty = False
+    HC4_IvV = HC4(model, xBounds)
+
+    if HC4_IvV.is_empty():
+        saveFailedSystem(output, functions[0], model, 0)
+        empty = True
+    else:
+        for i in range(0, len(model.xSymbolic)):
+                xNewBounds[i] = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
+                if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
+                    saveFailedSystem(output, functions[0], model, 0)
+                    empty = True
+                    break            
+    return output, empty
+
+       
+def checkIntervalAccuracy(xNewBounds, i, dict_options):
+    """ checks the accuracy of the current box before reduction creates a nested 
+    box for all intervals that are already degenerate. If some variable's 
+    interval widths are degenerate in the current tolerance but they are not below
+    1e-15 the tolerance for the width is stepwise decreased until only widths
+    below 1e-15 are degenerate. This is sometimes necessary to decrease "solved"
+    variables further on as other variables might be highly sensitive to their value
+    and their interval would otherwise be not further reduced. Splitting would not
+    help in this case as all sub-intervals of the sensitive variable would still be 
+    solutions.
+    
+    Args:
+    :xNewBounds:    numpy. array for new reduced intervals
+    :i:             integer with current variable's global index
+    :dict_options:  dictionary with current relative and absolute tolerance of 
+                    variable
+    """
+    
+    if xNewBounds[i].delta == 0:
+        xNewBounds[i] = [xNewBounds[i]]
+    else:
+        accurate = variableSolved([xNewBounds[i]], dict_options)
+        notdegenerate = xNewBounds[i].delta > 1.0e-15
+        if accurate and notdegenerate:
+            dict_options["relTol"] = 0.1 * xNewBounds[i][0].delta
+            dict_options["absTol"] = 0.1 * xNewBounds[i][0].delta    
 
 
 def variableSolved(BoundsList, dict_options):
@@ -2165,20 +2334,11 @@ def getReducedIntervalOfNonlinearFunction(gx, dgdx, dgdXInterval, i, xBounds, bi
                                    "4": xBounds, 
                                    "5": bi, 
                                    "6": dict_options})
-        #reducedIntervals = timeout(reduceNonMonotoneIntervals, [{"0":nonMonotoneZones, 
-    #                               "1": reducedIntervals, 
-    #                               "2": fx, 
-    #                               "3": i, 
-    #                               "4": xBounds, 
-    #                               "5": bi, 
-    #                               "6": dict_options}]) 
+
         if reducedIntervals == False: 
             print("Warning: Reduction in non-monotone Interval took too long.")
             return orgXiBounds
-        #reducedIntervals = reduceNonMonotoneIntervals(nonMonotoneZones, reducedIntervals, 
-        #                                                  fx, i, xBounds, bi, 
-        #                                                  dict_options)
-    #reducedIntervals = reduceTwoIVSets(reducedIntervals, orgXiBounds)
+
     reducedIntervals = setOfIvSetIntersection([reducedIntervals, orgXiBounds])
     return reducedIntervals
 
@@ -2551,84 +2711,6 @@ def getMonotoneFunctionSections(dgdx, i, xBounds, dict_options):
     return monIncreasingZone, monDecreasingZone, interval
 
 
-def discretizeAndEvaluateIntervals(dfdX, xBounds, i, intervals, monIncreasingZone,
-                                   monDecreasingZone, dict_options):
-    """ if a certain interval width is undershot it is useful to discretize it and
-    check all segments on their monotony.
-
-    Args:
-        :dfdX:                scalar function in mpmath.mpi logic
-        :xBounds:             numpy array with variable bounds
-        :i:                   index of differential variable
-        :intervals:           new unchecked variable intervals
-        :monIncreasingZone:   already identified monotone increasing intervals
-        :monDecreasingZone:   already identified monotone decreasing intervals
-        :dict_options:        dictionary with function and variable interval
-                             tolerances and discretization resolution
-
-    Return:
-        :newIntervals:        non monotone intervals if  function interval can not be
-                             reduced to monotone increasing or decreasing section
-        :monIncreasingZone:   monotone increasing intervals
-        :monDecreasingZone:   monotone decreasing intervals
-
-    """
-
-    newIntervals = []
-
-    for interval in intervals:
-        newIntervals, monIncreasingZone, monDecreasingZone = discretizeAndEvaluateInterval(dfdX, 
-                                        xBounds, i, interval, newIntervals, monIncreasingZone, 
-                                        monDecreasingZone, dict_options)
-
-    return newIntervals, monIncreasingZone, monDecreasingZone
-
-
-def discretizeAndEvaluateInterval(dfdX, xBounds, i, interval, newIntervals,
-                                   monIncreasingZone, monDecreasingZone, dict_options):
-    """ if a certain interval width is undershot it is useful to discretize it and
-    check all segments on their monotony.
-
-    Args:
-        :dfdX:                scalar function in mpmath.mpi logic
-        :xBounds:             numpy array with variable bounds
-        :i:                   index of differential variable
-        :interval:            unchecked variable interval
-        :newIntervals:        already identified non monotone intervals
-        :monIncreasingZone:   already identified monotone increasing intervals
-        :monDecreasingZone:   already identified monotone decreasing intervals
-        :dict_options:        dictionary with function and variable interval
-                              tolerances and discretization resolution
-
-    Return:
-        :newIntervals:        non monotone intervals if  function interval can not be
-                              reduced to monotone increasing or decreasing section
-        :monIncreasingZone:   monotone increasing intervals
-        :monDecreasingZone:   monotone decreasing intervals
-
-    """
-
-    resolution = dict_options["resolution"]*2
-
-    intervalBounds = convertIntervalBoundsToFloatValues(interval)
-    intervalPoints = numpy.linspace(intervalBounds[0], intervalBounds[1], resolution)
-
-    for j in range(0, (len(intervalPoints)-1)):
-
-        xBounds[i] = mpmath.mpi(min(intervalPoints[j], intervalPoints[j+1]),
-               max(intervalPoints[j], intervalPoints[j+1]))
-
-        if dfdX(*xBounds) > 0:
-            monIncreasingZone = addIntervaltoZone([xBounds[i]], monIncreasingZone, dict_options)
-
-        elif dfdX(*xBounds) < 0:
-            monDecreasingZone = addIntervaltoZone([xBounds[i]], monDecreasingZone, dict_options)
-        else:
-            newIntervals = addIntervaltoZone([xBounds[i]], newIntervals, dict_options)
-
-    return newIntervals, monIncreasingZone, monDecreasingZone
-
-
 def convertIntervalBoundsToFloatValues(interval):
     """ converts mpmath.mpi intervals to list with bounds as float values
 
@@ -2937,7 +3019,7 @@ def reduceNonMonotoneIntervals(args):
 
     for curNonMonZone in nonMonotoneZone:
         curInterval = convertIntervalBoundsToFloatValues(curNonMonZone)
-        x = numpy.linspace(curInterval[0], curInterval[1], resolution)
+        x = numpy.linspace(curInterval[0], curInterval[1], int(resolution))
 
         fLowValues, fUpValues = getFunctionValuesIntervalsOfXList(x, fx, xBounds, i)
         for k in range(0, len(fLowValues)):
@@ -3194,8 +3276,8 @@ def solutionInFunctionRangePyibex(model, xBounds, dict_options):
         if Intersection.is_empty():
             return False 
         else:
-            for i in range(0, len(model.xSymbolic)):
-                xNewBounds[i] = mpmath.mpi(Intersection[i][0],(Intersection[i][1]))
+            for j in range(0, len(model.xSymbolic)):
+                xNewBounds[j] = mpmath.mpi(Intersection[j][0],(Intersection[j][1]))
     
     return solutionInRange
 

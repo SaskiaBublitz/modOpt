@@ -1,37 +1,44 @@
 '''
 Created on Aug 17, 2018
 
-@author: e.esche
+@author: e.esche + j.weigert
 '''
 from numpy import float
 import numpy as np
-from modOpt.initialization import VarType
 
-TYPE_VARIABLE = 'variable'
-TYPE_CONTROL = 'control'
-TYPE_STATE = 'state'
+from modOpt.initialization import VarType 
 
-class VarListType:
-    def __init__(self, type=TYPE_VARIABLE, performSampling=False, numberOfSamples=0, samplingMethod='NDS', sampleData=[], time=[], snapshotDict={},
-                 model = None):
-        
-        if type == 'state':
-            self.varlist = []
-            self.globalID = -1
-            self.type = type
-            self.time = time
-            self.snapshotDict = snapshotDict
-        else:
-            self.varlist = []
-            self.globalID = -1
-            self.type = type
-            self.performSampling = performSampling
-            self.numberOfSamples =numberOfSamples
-            self.samplingMethod = samplingMethod
-            self.sampleData = sampleData
-        if model != None:
-            self.addVarsFromModel(model)
-            
+class VarListType(object):
+
+    '''
+    definition of variable lists
+
+    Parameters:
+    -----------
+
+    type: string, optional
+        defines the type of the variable list
+    performSampling: bool, optional
+        sampling, yes or no
+    numberOfSamples: int, optional
+        number of samples if sampling is performed
+    samplingMethod: string, optional
+        'hammersley', 'sobol', 'latin_hypercube' --> method for uniform sample generation
+    samplingDistribution: string, optional
+        method from scipy.stats --> distibution applied on chosen sampling method
+    distributionParams: tuple, optional
+        additional params to loc and scale in defined sampling distribution (see scipy.stats)
+    seed: int, optional
+        from 0 to 10^32 if None random seed is used --> seed for uniform sample generation
+        (remark: if 'hammersley' or 'sobol' sampling time increases with increasing seed')
+    time: list, optional
+        list with time points used in type=TYPE_STATE
+
+    '''
+
+    def __init__(self):
+        self.varlist = []
+        self.globalID = -1
     
     def __str__(self):
         outputStr = ''
@@ -60,7 +67,7 @@ class VarListType:
                 for i in range(0,len(currTimeValues)):
                     if currTimeValues[i] == requestedTime['values']:
                         return currValues[i]
-        print ("ERROR: There is no applicable value for your requested time.")
+        print("ERROR: There is no applicable value for your requested time.")
         return None
        
     def getValueAtIndex(self,requestedVarName,requestedIndex):
@@ -68,22 +75,6 @@ class VarListType:
             if currVar.varName == requestedVarName:
                 return currVar.value[requestedIndex]
         return None
-       
-    def add(self, varName, value=[], lowerBound=-1.0e9, upperBound=1.0e9, modelVarID ='', engUnit='-', time=[], controlTime=None):
-        if self.type == TYPE_VARIABLE:
-            self.globalID += 1
-            listItem = VarType.VarType(self.globalID,varName,value,lowerBound,upperBound,modelVarID,engUnit)
-            self.varlist.append(listItem)
-        elif self.type == TYPE_CONTROL:
-            self.globalID += 1
-            listItem = VarType.ControlType(self.globalID,varName,value,time,lowerBound,upperBound,modelVarID,engUnit)
-            self.varlist.append(listItem)
-        elif self.type == TYPE_STATE:
-            self.globalID += 1
-            listItem = VarType.StateType(self.globalID,varName,value,modelVarID,engUnit)
-            self.varlist.append(listItem)
-        else:
-            print ('ERROR in VarListType: Unknown Type')
     
     def getLowerBound(self,globalID):
         for listItem in self.varlist:
@@ -95,39 +86,131 @@ class VarListType:
             if listItem.globalID == globalID:
                 return listItem.upperBound
     
+
+class StateVarList(VarListType):
+
+    def __init__(self, time=[]):
+        super().__init__()
+        self.time = time
+        self.snapshotDict = {}
+    
+    def add(self, varName, value=[], modelVarID ='', engUnit='-'):
+        self.globalID += 1
+        listItem = VarType.StateType(self.globalID,varName,value,modelVarID,engUnit)
+        self.varlist.append(listItem)
+
     def getArrayOfStates(self, stateID=None, runID=0):
         '''Create array of time series of states of size (number timepoints, number states)
-
             stateID: tuple of integers with ID of requested state variables
-
             runID: integer with ID of snapshot run
         '''
-        if self.type != 'state':
-            print ("ERROR: method only valid for variable type 'state'")
-            exit()
+        if stateID == None:
+            fullArray = []
+            for time in range(len(self.time['values'])):
+                fullArray.append([x.value[runID][time] for x in self.varlist])
         else:
-            if stateID == None:
-                fullArray = []
-                for i in range(len(self.time['values'])):
-                    row = []
-                    for j in range(self.globalID+1):
-                        row.append(self.varlist[j].value[i][runID])
-                    fullArray.append(row)
-                fullArray = np.asarray(fullArray)
-            else:
-                fullArray = []
-                for i in range(len(self.time['values'])):
-                    row = []
-                    for j in stateID:
-                        row.append(self.varlist[j].value[i][runID])
-                    fullArray.append(row)
-                fullArray = np.asarray(fullArray)
+            fullArray = []
+            for time in range(len(self.time['values'])):
+                fullArray.append([x.value[runID][time] for x in self.varlist if x.globalID in stateID])
         return fullArray
 
+class ControlVarList(VarListType):
 
-    def addVarsFromModel(self, model):   
+    def __init__(self, performSampling=False, numberOfSamples=1, samplingMethod='hammersley', samplingDistribution='uniform', distributionParams=(), seed=None):
+        super().__init__()
+        self.performSampling = performSampling
+        self.numberOfSamples =numberOfSamples
+        self.samplingMethod = samplingMethod
+        self.sampleData = []
+        self.seed = seed
+        self.samplingDistribution = samplingDistribution
+        self.distributionParams = distributionParams
+    
+    def add(self, varName, value=[], loc=0, scale=1, modelVarID ='', engUnit='-', time=[], samplingDistribution=None, distributionParams=(), binarySamplingSeed=None):
+        self.globalID += 1
+        listItem = VarType.ControlType(self.globalID,varName,value,time,loc,scale,modelVarID,engUnit,samplingDistribution,distributionParams,binarySamplingSeed)
+        self.varlist.append(listItem)
+
+class InitialVarList(VarListType):
+
+    def __init__(self, performSampling=False, numberOfSamples=1, samplingMethod='hammersley', samplingDistribution='uniform', distributionParams=(), seed=None, restartFile=''):
+        super().__init__()
+        
+        if restartFile:
+            self.performSampling = False
+        else:
+            self.performSampling = performSampling
+        
+        self.numberOfSamples =numberOfSamples
+        self.samplingMethod = samplingMethod
+        self.sampleData = []
+        self.seed = seed
+        self.samplingDistribution = samplingDistribution
+        self.distributionParams = distributionParams
+        self.restartFile = restartFile
+    
+    def add(self, varName, value=[], loc=0, scale=1, modelVarID ='', engUnit='-', samplingDistribution=None, distributionParams=()):
+        self.globalID += 1
+        listItem = VarType.VarType(self.globalID,varName,value,loc,scale,modelVarID,engUnit,samplingDistribution,distributionParams)
+        self.varlist.append(listItem)
+
+class VariableList(VarListType):
+
+    def __init__(self, performSampling=False, numberOfSamples=1, samplingMethod='hammersley', samplingDistribution='uniform', distributionParams=(), seed=None, restartFile='', model=None, boxID=None):
+        super().__init__()
+        
+        if restartFile:
+            self.performSampling = False
+        else:
+            self.performSampling = performSampling
+        self.numberOfSamples =numberOfSamples
+        self.samplingMethod = samplingMethod
+        self.sampleData = []
+        self.seed = seed
+        self.samplingDistribution = samplingDistribution
+        self.distributionParams = distributionParams
+        if model != None:
+            self.add_vars_from_model(model, boxID)
+    
+    def add(self, varName, value=[], loc=0, scale=1, modelVarID ='', engUnit='-', samplingDistribution=None, distributionParams=()):
+        self.globalID += 1
+        listItem = VarType.VarType(self.globalID,varName,value,loc,scale,modelVarID,engUnit,samplingDistribution,distributionParams)
+        self.varlist.append(listItem)
+
+    def add_vars_from_model(self, model, boxID):   
         varNames = model.xSymbolic
+        
         for glbID in range(0, len(varNames)):
+            scale = model.xBounds[boxID][glbID, 1] - model.xBounds[boxID][glbID, 0]/6.0 # standard deviation
+            loc = 0.5 * (model.xBounds[boxID][glbID, 0] +model.xBounds[boxID][glbID, 1]) # Mean value 
             self.add(varName = varNames[glbID], 
-                         lowerBound = model.xBounds[0][glbID, 0], 
-                         upperBound = model.xBounds[0][glbID, 1], engUnit='-')
+                     loc = loc,
+                     scale = scale,
+                     samplingDistribution=self.samplingDistribution,
+                     distributionParams=self.distributionParams)
+
+class ParameterList(VarListType):
+
+    def __init__(self, adaptiveSampling=False, performSampling=False, numberOfSamples=1, samplingMethod='hammersley', samplingDistribution='norm', distributionParams=(), seed=None, initialNumberOfSamples=1, addedNumberOfSamples=1):
+        super().__init__()
+        self.adaptiveSampling = adaptiveSampling
+        self.performSampling = performSampling
+        self.numberOfSamples =numberOfSamples
+        self.samplingMethod = samplingMethod
+        self.sampleData = []
+        self.seed = seed
+        self.samplingDistribution = samplingDistribution
+        self.distributionParams = distributionParams
+        if adaptiveSampling:
+            self.initialNumberOfSamples = initialNumberOfSamples
+            self.addedNumberOfSamples = addedNumberOfSamples
+    
+    def add(self, varName, value=[], loc=0, scale=1, modelVarID ='', engUnit='-', samplingDistribution=None, distributionParams=()):
+        self.globalID += 1
+        listItem = VarType.VarType(self.globalID,varName,value,loc,scale,modelVarID,engUnit,samplingDistribution,distributionParams)
+        self.varlist.append(listItem)
+
+
+
+
+

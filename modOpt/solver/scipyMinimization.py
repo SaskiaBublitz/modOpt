@@ -14,6 +14,33 @@ Minimization Procedures from scipy.optimization
 
 __all__ = ['minimize']
 
+def fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables):
+    FTOL = solv_options["FTOL"]
+    iterMax = solv_options["iterMax"]
+    x0 = curBlock.getIterVarValues()
+    diag = [1/y for y in curBlock.colSca]
+            
+    args = (curBlock, dict_options)
+    x, infodict, ier, mesg = scipy.optimize.fsolve(iter_functions, x0, args, 
+                                                   xtol=FTOL, maxfev=iterMax,
+                                                   full_output=True, diag=diag)
+    curBlock.x_tot[curBlock.colPerm] = x
+    
+    if ier == 1: return 1, infodict['nfev']
+    elif ier==2: return 0, infodict['nfev']
+    else: return -1, infodict['nfev']
+    
+    
+    
+
+def iter_functions(x, curBlock, dict_options):
+    #block_funs = []
+    curBlock.x_tot[curBlock.colPerm] = x
+    #allFun = curBlock.allConstraints(curBlock.x_tot, curBlock.parameter) 
+    #for glbID in curBlock.rowPerm:
+    if dict_options["scaling"] != "None": return curBlock.getScaledFunctionValues()    
+    return curBlock.getPermutedFunctionValues()     
+
 
 def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
     """  solves nonlinear algebraic equation system (NLE) by minimization method

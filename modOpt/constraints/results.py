@@ -14,6 +14,9 @@ def createDict(X, LABEL):
         
     return X_DICT
 
+#def writeBoxes2NPZ(dict_options, dict_variables, res_solver)
+
+
 
 def writeResults(dict_options, dict_variables, res_solver):
     """ creates File(s) with  final start values and lower and upper bounds. 
