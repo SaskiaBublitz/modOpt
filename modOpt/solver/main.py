@@ -38,7 +38,10 @@ def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options
     boxes = mostg.get_entry_from_npz_dict(dict_options["BoxReduction_fileName"], dict_options["redStep"]) 
     
     mainfilename = dict_options["fileName"] 
-    npzName = dict_options["fileName"]+"_"+solv_options["solver"]+".npz"
+    npzName = dict_options["fileName"]
+    for cur_solver in solv_options["solver"]:
+        npzName+=cur_solver
+    npzName+=".npz"
     
     for l in range(0, len(boxes)):
        model.xBounds = [boxes[l]]
@@ -70,15 +73,54 @@ def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variab
                 
     for k in range(0, len(initValues)):
         
-        model.stateVarValues = [initValues[k]]
-        initial_model = copy.deepcopy(model)
-        res_solver = solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
-        results.write_successfulResults(res_solver, mainfilename, k, l, 
-                                        initial_model, solv_options, dict_options)
-        
-        res_multistart['%d' %k] = res_solver
+        model.stateVarValues = [initValues[k]]    
+        res_multistart['%d' %k] = iterate_solver(model, mainfilename, k, l, 
+                                                 dict_equations, dict_variables, 
+                                                 solv_options, dict_options)
 
     return res_multistart
+
+def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, solv_options, dict_options):
+    initial_model = copy.deepcopy(model)
+    min_FTOL = initial_model.getFunctionValuesResidual()
+    solver_sequence = solv_options["solver"]
+    iterNo = 1
+    res_solver = {}
+    res_solver["Model"] = model
+    min_results = copy.deepcopy(res_solver)
+    
+    while iterNo <= solv_options["iterMax_solver"]:
+        old_FTOL = min_FTOL  
+              
+        for cur_solver in solver_sequence:
+            solv_options["solver"] = cur_solver
+            res_solver = solveSystem_NLE(res_solver["Model"], dict_equations, dict_variables, solv_options, dict_options)
+            
+            if res_solver["Residual"] >= min_FTOL or numpy.isnan(res_solver["Residual"]) or numpy.isinf(res_solver["Residual"]):
+                res_solver = min_results 
+                continue
+            
+            elif res_solver["Residual"] <= solv_options["FTOL"]:
+                results.write_successfulResults(res_solver, mainfilename, k, l, 
+                                        initial_model, solv_options, dict_options)
+                solv_options["solver"] = solver_sequence
+                return res_solver
+            
+            else:
+                min_results = res_solver
+                min_FTOL = res_solver["Residual"]           
+        iterNo +=1
+        
+        if min_FTOL == old_FTOL: 
+            res_solver = min_results 
+            res_solver["Exitflag"] = 2
+            solv_options["solver"] = solver_sequence
+            return res_solver
+    print(min_FTOL)
+    res_solver = min_results    
+    res_solver["Exitflag"] = 0
+    solv_options["solver"] = solver_sequence
+    return res_solver
 
       
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
@@ -176,6 +218,10 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
             
         if solv_options["solver"] == 'newton': 
             doNewton(curBlock, b, solv_options, dict_options, res_solver, 
+                     dict_equations, dict_variables)
+        
+        if solv_options["solver"] == "fsolve":
+            doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver, 
                      dict_equations, dict_variables)
         
         if solv_options["solver"] in ['SLSQP', 'trust-constr', 'TNC']:
@@ -289,6 +335,35 @@ def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations
         res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
         
 
+def doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+    """ starts Newton-Raphson Method
+    
+    Args:
+        :model:             object of type Model
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
+        
+    """
+    
+    try: 
+        exitflag, iterNo = scipyMinimization.fsolve(curBlock, solv_options, 
+                                                    dict_options, dict_equations, dict_variables)
+        res_solver["IterNo"][b] = iterNo
+        res_solver["Exitflag"][b] = exitflag
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
+    except: 
+        print ("Error in Block ", b)
+        res_solver["IterNo"][b] = 0
+        res_solver["Exitflag"][b] = -1    
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
+        
 def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
     """ starts minimization procedure from scipy
     
