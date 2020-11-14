@@ -1,2 +1,0 @@
-Time for iteration in s: 45.753363609313965 
-Number of outter iterations: 10

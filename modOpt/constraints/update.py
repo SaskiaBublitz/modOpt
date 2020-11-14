@@ -5,7 +5,6 @@ Import packages
 """
 import mpmath
 
-
 """
 ***************************************************
 Update directories

@@ -1,12 +1,44 @@
 """
 ***************************************************
+Import packages
+***************************************************
+"""
+import numpy
+
+"""
+***************************************************
 Output
 ***************************************************
 """
 
-__all__ = ['writeInitialSettings', 'writeResults', 'writeResultsAnalytics']
+
+__all__ = ['writeInitialSettings', 'writeResults', 'writeResultsAnalytics', 
+           'write_successfulResults']
 
 
+def write_successfulResults(res_solver, mainfilename, k, l, initial_model, solv_options, dict_options):
+    """ method writes successful sample into a text file 
+    
+    Args:
+    :res_solver:    dictionary with results from solver for current sample
+    :mainfilname:   string with general filename for text output
+    :k:             integer with id of current sample
+    :l:             integer with id of current box
+    :initial_model: instance of type model with initial samplepoint
+    :solv_options:  dictionary with solver settings
+    :dict_options:  dictionary with user-specified decomposition and scaling
+                    settings
+    Return:         None.
+    
+    """
+    if (res_solver["Exitflag"] == numpy.ones(len(res_solver["Exitflag"]))).all():
+        dict_options["fileName"] += "_b"+str(l)+"_s"+ str(k)
+        writeInitialSettings(dict_options, solv_options, initial_model)
+        writeResults(dict_options, solv_options, res_solver)
+        writeResultsAnalytics(dict_options, res_solver, solv_options)
+        dict_options["fileName"] = mainfilename
+               
+               
 def writeInitialSettings(dict_options, solv_options, model):
     """ creates File(s) with  final start values and lower and upper bounds. 
     For the ith set of start values, lower and upper bounds a new text file is 
@@ -18,7 +50,6 @@ def writeInitialSettings(dict_options, solv_options, model):
                                  lower and upper bounds
         
     """
-    
     fileName = getFileName(dict_options, solv_options)
     res_file = open(''.join([fileName, "_initial.txt"]), "w") 
     writeRestructuringSettings(res_file, dict_options)
