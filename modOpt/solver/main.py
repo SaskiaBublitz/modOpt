@@ -81,6 +81,7 @@ def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variab
     return res_multistart
 
 def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, solv_options, dict_options):
+    print("solver iteration started for sample: ", k ) 
     initial_model = copy.deepcopy(model)
     min_FTOL = initial_model.getFunctionValuesResidual()
     solver_sequence = solv_options["solver"]
@@ -91,7 +92,7 @@ def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, so
     
     while iterNo <= solv_options["iterMax_solver"]:
         old_FTOL = min_FTOL  
-              
+        print("solver iteration: ", iterNo)      
         for cur_solver in solver_sequence:
             solv_options["solver"] = cur_solver
             res_solver = solveSystem_NLE(res_solver["Model"], dict_equations, dict_variables, solv_options, dict_options)

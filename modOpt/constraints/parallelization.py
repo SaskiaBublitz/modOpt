@@ -215,6 +215,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
   
     if output["newXBounds"] == []:
         output["noSolution"] = results["0"][1]
+        output["newXBounds"] = model.xBounds
     else:
         model.xBounds = output["newXBounds"] 
     return output

@@ -6,7 +6,7 @@ Created on Jan 21, 2012
 
 import numpy
 import scipy.stats
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import sys
 from decimal import Decimal
 import time as timefunc
@@ -109,39 +109,39 @@ class Variable_Sampling:
         
         return samples_distribution
     
-    def plot_samples(self, dim1=None, dim2=None, plot_histogram=False):
-        '''
-        method plots generated samples 2D
+    # def plot_samples(self, dim1=None, dim2=None, plot_histogram=False):
+    #     '''
+    #     method plots generated samples 2D
 
-        Parameter
-        ---------
+    #     Parameter
+    #     ---------
 
-        dim1, dim2: int, optional
-            if specified the the two dimensions of the sample space are plotted 2D
-            if None all combinations are plotted
-        plot_histogram: bool, optional
-            if True histogram of all dimensions is plotted
-        '''
+    #     dim1, dim2: int, optional
+    #         if specified the the two dimensions of the sample space are plotted 2D
+    #         if None all combinations are plotted
+    #     plot_histogram: bool, optional
+    #         if True histogram of all dimensions is plotted
+    #     '''
 
-        if isinstance(dim1, int) and isinstance(dim2, int):
-            plt.plot([x[dim1] for x in self.samples], [x[dim2] for x in self.samples],'*')
-            plt.title('Sample {} over Sample {}'.format(dim1,dim2))
-            plt.show()
-        else:
-            for dim1 in range(len(self.samples[0])):
-                for dim2 in range(dim1, len(self.samples[0])):
-                    if dim1 != dim2:
-                        plt.figure()
-                        plt.plot([x[dim1] for x in self.samples], [x[dim2] for x in self.samples],'*')
-                        plt.title('Sample {} over Sample {}'.format(dim1,dim2))
-            plt.show()
+    #     if isinstance(dim1, int) and isinstance(dim2, int):
+    #         plt.plot([x[dim1] for x in self.samples], [x[dim2] for x in self.samples],'*')
+    #         plt.title('Sample {} over Sample {}'.format(dim1,dim2))
+    #         plt.show()
+    #     else:
+    #         for dim1 in range(len(self.samples[0])):
+    #             for dim2 in range(dim1, len(self.samples[0])):
+    #                 if dim1 != dim2:
+    #                     plt.figure()
+    #                     plt.plot([x[dim1] for x in self.samples], [x[dim2] for x in self.samples],'*')
+    #                     plt.title('Sample {} over Sample {}'.format(dim1,dim2))
+    #         plt.show()
         
-        if plot_histogram:
-            for sample in range(len(self.samples[0])):
-                plt.figure()
-                plt.hist([x[sample] for x in self.samples])
-                plt.title('Histogram of Sample {}'.format(sample))
-            plt.show()
+    #     if plot_histogram:
+    #         for sample in range(len(self.samples[0])):
+    #             plt.figure()
+    #             plt.hist([x[sample] for x in self.samples])
+    #             plt.title('Histogram of Sample {}'.format(sample))
+#            plt.show()
 
 class Control_Sampling():
     '''
@@ -314,28 +314,28 @@ class Control_Sampling():
             if True histogram of plotted controls is plotted
         '''
 
-        if isinstance(control, int):
-            plt.plot(self.sample_time['values'], self.control_samples[control])
-            plt.title('Trajectory of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
-            plt.show()
-        else:
-            for var in range(self.sampling_object.globalID+1):
-                plt.figure()
-                plt.plot(self.sample_time['values'], self.control_samples[var])
-                plt.title('Trajectory of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
-            plt.show()
+        # if isinstance(control, int):
+        #     plt.plot(self.sample_time['values'], self.control_samples[control])
+        #     plt.title('Trajectory of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
+        #     plt.show()
+        # else:
+        #     for var in range(self.sampling_object.globalID+1):
+        #         plt.figure()
+        #         plt.plot(self.sample_time['values'], self.control_samples[var])
+        #         plt.title('Trajectory of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
+        #     plt.show()
         
-        if plot_histogram:
-            if isinstance(control, int):                                                          
-                plt.hist(self.control_samples[control])
-                plt.title('Histogram of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
-                plt.show()
-            else:
-                for var in range(self.sampling_object.globalID+1):
-                    plt.figure()
-                    plt.hist(self.control_samples[var])
-                    plt.title('Histogram of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
-                plt.show()
+        # if plot_histogram:
+        #     if isinstance(control, int):                                                          
+        #         plt.hist(self.control_samples[control])
+        #         plt.title('Histogram of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
+        #         plt.show()
+        #     else:
+        #         for var in range(self.sampling_object.globalID+1):
+        #             plt.figure()
+        #             plt.hist(self.control_samples[var])
+        #             plt.title('Histogram of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
+        #         plt.show()
 
 class Control_Sampling_Simulink():
     '''
@@ -515,27 +515,27 @@ class Control_Sampling_Simulink():
             if True histogram of plotted controls is plotted
         '''
 
-        if isinstance(control, int):
-            plt.step(self.sample_time['values'], self.control_samples[control],where='post')
-            #plt.plot(self.sample_time['values'], self.control_samples[control])
-            plt.title('Trajectory of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
-            plt.show()
-        else:
-            for var in range(self.sampling_object.globalID+1):
-                plt.figure()
-                plt.step(self.sample_time['values'], self.control_samples[var],where='post')
-                #plt.plot(self.sample_time['values'], self.control_samples[var])
-                plt.title('Trajectory of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
-            plt.show()
+        # if isinstance(control, int):
+        #     plt.step(self.sample_time['values'], self.control_samples[control],where='post')
+        #     #plt.plot(self.sample_time['values'], self.control_samples[control])
+        #     plt.title('Trajectory of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
+        #     plt.show()
+        # else:
+        #     for var in range(self.sampling_object.globalID+1):
+        #         plt.figure()
+        #         plt.step(self.sample_time['values'], self.control_samples[var],where='post')
+        #         #plt.plot(self.sample_time['values'], self.control_samples[var])
+        #         plt.title('Trajectory of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
+        #     plt.show()
         
-        if plot_histogram:
-            if isinstance(control, int):                                                          
-                plt.hist(self.control_samples[control])
-                plt.title('Histogram of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
-                plt.show()
-            else:
-                for var in range(self.sampling_object.globalID+1):
-                    plt.figure()
-                    plt.hist(self.control_samples[var])
-                    plt.title('Histogram of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
-                plt.show()
+        # if plot_histogram:
+        #     if isinstance(control, int):                                                          
+        #         plt.hist(self.control_samples[control])
+        #         plt.title('Histogram of control {}, {}'.format(control, self.sampling_object.varlist[control].varName))
+        #         plt.show()
+        #     else:
+        #         for var in range(self.sampling_object.globalID+1):
+        #             plt.figure()
+        #             plt.hist(self.control_samples[var])
+        #             plt.title('Histogram of control {}, {}'.format(var, self.sampling_object.varlist[var].varName))
+        #         plt.show()
