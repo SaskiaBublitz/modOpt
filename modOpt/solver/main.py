@@ -7,7 +7,7 @@ Import packages
 """
 import numpy
 from modOpt.solver import (newton, results, scipyMinimization, 
-parallelization, block)
+parallelization, block, matlabSolver)
 import modOpt.storage as mostg
 import modOpt.scaling as mos
 import copy
@@ -42,7 +42,7 @@ def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options
     for cur_solver in solv_options["solver"]:
         npzName+=cur_solver
     npzName+=".npz"
-    
+
     for l in range(0, len(boxes)):
        model.xBounds = [boxes[l]]
        initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
@@ -95,7 +95,7 @@ def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, so
         for cur_solver in solver_sequence:
             solv_options["solver"] = cur_solver
             res_solver = solveSystem_NLE(res_solver["Model"], dict_equations, dict_variables, solv_options, dict_options)
-            
+
             if res_solver["Residual"] >= min_FTOL or numpy.isnan(res_solver["Residual"]) or numpy.isinf(res_solver["Residual"]):
                 res_solver = min_results 
                 continue
@@ -110,7 +110,7 @@ def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, so
                 min_results = res_solver
                 min_FTOL = res_solver["Residual"]           
         iterNo +=1
-        
+
         if min_FTOL == old_FTOL: 
             res_solver = min_results 
             res_solver["Exitflag"] = 2
@@ -203,10 +203,9 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
     # Initialization of known system quantities
     rBlocks, cBlocks, xInF = getBlockInformation(model)
     res_solver = createSolverResultDictionary(len(rBlocks))
-    
+
     # Block iteration:    
     for b in range(len(rBlocks)): 
-
         curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
                                model.fSymCasadi, model.stateVarValues[0], 
                                model.xBounds[0], model.parameter,
@@ -232,6 +231,9 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
             doipoptMinimize(curBlock, b, solv_options, dict_options, 
                                  res_solver, dict_equations, dict_variables)
 
+        if solv_options["solver"] == 'matlab-fsolve':
+            doMatlabSolver(curBlock, b, solv_options, dict_options, 
+                                 res_solver, dict_equations, dict_variables)
         # TODO: Add other solvers, e.g. ipopt
 
         if res_solver["Exitflag"][b] < 1: 
@@ -417,6 +419,35 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1
         res_solver["CondNo"][b] = 'nan'
+
+
+def doMatlabSolver(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+    """ starts matlab runner for externam matlab file with fsolve
+    CAUTION: Additional matlab file is required
+    
+    Args:
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
+        
+    """
+
+    try:
+        exitflag, iterNo = matlabSolver.fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables)
+        res_solver["IterNo"][b] = iterNo-1
+        res_solver["Exitflag"][b] = exitflag
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
+    except: 
+        print ("Error in Block ", b)
+        res_solver["IterNo"][b] = 0
+        res_solver["Exitflag"][b] = -1
+        res_solver["CondNo"][b] = 'nan'
+
 
 
 def putResultsInDict(model, res_solver):
