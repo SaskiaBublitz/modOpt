@@ -43,7 +43,7 @@ def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options
         npzName+=cur_solver
     npzName+=".npz"
 
-    for l in range(0, len(boxes)):
+    for l in range(0, len(boxes)): # TODO: Parallelization
        model.xBounds = [boxes[l]]
        initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
        res_multistart  = solveSamples(model, initValues, 
@@ -71,7 +71,7 @@ def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variab
     """
     res_multistart = {}
                 
-    for k in range(0, len(initValues)):
+    for k in range(0, len(initValues)): # TODO: Parallelization
         
         model.stateVarValues = [initValues[k]]    
         res_multistart['%d' %k] = iterate_solver(model, mainfilename, k, l, 
@@ -81,6 +81,26 @@ def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variab
     return res_multistart
 
 def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, solv_options, dict_options):
+    """ alternates between all solvers in list solver of solv_options and stores current best point in 
+    min_results. The dictionary min_results in only updated if the current solver can further reduce the residual.
+    if the residual can not be further reduced by the current solver sequence res_solver with the best point is returned.
+    
+    Args:
+        :model:             object of class model in modOpt.model that contains all
+                            information of the NLE-evaluation and decomposition
+        :mainfilename:      string with general file name
+        :k:                 integer with index of current sample
+        :l:                 integer with index of current box
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables                            
+        :solv_options:      dictionary with user defined solver settings
+        :dict_options:      dictionary with user specified settings
+
+    Returns:
+        :res_solver:        dictionary with solver sequence output
+    
+    """
+    
     res_solver = {} 
     initial_model = copy.deepcopy(model)
     res_solver["Model"] = model
