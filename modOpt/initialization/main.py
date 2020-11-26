@@ -7,8 +7,7 @@ Import packages
 """
 import time
 import numpy
-import modOpt.initialization as moi
-from modOpt.initialization import parallelization
+from modOpt.initialization import parallelization, VarListType, Sampling
 import modOpt.storage as mostge
 
 """
@@ -76,7 +75,7 @@ def sample_box(model, boxID, sampling_options, dict_options, res):
     Returns:                updated dictionary res by samples of current box
 
     """
-    iterVars = moi.VariableList(performSampling=True, 
+    iterVars = VarListType.VariableList(performSampling=True, 
                                   numberOfSamples=sampling_options["number of samples"],
                                   samplingMethod=sampling_options["sampling method"], 
                                   samplingDistribution='uniform',
@@ -84,7 +83,7 @@ def sample_box(model, boxID, sampling_options, dict_options, res):
                                   distributionParams=(),
                                   model=model, 
                                   boxID=boxID)
-    iterVarsSampler = moi.Variable_Sampling(iterVars, number_of_samples=iterVars.numberOfSamples)
+    iterVarsSampler = Sampling.Variable_Sampling(iterVars, number_of_samples=iterVars.numberOfSamples)
 
     iterVars.sampleData = numpy.array(iterVarsSampler.create_samples())
     sampleNo = sampling_options['sampleNo_min_resiudal']   
@@ -112,7 +111,9 @@ def get_samples_with_n_lowest_residuals(model, n, sampleData):
     # Calc residuals:
     #if dict_options != parallel: 
     for curSample in sampleData:
-        residuals.append(sum(abs(numpy.array(model.fSymCasadi(*curSample)))))
+        model.stateVarValues=[curSample]
+        
+        residuals.append(numpy.linalg.norm(model.getFunctionValues()))
     
     # Sort samples by minimum residuals
     residuals = numpy.array(residuals)

@@ -109,15 +109,22 @@ def doIntervalNesting(res_solver, dict_options):
             continue
         
     # Updating model:
-    # TODO: if some boxes share same lb or ub they should be unified
     validXBounds = []
     for xBounds in model.xBounds:
         if iNes_procedure.solutionInFunctionRange(model, xBounds, dict_options):
             validXBounds.append(xBounds)
-    
-    newModel.setXBounds(validXBounds)
-    storage.store_time(npzFileName, timeMeasure, iterNo)
-    res_solver["Model"] = newModel
+       
+    if validXBounds == []: 
+        model.failed = True
+        res_solver["Model"] = model
+        #validXBounds.append(xBounds)
+        res_solver = iNes_procedure.identify_function_with_no_solution(res_solver, functions, 
+                                                          xBounds, dict_options)
+    else:
+      newModel.setXBounds(validXBounds)
+      res_solver["Model"] = newModel
+      
+    storage.store_time(npzFileName, timeMeasure, iterNo) 
     res_solver["iterNo"] = iterNo
     
     return True

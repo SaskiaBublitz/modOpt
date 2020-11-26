@@ -1318,11 +1318,11 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
                 y = doBoxReduction(functions[j], xBounds, y, i, 
                                    dict_options_temp)
                 if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
+                    saveFailedSystem(output, functions[j], model, i)
                     return output
 
                 if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-                    y = xBounds[functions[j].glb_ID]
+                    y = xBounds[i]
     
                 if variableSolved(y, dict_options_temp): break
                 else: xSolved = False 
@@ -3234,6 +3234,20 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
     return interval
 
 
+def identify_function_with_no_solution(output, functions, xBounds, dict_options):
+    
+    for f in functions:
+        if not 0 in getBoundsOfFunctionExpression(f.f_sym,f.x_sym, xBounds[f.glb_ID], 
+                                                  dict_options):         
+            output["noSolution"] = FailedSystem(f.f_sym, f.x_sym[0])
+            output["xAlmostEqual"] = False 
+            output["xSolved"] = False
+            return output
+        else:
+            return output
+
+
+
 def solutionInFunctionRange(model, xBounds, dict_options):
     """checks, if the solution (0-vector) can lie in these Bounds and returns true or false 
     Args: 
@@ -3291,7 +3305,7 @@ def HC4(model, xBounds):
     Return: 
         :pyibex IntervalVector with reduced bounds 
     """
-
+    k=0
     #keep Bounds in max tolerance to prevent rounding error
     toleranceXBounds = copy.deepcopy(xBounds)
     for i in range(len(xBounds)):
@@ -3300,11 +3314,12 @@ def HC4(model, xBounds):
     HC4reduced_IvV = pyibex.IntervalVector(eval(mpmath.nstr(toleranceXBounds.tolist())))
     currentIntervalVector = HC4reduced_IvV
     for f in model.fSymbolic: 
+        k += 1
         stringF = str(f).replace('log', 'ln').replace('**', '^')
         for i,s in enumerate(tuple(reversed(tuple(sympy.ordered(model.xSymbolic))))):
             if s in f.free_symbols:
                 stringF = stringF.replace(str(s), 'x['+str(model.xSymbolic.index(s))+']')
-           
+
         pyibexFun = pyibex.Function('x['+str(len(xBounds))+']', stringF)
         ctc = pyibex.CtcFwdBwd(pyibexFun)
         ctc.contract(currentIntervalVector)
@@ -3314,7 +3329,6 @@ def HC4(model, xBounds):
             return HC4reduced_IvV
 
     return HC4reduced_IvV
-
 
 
 def HybridGS(newtonSystemDic, xBounds, i, dict_options):
