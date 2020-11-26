@@ -81,7 +81,7 @@ def load_npz_dict(dict_name, allow_pickle=False):
     return arrays
 
 
-def get_entry_from_npz_dict(dict_name, position):
+def get_entry_from_npz_dict(dict_name, position, allow_pickle=False):
     """ gets entry by position from npz directory with name dict_name
     
     Args:
@@ -91,7 +91,7 @@ def get_entry_from_npz_dict(dict_name, position):
     Returns                 numpy array 
 
     """
-    return load_npz_dict(dict_name)[position]
+    return load_npz_dict(dict_name, allow_pickle)[position]
 
 
 def store_list_in_npz_dict(dict_name, list_obj, array_id, allow_pickle=False):

@@ -17,7 +17,6 @@ def createDict(X, LABEL):
 #def writeBoxes2NPZ(dict_options, dict_variables, res_solver)
 
 
-
 def writeResults(dict_options, dict_variables, res_solver):
     """ creates File(s) with  final start values and lower and upper bounds. 
     For the ith set of start values, lower and upper bounds a new text file is 

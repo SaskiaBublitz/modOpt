@@ -81,45 +81,67 @@ def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variab
     return res_multistart
 
 def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, solv_options, dict_options):
+    res_solver = {} 
     initial_model = copy.deepcopy(model)
-    min_FTOL = initial_model.getFunctionValuesResidual()
-    solver_sequence = solv_options["solver"]
-    iterNo = 1
-    res_solver = {}
     res_solver["Model"] = model
-    min_results = copy.deepcopy(res_solver)
+    res_solver["IterNo_tot"] = 0
+    res_solver["Exitflag"] = 3
+    res_solver["CondNo"] = -1
+    res_solver["Residual"] = model.getFunctionValuesResidual()
+    solver_sequence = solv_options["solver"]
     
+    iterNo = 1
+    min_FRES = res_solver["Residual"]
+    min_results = copy.deepcopy(res_solver)
+        
     while iterNo <= solv_options["iterMax_solver"]:
-        old_FTOL = min_FTOL  
-              
+        old_FRES = min_FRES  
+        print("current solver iteration step: ", iterNo, " of sample:", k, " in box: ", l)   
+        
         for cur_solver in solver_sequence:
             solv_options["solver"] = cur_solver
-            res_solver = solveSystem_NLE(res_solver["Model"], dict_equations, dict_variables, solv_options, dict_options)
+            res_solver = solveSystem_NLE(res_solver["Model"], dict_equations, 
+                                         dict_variables, solv_options, dict_options)
             
-            if res_solver["Residual"] >= min_FTOL or numpy.isnan(res_solver["Residual"]) or numpy.isinf(res_solver["Residual"]):
-                res_solver = min_results 
+            if res_solver["Residual"] > min_FRES or numpy.isnan(res_solver["Residual"]) or numpy.isinf(res_solver["Residual"]):
+                res_solver = copy.deepcopy(min_results) 
                 continue
             
             elif res_solver["Residual"] <= solv_options["FTOL"]:
                 results.write_successfulResults(res_solver, mainfilename, k, l, 
-                                        initial_model, solv_options, dict_options)
+                                        initial_model, 
+                                        solv_options, dict_options)
+                
                 solv_options["solver"] = solver_sequence
+                res_solver["initial_model"] = initial_model
+                print("The currently achieved minimum residual is: ", 
+                      res_solver["Residual"],  " for sample:", k, " in box: ", l)
                 return res_solver
             
             else:
-                min_results = res_solver
-                min_FTOL = res_solver["Residual"]           
+                old_IterNo_solver = min_results["IterNo_tot"]
+                min_results = copy.deepcopy(res_solver)
+                min_results["IterNo_tot"] += old_IterNo_solver
+                min_FRES = res_solver["Residual"]           
         iterNo +=1
         
-        if min_FTOL == old_FTOL: 
+        if min_FRES == old_FRES: 
             res_solver = min_results 
             res_solver["Exitflag"] = 2
             solv_options["solver"] = solver_sequence
+            res_solver["initial_model"] = initial_model
+            
+            print("The achieved minimum residual is: ", res_solver["Residual"],  
+                  " for sample:", k, " in box: ", l)
             return res_solver
-    print(min_FTOL)
+        
+    print("The achieved minimum residual is: ", res_solver["Residual"],  
+          " for sample:", k, " in box: ", l)
     res_solver = min_results    
     res_solver["Exitflag"] = 0
     solv_options["solver"] = solver_sequence
+    res_solver["initial_model"] = initial_model
+    
     return res_solver
 
       

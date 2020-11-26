@@ -181,7 +181,7 @@ class VariableList(VarListType):
         varNames = model.xSymbolic
         
         for glbID in range(0, len(varNames)):
-            scale = model.xBounds[boxID][glbID, 1] - model.xBounds[boxID][glbID, 0]/6.0 # standard deviation
+            scale = (model.xBounds[boxID][glbID, 1] - model.xBounds[boxID][glbID, 0])/6.0 # standard deviation
             loc = 0.5 * (model.xBounds[boxID][glbID, 0] +model.xBounds[boxID][glbID, 1]) # Mean value 
             self.add(varName = varNames[glbID], 
                      loc = loc,
