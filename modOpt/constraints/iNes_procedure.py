@@ -16,7 +16,10 @@ from modOpt.constraints import parallelization
 from modOpt.constraints.FailedSystem import FailedSystem
 from modOpt.decomposition import MC33
 from modOpt.decomposition import dM
+import modOpt.initialization as moi
+import modOpt.decomposition as mod
 import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
+import matlab.engine
 
 
 __all__ = ['reduceBoxes', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
@@ -61,7 +64,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         xBounds = model.xBounds[k]
         
         if dict_options['newton_method'] in newtonMethods and dict_options['combined_algorithm']==False:
-            newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)  
+            newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)
 
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         
@@ -1861,8 +1864,7 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds, dict_options):
 
     if dict_options["Affine_arithmetic"]: 
         fInterval = intersectWithAffineFunctionIntervals(xSymbolic, xBounds, [f], [fInterval])
-        return mpmath.mpi(str(fInterval[0]))
-    return fInterval
+    return mpmath.mpi(str(fInterval[0]))
         
         
 def intersectWithAffineFunctionIntervals(xSymbolic, xBounds, f, fIntervals):
@@ -2124,12 +2126,12 @@ def getReducedIntervalOfLinearFunction(a, i, xBounds, bi):
     Return:                  reduced x-Interval(s)   
     """        
     
-    if bool(0.0 in bi - a * xBounds[i]) == False: return [] # if this is the case, there is no solution in xBoundsi
+    if bool(0 in bi - a * xBounds[i]) == False: return [] # if this is the case, there is no solution in xBoundsi
 
-    if bool(0.0 in bi) and bool(0.0 in mpmath.mpi(a)):  # if this is the case, bi/aInterval would return [-inf, +inf]. Hence the approximation of x is already smaller
+    if bool(0 in bi) and bool(0 in a):  # if this is the case, bi/aInterval would return [-inf, +inf]. Hence the approximation of x is already smaller
                 return [xBounds[i]]
     else: 
-        return gaussSeidelOperator(mpmath.mpi(a), bi, xBounds[i]) # bi/aInterval  
+        return gaussSeidelOperator(a, bi, xBounds[i]) # bi/aInterval  
 
 
 def checkAndRemoveComplexPart(interval):
@@ -3261,9 +3263,8 @@ def solutionInFunctionRange(model, xBounds, dict_options):
     solutionInRange = True
     
     fIvLamb = lambdifyToMpmathIvComplex(model.xSymbolic, model.fSymbolic)
-    fInterval = numpy.array(fIvLamb(*xBounds))
-    if dict_options["Affine_arithmetic"]:
-        fInterval = intersectWithAffineFunctionIntervals(model.xSymbolic, xBounds, model.fSymbolic, fInterval)
+    fInterval = numpy.array(fIvLamb(*xBounds)) 
+    fInterval = intersectWithAffineFunctionIntervals(model.xSymbolic, xBounds, model.fSymbolic, fInterval)
     
     for f in fInterval:
         if not(f.a<=0+absTol and f.b>=0-absTol):
@@ -3377,3 +3378,96 @@ def HybridGS(newtonSystemDic, xBounds, i, dict_options):
 
         if intersection !=[]: interval.append(intersection)
         return interval
+
+
+def lookForSolutionInBox(model, boxID, dict_options):
+    """Uses Matlab File and tries to find Solution with initial points in the box samples by HSS.
+     Writes Results in File, if one is found: 
+        Args: 
+            :model:   instance of class model
+            :boxID:   id of current Box
+            :dict_options:   dictionary of options         
+        Return:
+                             
+        """
+
+    #convert System to Sampling System
+    samplingModel = copy.deepcopy(model)
+    samplingModel.xBounds = ConvertMpiBoundsToList(samplingModel.xBounds, boxID)
+    Jcasadi, fcasadi = mod.getCasadiJandF(model.xSymbolic, model.fSymbolic)
+    samplingModel.jacobian =  Jcasadi
+    samplingModel.fSymCasadi = fcasadi
+    
+    iterVars = moi.VarListType.VarListType(performSampling=True, 
+                                           numberOfSamples=4, 
+                                           samplingMethod='HSS', 
+                                           model=samplingModel)
+    
+    #get samples
+    iterVarsSampler = moi.SamplingMethods(samplingMethod=iterVars.samplingMethod, numberOfSamples=iterVars.numberOfSamples, inputSpace=iterVars)
+    iterVars.sampleData = iterVarsSampler.getSamples()
+    
+    #add midpoint
+    midPoint = getPointInBox(model.xBounds[boxID], len(model.xBounds[boxID])*['mid'])
+    iterVars.sampleData = numpy.vstack((iterVars.sampleData, midPoint))
+    
+    #try all sample points in matlab fsolve
+    if dict_options['Debug-Modus']: print('running Matlab: fsolve')
+    eng = matlab.engine.start_matlab()
+    
+    NewRootFound = False
+    for init in iterVars.sampleData:
+        try:
+            res = eval('eng.'+dict_options["fileName"]+'(matlab.double(init.tolist()),nargout=2)') #file and function need to have the same name, as System
+            root = numpy.array(res[0][0])
+            froot = numpy.array(res[1])
+            solved = numpy.allclose(froot, numpy.zeros((len(froot),1)), atol=1e-5)
+        except:
+            solved = False
+        
+        #check, if solution was found before
+        if solved:
+            RootExists=False
+            for fs in model.FoundSolutions:
+                if numpy.allclose(fs, root, rtol=0.1, atol=0.1): RootExists=True
+            if not RootExists: 
+                model.FoundSolutions.append(root)
+                NewRootFound = True
+
+    #write Solutions to file, if new was found
+    if NewRootFound:
+        saveSolutions(model, dict_options)
+
+
+def ConvertMpiBoundsToList(xBounds, boxID):
+    """Converts the xBounds, containing mpi to a list for sampling methods
+        Args: 
+            :xBounds:   array of bounds as mpmath.mpi
+            :boxID:   id of current Box      
+        Return:
+            :[xBoxBounds.astype(numpy.float)]: Bounds in List format                
+        """
+    xBoxBounds = numpy.zeros((len(xBounds[boxID]),2))
+
+    for x in range(len(xBounds[boxID])):
+        xBoxBounds[x][0] = float(mpmath.convert(xBounds[boxID][x].a))
+        xBoxBounds[x][1] = float(mpmath.convert(xBounds[boxID][x].b))
+            
+    return [xBoxBounds.astype(numpy.float)]
+
+
+def saveSolutions(model, dict_options):
+    """Writes all found results to a txt file 
+        Args: 
+            :model:   instance of class model
+            :dict_options:   dictionary of options       
+        Return:
+             
+        """
+    file=open(f'{dict_options["fileName"]}{len(model.FoundSolutions)}Solutions.txt', 'a')
+    for fs in model.FoundSolutions:
+        for var in range(len(fs)):
+            file.write(str(model.xSymbolic[var])+' '+str(fs[var]))
+            file.write('  \n')
+        file.write('\n')
+    file.close()
