@@ -117,6 +117,9 @@ def doIntervalNesting(res_solver, dict_options):
     if validXBounds == []: 
         model.failed = True
         res_solver["Model"] = model
+        #validXBounds.append(xBounds)
+        res_solver = iNes_procedure.identify_function_with_no_solution(res_solver, functions, 
+                                                          xBounds, dict_options)
     else:
       newModel.setXBounds(validXBounds)
       res_solver["Model"] = newModel

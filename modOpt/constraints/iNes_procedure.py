@@ -3232,6 +3232,20 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
     return interval
 
 
+def identify_function_with_no_solution(output, functions, xBounds, dict_options):
+    
+    for f in functions:
+        if not 0 in getBoundsOfFunctionExpression(f.f_sym,f.x_sym, xBounds[f.glb_ID], 
+                                                  dict_options):         
+            output["noSolution"] = FailedSystem(f.f_sym, f.x_sym[0])
+            output["xAlmostEqual"] = False 
+            output["xSolved"] = False
+            return output
+        else:
+            return output
+
+
+
 def solutionInFunctionRange(model, xBounds, dict_options):
     """checks, if the solution (0-vector) can lie in these Bounds and returns true or false 
     Args: 

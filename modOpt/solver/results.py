@@ -13,7 +13,8 @@ Output
 
 
 __all__ = ['writeInitialSettings', 'writeResults', 'writeResultsAnalytics', 
-           'write_successfulResults']
+           'write_successfulResults', 'write_results_with_bounds',
+           'write_initial_values_with_bounds', 'write_analytics']
 
 
 def write_successfulResults(res_solver, mainfilename, k, l, initial_model, solv_options, dict_options):
@@ -73,6 +74,29 @@ def writeResults(dict_options, solv_options, res_solver):
         writeIterVarValues(res_file,  res_solver["Model"])
 
 
+def write_initial_values_with_bounds(res_solver, dict_options):
+    box_ID = dict_options["box_ID"]
+    sample_ID = dict_options["sample_ID"]
+    fileName = dict_options["fileName"] + "_" + str(box_ID) + "_" + str(sample_ID)
+    fileName += "_initial.txt"
+    
+    res_file = open(fileName, "w")
+    writeIterVarValues(res_file,  res_solver["initial_model"])
+
+
+
+def write_results_with_bounds(res_solver, dict_options):
+    box_ID = dict_options["box_ID"]
+    sample_ID = dict_options["sample_ID"]
+    fileName = dict_options["fileName"] + "_" + str(box_ID) + "_" + str(sample_ID)
+    fileName += "_results.txt"
+    
+    res_file = open(fileName, "w")
+    writeIterVarValues(res_file,  res_solver["Model"])
+
+
+
+
 def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options, solv_options):
     """ writes variable values and results of converged samples into files
     
@@ -120,6 +144,25 @@ def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options, 
     sample_file.write(" ****************** Result ****************** \n\n")
     writeIterVarValues(sample_file,  res_solver["Model"])
 
+def write_analytics(res_solver, dict_options):
+    """ writes additional iteration information to file res_file
+    
+    Args:
+        :res_solver:            dictionary with solver output
+        :dict_options:          dictionary with user specified settings
+    """
+    if res_solver != []:
+        box_ID = dict_options["box_ID"]
+        sample_ID = dict_options["sample_ID"]
+        fileName = dict_options["fileName"] + "_" + str(box_ID) + "_" + str(sample_ID)
+        fileName += "_analysis.txt"
+    
+        res_file = open(fileName, "w")
+        #writeSolverOutput(res_file, res_solver)
+        
+        writeFunctionLegend(res_file, res_solver["Model"])
+        res_solver["Exitflag"] *= numpy.ones(len(res_solver["Model"].blocks))
+        writeFunctionTable(res_file, res_solver)
 
 def writeResultsAnalytics(dict_options, res_solver, solv_options):
     """ writes additional iteration information to file res_file
@@ -171,7 +214,10 @@ def writeIterVarValues(res_file, model):
     
     res_file.write(" ****************** Iteration Variable Values ****************** \n\n")    
     for i in range(0, len(model.xSymbolic)):
-        res_file.write("%s    %s\n"%(model.xSymbolic[i], model.stateVarValues[0][i]))
+        res_file.write("%s    %s    %s    %s\n"%(model.xSymbolic[i], 
+                                                 model.stateVarValues[0][i],
+                                                 model.xBounds[0][i][0],
+                                                 model.xBounds[0][i][1]))
     res_file.write("\n")  
 
         
