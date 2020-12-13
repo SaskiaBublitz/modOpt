@@ -8,7 +8,7 @@ Import packages
 import time
 import numpy
 from modOpt.initialization import parallelization, VarListType, Sampling
-import modOpt.storage as mostge
+from modOpt import storage as mostge
 
 """
 ********************************************************
