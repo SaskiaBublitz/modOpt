@@ -19,7 +19,7 @@ from modOpt.decomposition import dM
 import modOpt.initialization as moi
 import modOpt.decomposition as mod
 import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
-import matlab.engine
+
 
 
 __all__ = ['reduceBoxes', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
@@ -3473,6 +3473,7 @@ def lookForSolutionInBox(model, boxID, dict_options):
                              
         """
 
+    import matlab.engine
     #convert System to Sampling System
     samplingModel = copy.deepcopy(model)
     samplingModel.xBounds = ConvertMpiBoundsToList(samplingModel.xBounds, boxID)
