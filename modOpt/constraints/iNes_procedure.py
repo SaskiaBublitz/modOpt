@@ -19,7 +19,7 @@ from modOpt.decomposition import dM
 import modOpt.initialization as moi
 import modOpt.decomposition as mod
 import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
-import matlab.engine
+
 
 
 __all__ = ['reduceBoxes', 'reduceXIntervalByFunction', 'setOfIvSetIntersection',
@@ -60,10 +60,11 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
     nl = len(model.xBounds)
 
     for k in range(0, nl):
+        if dict_options["Debug-Modus"]: print(f'Box {k+1}')
         newtonSystemDic = {}
         xBounds = model.xBounds[k]
         
-        if dict_options['newton_method'] in newtonMethods and dict_options['combined_algorithm']==False:
+        if dict_options['newton_method'] in newtonMethods and dict_options['combined_algorithm']!=True:
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)
 
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
@@ -140,9 +141,11 @@ def contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options,
     """
     
     if not dict_options["Parallel Variables"]:
-        if dict_options["combined_algorithm"]==True:
+        if dict_options["combined_algorithm"]=='detNewton_HC4':
             # if combined_algorithm is True, all other choices for box_reduction are neglected
-            output = reduceBoxCombined(xBounds, model, functions, dict_options)
+            output = reduceBoxDetNewtonHC4(xBounds, model, functions, dict_options)
+        elif dict_options["combined_algorithm"]=='HC4_3PNewton_bnormal':
+            output = reduceBoxHC43PNewtonBnormal(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options)
         else:
             output = reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
     else:
@@ -368,6 +371,8 @@ def getBestSplit(xBounds,model, functions, dict_varId_fIds, boxNo, dict_options,
         :xNewBounds:    best reduced two variable boxes
     '''
     
+    dict_options_temp=copy.deepcopy(dict_options)
+    dict_options_temp.update({"hc_method":'HC4', "bc_method":'none',"newton_method":'none'})
     oldBounds = copy.deepcopy(numpy.array(xBounds)[0])  
     smallestAvrSide = numpy.Inf
     
@@ -376,23 +381,19 @@ def getBestSplit(xBounds,model, functions, dict_varId_fIds, boxNo, dict_options,
         splittedBox = separateBox(BoundsToSplit, [i])
 
         # reduces first splitted box
-        if dict_options["combined_algorithm"]:
-            output0 = reduceBoxCombined(numpy.array(splittedBox[0]), model, functions, dict_options)
-        else:
-            output0 = reduceBox(numpy.array(splittedBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+        output0 = reduceBox(numpy.array(splittedBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, newtonSystemDic)
         if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
             avrSide0 = identifyReduction(output0["xNewBounds"], oldBounds)
         else:
+            #if one of splitted boxes is empty always prefer this split
             return [tuple(splittedBox[1])]
         
         # reduces second splitted box
-        if dict_options["combined_algorithm"]:
-            output1 = reduceBoxCombined(numpy.array(splittedBox[1]), model, functions, dict_options)
-        else:
-            output1 = reduceBox(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+        output1 = reduceBox(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, newtonSystemDic)
         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
             avrSide1 = identifyReduction(output1["xNewBounds"], oldBounds)
         else:
+            #if one of splitted boxes is empty always prefer this split
             return [tuple(splittedBox[0])]
         
         # sum of both boxreductions
@@ -1182,8 +1183,10 @@ def getPrecision(xBounds):
     return 5*10**(numpy.floor(numpy.log10(minValue))-2)
 
 
-def reduceBoxCombined(xBounds, model, functions, dict_options):
-    """ reduce box spanned by current intervals of xBounds with defined combination of methods.
+def reduceBoxHC43PNewtonBnormal(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options):
+    """ reduce box spanned by current intervals of xBounds. First HC4 is tried.
+    If reduction is not sufficient, 3PNewton and b_normal are applied. If Affine-Arithmetic
+    is active, b_normal and 3PNewton are repeated with affine.
      
     Args: 
         :xBounds:            numpy array with box
@@ -1206,65 +1209,140 @@ def reduceBoxCombined(xBounds, model, functions, dict_options):
     xUnchanged = True
     xSolved = True
     dict_options_temp = copy.deepcopy(dict_options)
-    eps = dict_options["relTol"]
+    dict_options_temp.update({"newton_method":"3PNewton","InverseOrHybrid":"both"})
+
     
     # first it is tried to reduce bounds by HC4
-    HC4_IvV = HC4(model, xBounds)
-    if HC4_IvV.is_empty():
-        saveFailedSystem(output, functions[0], model, 0)
-        return output 
+    output, empty = doHC4(model, functions, xNewBounds, xNewBounds, output)
+    if empty: return output
     else:
         for i in range(0, len(model.xSymbolic)):
-            xNewListBounds[i] = [mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))]
-            xNewBounds[i] = mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))
-            xUnchanged = checkXforEquality(xBounds[i], xNewListBounds[i], xUnchanged, {"absTol":eps, 'relTol':0.1})
+            if dict_options["Debug-Modus"]: print(i)
+            xNewListBounds[i] = [xNewBounds[i]]
+            xUnchanged = checkXforEquality(xBounds[i], xNewListBounds[i], xUnchanged, {"absTol":0.001, 'relTol':0.01})
             if not variableSolved(xNewListBounds[i], dict_options): xSolved = False
     
     # if HC4 could not reduce box sufficiently, now newton is used
-    if xUnchanged:
+    if xUnchanged and not xSolved:
         xSolved = True
-        dict_options_temp.update({"newton_method":"3PNewton","InverseOrHybrid":"both"})
         newtonSystemDic = getNewtonIntervalSystem(xNewBounds, model, dict_options_temp)
         for i in range(0, len(model.xSymbolic)):
-            y = xNewListBounds[i]
-            if dict_options["Debug-Modus"]: 
-                print(i)
-
+            # apply 3PNewton Hybrid and Inverse for every variable
+            y = [xNewBounds[i]]
+            if dict_options["Debug-Modus"]: print(i)
+            checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
+            y = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
+            if y == [] or y ==[[]]: 
+                saveFailedSystem(output, functions[0], model, 0)
+                return output
             
-            if xBounds[i].delta == 0:
-                xNewBounds[i] = xBounds[i]
-                continue
-            
-            if variableSolved(y, dict_options) and y[0].delta > 1.0e-15:
-                dict_options_temp["relTol"] = 0.1 * y[0].delta
-                dict_options_temp["absTol"] = 0.1 * y[0].delta
-                
-            if not variableSolved(y, dict_options_temp):     
-                # use three point inverse newton   
-                y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xNewBounds, i, dict_options_temp)])
-                if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-            if not variableSolved(y, dict_options_temp):  
-                # use three point hybrid newton
-                y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xNewBounds, i, dict_options_temp)])
-                if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    return output 
-                    
-            if not variableSolved(y, dict_options): xSolved = False
+            # Update quantities
             subBoxNo = subBoxNo * len(y) 
+            xNewBounds[i] = y[0]
             xNewListBounds[i] = y
-            if len(y)==1: xNewBounds[i] = y[0]
-            xUnchanged = checkXforEquality(xBounds[i], xNewListBounds[i], xUnchanged, 
+            if not variableSolved(y, dict_options): xSolved = False
+            xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
                                            {"absTol":0.001, 'relTol':0.001})
-        
-        
+            
+    # if reduction not suffiecient, apply b_normal
+    if xUnchanged and not xSolved:
+        for i in range(0, len(model.xSymbolic)):
+            y = [xNewBounds[i]]
+            if dict_options["Debug-Modus"]: print(i)
+            checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
+            for j in dict_varId_fIds[i]:
+                
+                y = doBoxReduction(functions[j], xNewBounds, y, i, 
+                                   dict_options_temp)
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, functions[j], model, i)
+                    return output
+    
+                if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
+                    y = xBounds[i]
+    
+                if variableSolved(y, dict_options_temp): break
+                else: xSolved = False
+                
+            # Update quantities
+            subBoxNo = subBoxNo * len(y) 
+            xNewBounds[i] = y[0]
+            xNewListBounds[i] = y
+            if not variableSolved(y, dict_options): xSolved = False
+            xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
+                                           {"absTol":0.001, 'relTol':0.001})
+               
         
     output["xAlmostEqual"] = xUnchanged 
     output["xSolved"] = xSolved    
     output["xNewBounds"] = list(itertools.product(*xNewListBounds))
     
+    return output
+
+def reduceBoxDetNewtonHC4(xBounds, model, functions, dict_options):
+    """ reduce box spanned by current intervals of xBounds. First detNewton is tried.
+    If reduction is not sufficient, HC4 is applied.
+     
+    Args: 
+        :xBounds:            numpy array with box
+        :model:              instance of class Model
+        :functions:          list with instances of class Function
+        :dict_options:       dictionary with user specified algorithm settings
+            
+        Returns:
+        :output:             dictionary with new boxes in a list and
+                             eventually an instance of class failedSystem if
+                             the procedure failed.
+                        
+    """ 
+    
+    subBoxNo = 1
+    output = {}  
+    xUnchanged = True
+    xSolved = True
+    xNewBounds = copy.deepcopy(xBounds)
+    xNewListBounds = copy.deepcopy(xBounds)
+    dict_options_temp = copy.deepcopy(dict_options)
+    
+    dict_options_temp.update({"newton_method":"detNewton","InverseOrHybrid":"both"})
+    newtonSystemDic = getNewtonIntervalSystem(xNewBounds, model, dict_options_temp)
+    
+    for i in range(0, len(model.xSymbolic)):
+        # apply detNewton Hybrid and Inverse for every variable
+        y = [xNewBounds[i]]
+        if dict_options["Debug-Modus"]: print(i)
+        checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
+        y = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
+        if y == [] or y ==[[]]: 
+            saveFailedSystem(output, functions[0], model, 0)
+            return output
+        
+        # Update quantities
+        subBoxNo = subBoxNo * len(y) 
+        xNewBounds[i] = y[0]
+        xNewListBounds[i] = y
+        if not variableSolved(y, dict_options): xSolved = False
+        xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
+                                       {"absTol":0.001, 'relTol':0.001})
+    
+    # if reduction not suffiecient, apply HC4
+    if xUnchanged and not xSolved:
+        xSolved = True
+        output, empty = doHC4(model, functions, xNewBounds, xNewBounds, output)
+        if empty: return output
+        else:
+            for i in range(0, len(model.xSymbolic)):
+                if dict_options["Debug-Modus"]: print(i)
+                xNewListBounds[i] = [xNewBounds[i]]
+                xUnchanged = checkXforEquality(xBounds[i], xNewListBounds[i], xUnchanged, {"absTol":0.001, 'relTol':0.01})
+                if not variableSolved(xNewListBounds[i], dict_options): xSolved = False
+                
+                   
+        
+    # Prepare output dictionary for return
+    output["xAlmostEqual"] = xUnchanged
+    output["xSolved"] = xSolved       
+    output["xNewBounds"] = list(itertools.product(*xNewListBounds))
     return output
 
 
@@ -1448,8 +1526,12 @@ def checkIntervalAccuracy(xNewBounds, i, dict_options):
         accurate = variableSolved([xNewBounds[i]], dict_options)
         notdegenerate = xNewBounds[i].delta > 1.0e-15
         if accurate and notdegenerate:
-            dict_options["relTol"] = 0.1 * xNewBounds[i][0].delta
-            dict_options["absTol"] = 0.1 * xNewBounds[i][0].delta    
+            if isinstance(xNewBounds[i], mpmath.ctx_iv.ivmpf):
+                dict_options["relTol"] = 0.1 * xNewBounds[i].delta
+                dict_options["absTol"] = 0.1 * xNewBounds[i].delta 
+            else:  
+                dict_options["relTol"] = 0.1 * xNewBounds[i][0].delta
+                dict_options["absTol"] = 0.1 * xNewBounds[i][0].delta    
 
 
 def variableSolved(BoundsList, dict_options):
@@ -3391,6 +3473,7 @@ def lookForSolutionInBox(model, boxID, dict_options):
                              
         """
 
+    import matlab.engine
     #convert System to Sampling System
     samplingModel = copy.deepcopy(model)
     samplingModel.xBounds = ConvertMpiBoundsToList(samplingModel.xBounds, boxID)
