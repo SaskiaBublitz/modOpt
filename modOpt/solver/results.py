@@ -29,6 +29,7 @@ def write_successfulResults(res_solver, mainfilename, k, l, initial_model, solv_
     :solv_options:  dictionary with solver settings
     :dict_options:  dictionary with user-specified decomposition and scaling
                     settings
+                    
     Return:         None.
     
     """
@@ -49,7 +50,9 @@ def writeInitialSettings(dict_options, solv_options, model):
         :fileName:                String with name of text file(s)
         :dict_variables:          Dictionary with sets of state variable values,
                                  lower and upper bounds
-        
+                                 
+    Return:         None.  
+    
     """
     fileName = getFileName(dict_options, solv_options)
     res_file = open(''.join([fileName, "_initial.txt"]), "w") 
@@ -65,7 +68,9 @@ def writeResults(dict_options, solv_options, res_solver):
         :dict_options:          dictionary with user specified settings
         :solv_options:          dictionary with user specified solver settings
         :res_solver:            dictionary with solver output
-        
+    
+    Return:         None.   
+    
     """
     if res_solver != []: 
         fileName = getFileName(dict_options, solv_options)
@@ -75,6 +80,15 @@ def writeResults(dict_options, solv_options, res_solver):
 
 
 def write_initial_values_with_bounds(res_solver, dict_options):
+    """ writes out initial point with ID sample_ID and initial box with ID 
+    box_ID into a text file    
+
+    Args:
+        :res_solver:        dictionary with instance of initial model
+        :dict_options:      dictionary with sample_ID, box_ID and fileName
+
+    """
+    
     box_ID = dict_options["box_ID"]
     sample_ID = dict_options["sample_ID"]
     fileName = dict_options["fileName"] + "_" + str(box_ID) + "_" + str(sample_ID)
@@ -188,15 +202,24 @@ def writeRestructuringSettings(res_file, dict_options):
     Args:
         :res_file:          text document
         :dict_options:      dictionary with user specified settings
-            
-    """
     
+    Return:         None.        
+    
+    """
     res_file.write(" ****************** Restructuring Settings ****************** \n\n")
     res_file.write("Decomposition Method: %s\n"%(dict_options["decomp"]))
     res_file.write("Scaling Method: %s\n\n"%(dict_options["scaling"]))
 
 
 def writeSolverSettings(res_file, solv_options):
+    """ writes out solver settings
+    
+    Args:
+        :res_file:          text document
+        :solv_options:      dictionary with solver settings
+    
+    Return:         None.  
+    """
     res_file.write(" ****************** Solver Settings ****************** \n\n")
     res_file.write("Solver: %s\n"%(solv_options["solver"]))
     res_file.write("Function Residual: %s\n"%(solv_options["FTOL"]))
@@ -210,6 +233,7 @@ def writeIterVarValues(res_file, model):
         :res_file:          text document
         :model:             object of class Model
     
+    Return:         None.  
     """
     
     res_file.write(" ****************** Iteration Variable Values ****************** \n\n")    
@@ -228,6 +252,7 @@ def writeFunctionLegend(res_file, model):
         :res_file:          text document
         :model:             object of class Model
     
+    Return:         None.  
     """
     
     res_file.write(" ****************** Legend of functions ****************** \n\n") 
@@ -248,6 +273,7 @@ def writeFunctionTable(res_file, res_solver):
         :res_file:          text document
         :res_solver:        dictionary with solver output
     
+    Return:         None.  
     """
     
     model = res_solver["Model"]

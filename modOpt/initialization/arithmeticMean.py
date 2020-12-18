@@ -34,8 +34,10 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
         model.stateVarValues = numpy.empty((len(model.xBounds), len(model.xBounds[0])))
         for i in range(0, len(model.xBounds)):
             for j in range(0, len(model.xBounds[i])):
-
-                midPoint = float(mpmath.mpf(model.xBounds[i][j].mid))
+                if type(model.xBounds[i][j]) == numpy.ndarray:
+                   midPoint = (model.xBounds[i][j][0] + model.xBounds[i][j][1]) / 2.0
+                else:
+                    midPoint = float(mpmath.mpf(model.xBounds[i][j].mid))
                 if midPoint != 0: 
                     model.stateVarValues[i][j]= midPoint
                 else :
