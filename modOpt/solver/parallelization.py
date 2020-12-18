@@ -16,6 +16,26 @@ Algorithm for parallelization in iNes procedure
 ***************************************************
 """
 
+def solveBoxesParallel(model, boxes, dict_variables, dict_equations, dict_options, solv_options) :
+    CPU_count = solv_options["CPU count"]
+    nBoxes = len(boxes)
+    jobs = []
+    manager = Manager()
+    results = manager.dict()
+    done = numpy.zeros(len(boxes))
+    started = numpy.zeros(len(boxes))
+    actNum = 0  
+    for l in range(0, nBoxes): 
+        p = Process(target=main.solveOneBox, args=(model, boxes, l, dict_variables,
+                                                   dict_equations, dict_options,
+                                                               solv_options, 
+                                                               results))
+        jobs.append(p)
+        
+    startAndDeleteJobs(actNum, jobs, started, done, nBoxes, CPU_count)
+    return results
+
+
 def solveMultipleSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_option):
     """ solve samples from array sampleData in parallel and returns number of converged samples. The converged
     samples and their solutions are written into text files.

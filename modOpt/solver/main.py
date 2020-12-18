@@ -42,17 +42,38 @@ def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options
     for cur_solver in solv_options["solver"]:
         npzName+=cur_solver
     npzName+=".npz"
+    dict_options["mainfileName"] = mainfilename  
+    dict_options["npzName"] = npzName  
+        
+    if solv_options["parallel_boxes"]: 
+        results = parallelization.solveBoxesParallel(model, boxes, dict_variables, dict_equations, 
+                    dict_options, solv_options) 
+    
+    else:
+        results = {}
+        for l in range(0, len(boxes)):
+            results = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
+                        dict_options, solv_options, results)
+    print(results)
+    store_results(results, boxes, dict_options)
 
+
+def store_results(results, boxes, dict_options):
     for l in range(0, len(boxes)):
-       model.xBounds = [boxes[l]]
-       initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
-       res_multistart  = solveSamples(model, initValues, 
-                                      mainfilename, l, dict_equations, 
-                                      dict_variables, solv_options, dict_options)
-       mostg.store_list_in_npz_dict(npzName, res_multistart, l, allow_pickle=True)
+        mostg.store_list_in_npz_dict(dict_options["npzName"], results['%d'%l], l, allow_pickle=True)
+
+def solveOneBox(model, boxes, l, dict_variables, dict_equations, dict_options, solv_options, results):
+    model.xBounds = [boxes[l]]
+    dict_options["box_ID"] = l
+    initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
+    results['%d'%l]  = solveSamples(model, initValues, 
+                                   dict_equations, 
+                                   dict_variables, solv_options, dict_options)
+    return results
+    
 
 
-def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variables, solv_options, dict_options):
+def solveSamples(model, initValues, dict_equations, dict_variables, solv_options, dict_options):
     """ starts iteration from samples in a certain box with index l
 
     Args:
@@ -71,22 +92,46 @@ def solveSamples(model, initValues, mainfilename, l, dict_equations, dict_variab
     """
     res_multistart = {}
                 
-    for k in range(0, len(initValues)):
+    for k in range(0, len(initValues)): # TODO: Parallelization
         
+        dict_options["sample_ID"] = k
         model.stateVarValues = [initValues[k]]    
-        res_multistart['%d' %k] = iterate_solver(model, mainfilename, k, l, 
-                                                 dict_equations, dict_variables, 
-                                                 solv_options, dict_options)
+        #res_multistart['%d' %k] = iterate_solver(model, mainfilename, k, l, 
+        #                                         dict_equations, dict_variables, 
+        #                                         solv_options, dict_options)
+        
+        res_multistart['%d' %k] = solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
 
     return res_multistart
 
 def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, solv_options, dict_options):
+    """ alternates between all solvers in list solver of solv_options and stores current best point in 
+    min_results. The dictionary min_results in only updated if the current solver can further reduce the residual.
+    if the residual can not be further reduced by the current solver sequence res_solver with the best point is returned.
+    
+    Args:
+        :model:             object of class model in modOpt.model that contains all
+                            information of the NLE-evaluation and decomposition
+        :mainfilename:      string with general file name
+        :k:                 integer with index of current sample
+        :l:                 integer with index of current box
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables                            
+        :solv_options:      dictionary with user defined solver settings
+        :dict_options:      dictionary with user specified settings
+
+    Returns:
+        :res_solver:        dictionary with solver sequence output
+    
+    """
+    
     res_solver = {} 
+    rBlocks, cBlocks, xInF = getBlockInformation(model)
     initial_model = copy.deepcopy(model)
     res_solver["Model"] = model
-    res_solver["IterNo_tot"] = 0
-    res_solver["Exitflag"] = 3
-    res_solver["CondNo"] = -1
+    res_solver["IterNo"] = numpy.zeros(len(rBlocks))
+    res_solver["Exitflag"] = numpy.ones(len(rBlocks)) * 3
+    res_solver["CondNo"] = numpy.zeros(len(rBlocks)) * -1
     res_solver["Residual"] = model.getFunctionValuesResidual()
     solver_sequence = solv_options["solver"]
     
@@ -119,9 +164,9 @@ def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, so
                 return res_solver
             
             else:
-                old_IterNo_solver = min_results["IterNo_tot"]
+                old_IterNo_solver = min_results["IterNo"]
                 min_results = copy.deepcopy(res_solver)
-                min_results["IterNo_tot"] += old_IterNo_solver
+                min_results["IterNo"] += old_IterNo_solver
                 min_FRES = res_solver["Residual"]           
         iterNo +=1
         
@@ -256,6 +301,10 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
         if solv_options["solver"] == 'matlab-fsolve':
             doMatlabSolver(curBlock, b, solv_options, dict_options, 
                                  res_solver, dict_equations, dict_variables)
+            
+            
+        #if isinstance(solv_options["solver"], list):
+        #   TODO alternating solvers
         # TODO: Add other solvers, e.g. ipopt
 
         if res_solver["Exitflag"][b] < 1: 
@@ -385,7 +434,7 @@ def doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         print ("Error in Block ", b)
         res_solver["IterNo"][b] = 0
         res_solver["Exitflag"][b] = -1    
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["CondNo"][b] = 'nan'
         
         
 def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
@@ -435,6 +484,7 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         res_solver["IterNo"][b] = iterNo-1
         res_solver["Exitflag"][b] = exitflag
         res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
         
     except: 
         print ("Error in Block ", b)
