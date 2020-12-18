@@ -5,9 +5,10 @@
 Import packages
 ***************************************************
 """
+import copy
 import time
 import numpy
-from modOpt.initialization import parallelization, VarListType, Sampling
+from modOpt.initialization import parallelization, VarListType, Sampling, arithmeticMean
 import modOpt.storage as mostge
 
 """
@@ -36,21 +37,33 @@ def doSampling(model, dict_options, sampling_options):
     
     res = {}
     tic = time.time()
-    fileName = dict_options["fileName"]\
-    +"_r"+str(dict_options["redStep"])\
-    +"_s"+str(sampling_options["number of samples"])\
-    +"_smin"+str(sampling_options["sampleNo_min_resiudal"])\
-    +".npz"
     
-    
-    if dict_options["parallelization"]: 
-        res =parallelization.sample_box(model, sampling_options, dict_options)
-    else:
+
+    if sampling_options["number of samples"] == 0:
+        fileName = dict_options["fileName"]\
+            +"_r"+str(dict_options["redStep"])\
+            +"_s"+str(sampling_options["number of samples"])\
+            +".npz"
+        arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Model": model}, dict_options)
+        allx = copy.deepcopy(model.stateVarValues)
         for boxID in range(0, len(model.xBounds)):
-            res = sample_box(model, boxID, sampling_options, dict_options, res)
-            
-    for boxID in range(0,len(model.xBounds)):     
-        mostge.store_list_in_npz_dict(fileName, res[boxID], boxID)
+            model.stateVarValues = numpy.array([allx[boxID]])
+            print ("Function residuals of sample points:\t", model.getFunctionValuesResidual())
+            mostge.store_list_in_npz_dict(fileName, model.stateVarValues, boxID)
+    else:
+        fileName = dict_options["fileName"]\
+            +"_r"+str(dict_options["redStep"])\
+            +"_s"+str(sampling_options["number of samples"])\
+            +"_smin"+str(sampling_options["sampleNo_min_resiudal"])\
+            +".npz"
+        if dict_options["parallelization"]: 
+            res =parallelization.sample_box(model, sampling_options, dict_options)
+        else:
+            for boxID in range(0, len(model.xBounds)):
+                res = sample_box(model, boxID, sampling_options, dict_options, res)
+                
+        for boxID in range(0,len(model.xBounds)):     
+            mostge.store_list_in_npz_dict(fileName, res[boxID], boxID)
 
     if dict_options["timer"]:  
         print("Time: ", time.time() - tic, " sec.")

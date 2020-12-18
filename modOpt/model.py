@@ -161,7 +161,7 @@ class Model:
 
     def getFunctionValuesResidual(self):    
         """ Return: euclydian norm of current function values"""
-        return numpy.linalg.norm(self.getPermutedFunctionValues()) 
+        return numpy.linalg.norm(self.getFunctionValues()) 
 
     
     def getJacobian(self):

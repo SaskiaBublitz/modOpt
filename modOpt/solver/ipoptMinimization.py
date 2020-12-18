@@ -3,8 +3,10 @@
 Import packages
 ***************************************************
 """
-import pyipopt 
+#import pyipopt
+import ipopt 
 import numpy
+from modOpt.solver import ipopt_problem
 
 """
 ****************************************************
@@ -13,9 +15,44 @@ Minimization Procedures from scipy.optimization
 """
 
 __all__ = ['minimize']
-
-
 def minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables):
+    x0 = numpy.array(curBlock.getIterVarValues(), dtype=float)
+    xBounds = curBlock.getIterVarBoundValues()    
+    x_L = numpy.array(xBounds[:,0], dtype=float)
+    x_U = numpy.array(xBounds[:,1], dtype=float)   
+    #args = (curBlock)
+    nvar = len(x0)
+    if solv_options["mode"] == 1:
+        ncon = 0
+        g_L = numpy.array([], dtype=float) 
+        g_U = numpy.array([], dtype=float)  
+        problem_obj = ipopt_problem.Ipopt_problem(curBlock)
+        nlp = ipopt.problem(nvar, ncon, problem_obj, x_L, x_U, g_L, g_U)
+        nlp.addOption('print_user_options', 'no')
+        nlp.addOption('print_level', 5)    
+        nlp.addOption('warm_start_init_point','yes') # try: yes
+        #nlp.addOption('linear_solver', 'ma57')     # ma57 oder ma77, ma86, ma97, mumps
+        #nlp.addOption('ma57_pivot_order', 4)
+        #nlp.addOption('ma57_automatic_scaling', 'yes')
+        nlp.addOption('mu_init', 1e-10)    # 1e-10
+        nlp.addOption('mu_strategy', 'adaptive')   # adaptive, monotone
+        nlp.addOption('mu_min', 1e-40)     # 1e-20 / 1e-30
+        nlp.addOption('mu_max', 1e-3)      # 1e+3  / 1e-1
+        nlp.addOption('mu_oracle', 'loqo')
+        nlp.addOption('warm_start_mult_bound_push', 1e-10)
+        nlp.addOption('warm_start_bound_push', 1e-10)
+        nlp.addOption('max_iter', solv_options["iterMax"]) 
+        nlp.addOption('acceptable_constr_viol_tol', 1e-5)
+        nlp.addOption('tol', solv_options["FTOL"])  
+    
+        x, info = nlp.solve(x0)
+        curBlock.x_tot[curBlock.colPerm] = x
+        if not info['status']==0 and not info['status']==1: return 0, solv_options["iterMax"]
+    
+        else: return 1, solv_options["iterMax"]  
+
+
+def minimize27(curBlock, solv_options, dict_options, dict_equations, dict_variables):
     """  solves nonlinear algebraic equation system (NLE) by minimization method
     from scipy.optimize package
     
@@ -46,9 +83,9 @@ def minimize(curBlock, solv_options, dict_options, dict_equations, dict_variable
         nnzh = 0
         g_L = numpy.array([], dtype=float) 
         g_U = numpy.array([], dtype=float)
-        nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, 
-                             eval_m, eval_grad_m, 
-                             eval_cons_empty, eval_grad_cons_empty)
+        #nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, 
+        #                     eval_m, eval_grad_m, 
+        #                     eval_cons_empty, eval_grad_cons_empty)
         
     if solv_options["mode"] == 2:
         ncon = nvar
@@ -60,37 +97,37 @@ def minimize(curBlock, solv_options, dict_options, dict_equations, dict_variable
         g_L = numpy.zeros(nvar, dtype=float) 
         g_U = numpy.zeros(nvar, dtype=float) 
         
-        nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, 
-                             eval_obj_empty, eval_grad_obj_empty, 
-                             eval_cons, eval_grad_cons)        
-    pyipopt.set_loglevel(0)
+        #nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, 
+        #                     eval_obj_empty, eval_grad_obj_empty, 
+        #                     eval_cons, eval_grad_cons)        
+    #pyipopt.set_loglevel(0)
     
-    nlp.str_option('print_user_options', 'no')
-    nlp.int_option('print_level', 5)    
-    nlp.str_option('warm_start_init_point','yes') # try: yes
-    nlp.str_option('linear_solver', 'ma57')     # ma57 oder ma77, ma86, ma97, mumps
-    nlp.int_option('ma57_pivot_order', 4)
-    nlp.str_option('ma57_automatic_scaling', 'yes')
-    nlp.num_option('mu_init', 1e-10)    # 1e-10
-    nlp.str_option('mu_strategy', 'adaptive')   # adaptive, monotone
-    nlp.num_option('mu_min', 1e-40)     # 1e-20 / 1e-30
-    nlp.num_option('mu_max', 1e-3)      # 1e+3  / 1e-1
-    nlp.str_option('mu_oracle', 'loqo')
-    nlp.num_option('warm_start_mult_bound_push', 1e-10)
-    nlp.num_option('warm_start_bound_push', 1e-10)
-    nlp.int_option('max_iter', solv_options["iterMax"]) 
-    nlp.num_option('acceptable_constr_viol_tol', 1e-5)
-    nlp.num_option('tol', solv_options["FTOL"])  
+    #nlp.str_option('print_user_options', 'no')
+    #nlp.int_option('print_level', 5)    
+    #nlp.str_option('warm_start_init_point','yes') # try: yes
+    #nlp.str_option('linear_solver', 'ma57')     # ma57 oder ma77, ma86, ma97, mumps
+    #nlp.int_option('ma57_pivot_order', 4)
+    #nlp.str_option('ma57_automatic_scaling', 'yes')
+    #nlp.num_option('mu_init', 1e-10)    # 1e-10
+    #nlp.str_option('mu_strategy', 'adaptive')   # adaptive, monotone
+    #nlp.num_option('mu_min', 1e-40)     # 1e-20 / 1e-30
+    #nlp.num_option('mu_max', 1e-3)      # 1e+3  / 1e-1
+    #nlp.str_option('mu_oracle', 'loqo')
+    #nlp.num_option('warm_start_mult_bound_push', 1e-10)
+    #nlp.num_option('warm_start_bound_push', 1e-10)
+    #nlp.int_option('max_iter', solv_options["iterMax"]) 
+    #nlp.num_option('acceptable_constr_viol_tol', 1e-5)
+    #nlp.num_option('tol', solv_options["FTOL"])  
     
 
-    res  = nlp.solve(x0, args) 
-    nlp.close()
+    #res  = nlp.solve(x0, args) 
+    #nlp.close()
 
-    curBlock.x_tot[curBlock.colPerm] = res[0]
+    #curBlock.x_tot[curBlock.colPerm] = res[0]
 
-    if not res[5]==0 and not res[5]==1: return 0, solv_options["iterMax"]
+    #if not res[5]==0 and not res[5]==1: return 0, solv_options["iterMax"]
     
-    else: return 1, solv_options["iterMax"]  
+    #else: return 1, solv_options["iterMax"]  
 
 
 def eval_obj_empty(x, args=None):
