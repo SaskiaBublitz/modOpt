@@ -131,6 +131,7 @@ def lambdifyToCasadi(x, f):
     toCasadi = {"exp" : casadi.SX.exp,
             "sin" : casadi.SX.sin,
             "cos" : casadi.SX.cos,
-            "log" : casadi.SX.log}
-    
+            "log" : casadi.SX.log,
+            "abs":  casadi.SX.fabs,
+            "sqrt": casadi.SX.sqrt,}   
     return sympy.lambdify(x,f, toCasadi) 
