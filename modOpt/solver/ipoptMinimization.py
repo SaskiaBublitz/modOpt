@@ -27,17 +27,17 @@ def minimize(curBlock, solv_options, dict_options, dict_equations, dict_variable
         g_L = numpy.array([], dtype=float) 
         g_U = numpy.array([], dtype=float)  
         problem_obj = ipopt_problem.Ipopt_problem(curBlock)
-        nlp = ipopt.problem(nvar, ncon, problem_obj, x_L, x_U, g_L, g_U)
+        nlp = ipopt.problem(nvar, ncon, problem_obj, x_L, x_U)
         nlp.addOption('print_user_options', 'no')
         nlp.addOption('print_level', 5)    
         nlp.addOption('warm_start_init_point','yes') # try: yes
-        #nlp.addOption('linear_solver', 'ma57')     # ma57 oder ma77, ma86, ma97, mumps
+        #nlp.addOption('linear_solver', 'ma97')     # ma57 oder ma77, ma86, ma97, mumps
         #nlp.addOption('ma57_pivot_order', 4)
         #nlp.addOption('ma57_automatic_scaling', 'yes')
         nlp.addOption('mu_init', 1e-10)    # 1e-10
         nlp.addOption('mu_strategy', 'adaptive')   # adaptive, monotone
-        nlp.addOption('mu_min', 1e-40)     # 1e-20 / 1e-30
-        nlp.addOption('mu_max', 1e-3)      # 1e+3  / 1e-1
+        nlp.addOption('mu_min', 1e-30)     # 1e-20 / 1e-30
+        nlp.addOption('mu_max', 1e-1)      # 1e+3  / 1e-1
         nlp.addOption('mu_oracle', 'loqo')
         nlp.addOption('warm_start_mult_bound_push', 1e-10)
         nlp.addOption('warm_start_bound_push', 1e-10)

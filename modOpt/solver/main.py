@@ -281,6 +281,10 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
         
         if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
                        model, curBlock, dict_equations, dict_variables)
+        
+        if isinstance(solv_options["solver"],list):
+            if len(solv_options["solver"])==1: solv_options["solver"] = solv_options["solver"][0]
+            # else: TODO alternating algorithm for solver list
             
         if solv_options["solver"] == 'newton': 
             doNewton(curBlock, b, solv_options, dict_options, res_solver, 

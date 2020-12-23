@@ -77,7 +77,7 @@ def doIntervalNesting(res_solver, dict_options):
     storage.store_newBoxes(npzFileName, model, 0) 
     
     for iterNo in range(1, dict_options["redStepMax"]+1): 
-
+        if dict_options["Debug-Modus"]: print(f'Red. Step {iterNo}')
         if dict_options["Parallel Branches"]:
             output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
         

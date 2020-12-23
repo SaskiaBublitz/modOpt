@@ -40,6 +40,7 @@ def fsolve_old(curBlock, solv_options, dict_options, dict_equations, dict_variab
     output = results[3]
 
     if any(numpy.iscomplex(x)): x = x0
+    
     curBlock.x_tot[curBlock.colPerm] = x
 
     if exitflag >= 1: return 1, output['iterations']
@@ -88,8 +89,10 @@ def fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables)
     exitflag = results[2]
     output = results[3]
 
-    if any(numpy.iscomplex(x)): x = x0
-    curBlock.x_tot[curBlock.colPerm] = x
+    #if any(numpy.iscomplex(x)): x = x0
+    for i in range(0, len(xSymbolic)):
+       glb_ID = curBlock.x_sym_tot.tolist().index(xSymbolic[i])
+       curBlock.x_tot[glb_ID] = x[i]
 
     if exitflag >= 1: return 1, output['iterations']
     else: return 0, output['iterations']
