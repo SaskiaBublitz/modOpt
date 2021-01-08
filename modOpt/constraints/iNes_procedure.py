@@ -70,6 +70,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         
         if output["xAlmostEqual"] and not output["xSolved"]:     
+            lookForSolutionInBox(model, k, dict_options)
             output = reduceConsistentBox(output, model, functions, dict_options, 
                                          k, dict_varId_fIds, newtonSystemDic, boxNo)
                 
@@ -3472,39 +3473,43 @@ def lookForSolutionInBox(model, boxID, dict_options):
         Return:
                              
         """
-
+    import modOpt.initialization as moi
     import matlab.engine
-    #convert System to Sampling System
-    samplingModel = copy.deepcopy(model)
-    samplingModel.xBounds = ConvertMpiBoundsToList(samplingModel.xBounds, boxID)
-    Jcasadi, fcasadi = mod.getCasadiJandF(model.xSymbolic, model.fSymbolic)
-    samplingModel.jacobian =  Jcasadi
-    samplingModel.fSymCasadi = fcasadi
-    
-    iterVars = moi.VarListType.VarListType(performSampling=True, 
-                                           numberOfSamples=4, 
-                                           samplingMethod='HSS', 
-                                           model=samplingModel)
     
     #get samples
-    iterVarsSampler = moi.SamplingMethods(samplingMethod=iterVars.samplingMethod, numberOfSamples=iterVars.numberOfSamples, inputSpace=iterVars)
-    iterVars.sampleData = iterVarsSampler.getSamples()
+    sampling_options = {"number of samples": 100,
+                        "sampleNo_min_resiudal": 4,
+                        "sampling method": 'sobol' #sobol, hammersley, latin_hypercube
+                        }
+    res = {} 
+    print("This is box no: ", boxID)
+    cur_model = copy.deepcopy(model)
+    cur_model.xBounds[boxID] = ConvertMpiBoundsToList(model.xBounds, boxID)[0]
+    res = moi.sample_box(cur_model, boxID, sampling_options, dict_options, res)
+    #iterVarsSampler = moi.SamplingMethods(samplingMethod=iterVars.samplingMethod, numberOfSamples=iterVars.numberOfSamples, inputSpace=iterVars)
+    #iterVars.sampleData = iterVarsSampler.getSamples()
     
     #add midpoint
+
+    varNames = list(map(str, model.xSymbolic))
+
     midPoint = getPointInBox(model.xBounds[boxID], len(model.xBounds[boxID])*['mid'])
-    iterVars.sampleData = numpy.vstack((iterVars.sampleData, midPoint))
+    sampleData = numpy.vstack((res[boxID], midPoint))
     
     #try all sample points in matlab fsolve
     if dict_options['Debug-Modus']: print('running Matlab: fsolve')
     eng = matlab.engine.start_matlab()
     
     NewRootFound = False
-    for init in iterVars.sampleData:
+    i = 0
+    for init in sampleData:
         try:
-            res = eval('eng.'+dict_options["fileName"]+'(matlab.double(init.tolist()),nargout=2)') #file and function need to have the same name, as System
+            res = eval('eng.'+dict_options["fileName"]+'(matlab.double(init.tolist()),varNames, nargout=2)') #file and function need to have the same name, as System
             root = numpy.array(res[0][0])
             froot = numpy.array(res[1])
             solved = numpy.allclose(froot, numpy.zeros((len(froot),1)), atol=1e-5)
+            if solved: print("Solution found for sample", i)
+            i+=1
         except:
             solved = False
         
@@ -3520,6 +3525,7 @@ def lookForSolutionInBox(model, boxID, dict_options):
     #write Solutions to file, if new was found
     if NewRootFound:
         saveSolutions(model, dict_options)
+
 
 
 def ConvertMpiBoundsToList(xBounds, boxID):

@@ -5,6 +5,7 @@ Created on Aug 17, 2018
 '''
 from numpy import float
 import numpy as np
+import mpmath
 
 from modOpt.initialization import VarType 
 
@@ -181,8 +182,12 @@ class VariableList(VarListType):
         varNames = model.xSymbolic
         
         for glbID in range(0, len(varNames)):
-            scale = (model.xBounds[boxID][glbID, 1] - model.xBounds[boxID][glbID, 0])/6.0 # standard deviation
-            loc = 0.5 * (model.xBounds[boxID][glbID, 0] +model.xBounds[boxID][glbID, 1]) # Mean value 
+            if isinstance(model.xBounds[boxID][glbID], mpmath.ctx_iv.ivmpf):
+                scale = float(mpmath.mpf((model.xBounds[boxID][glbID].a - model.xBounds[boxID][glbID].b).mid))/6.0 # standard deviation
+                loc = float(mpmath.mpf(model.xBounds[boxID][glbID].mid))
+            else:
+                scale = (model.xBounds[boxID][glbID, 1] - model.xBounds[boxID][glbID, 0])/6.0 # standard deviation
+                loc = 0.5 * (model.xBounds[boxID][glbID, 0] +model.xBounds[boxID][glbID, 1]) # Mean value 
             self.add(varName = varNames[glbID], 
                      loc = loc,
                      scale = scale,

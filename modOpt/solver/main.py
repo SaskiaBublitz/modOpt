@@ -51,16 +51,27 @@ def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options
     
     else:
         results = {}
-        for l in range(0, len(boxes)):
-            results = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
+        if "boxes" in dict_options.keys():
+            for l in dict_options["boxes"]:
+                results = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
+                        dict_options, solv_options, results)                
+        else:
+            for l in range(0, len(boxes)):
+                results = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
                         dict_options, solv_options, results)
     print(results)
     store_results(results, boxes, dict_options)
 
 
 def store_results(results, boxes, dict_options):
-    for l in range(0, len(boxes)):
-        mostg.store_list_in_npz_dict(dict_options["npzName"], results['%d'%l], l, allow_pickle=True)
+    if "boxes" in dict_options.keys():#isinstance(dict_options["boxes"],list):
+        boxNo = len(dict_options["boxes"])
+    else:
+        boxNo = len(boxes)
+    for l in range(0, boxNo):
+        if "boxes" in dict_options.keys(): k = dict_options["boxes"][l]
+        else: k = l
+        mostg.store_list_in_npz_dict(dict_options["npzName"], results['%d'%k], l, allow_pickle=True)
 
 def solveOneBox(model, boxes, l, dict_variables, dict_equations, dict_options, solv_options, results):
     model.xBounds = [boxes[l]]
@@ -305,7 +316,10 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
         if solv_options["solver"] == 'matlab-fsolve':
             doMatlabSolver(curBlock, b, solv_options, dict_options, 
                                  res_solver, dict_equations, dict_variables)
-            
+
+        if solv_options["solver"] == 'matlab-fsolve-mscript':
+            doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, 
+                                 res_solver, dict_equations, dict_variables)            
             
         #if isinstance(solv_options["solver"], list):
         #   TODO alternating solvers
@@ -496,6 +510,34 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         res_solver["Exitflag"][b] = -1
         res_solver["CondNo"][b] = 'nan'
 
+
+
+def doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+    """ starts matlab runner for externam matlab file with fsolve
+    CAUTION: Additional matlab file is required
+    
+    Args:
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        :dict_equations:    dictionary with information about equations
+        :dict_variables:    dictionary with information about iteration variables
+        
+    """
+
+    try:
+        exitflag, iterNo = matlabSolver.fsolve_mscript(curBlock, solv_options, dict_options, dict_equations, dict_variables)
+        res_solver["IterNo"][b] = iterNo-1
+        res_solver["Exitflag"][b] = exitflag
+        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        
+    except: 
+        print ("Error in Block ", b)
+        res_solver["IterNo"][b] = 0
+        res_solver["Exitflag"][b] = -1
+        res_solver["CondNo"][b] = 'nan'
 
 def doMatlabSolver(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
     """ starts matlab runner for externam matlab file with fsolve
