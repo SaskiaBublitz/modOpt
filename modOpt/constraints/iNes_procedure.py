@@ -18,6 +18,7 @@ from modOpt.decomposition import MC33
 from modOpt.decomposition import dM
 import modOpt.initialization as moi
 import modOpt.decomposition as mod
+import modOpt.solver as mos
 import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
 
 
@@ -33,7 +34,7 @@ Algorithm for interval Nesting procedure
 ***************************************************
 """
 
-def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
+def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_options=None, solv_options=None):
     """ reduction of multiple boxes
     Args:    
         :model:                 object of type model
@@ -41,6 +42,8 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         :dict_varId_fIds:       dictionary with variable's glb id (key) and list 
                                 with function's glb id they appear in    
         :dict_options:          dictionary with user specified algorithm settings
+        :sampling_options:      dictionary with sampling settings
+        :solv_options:          dicionary with settings for numerical solver
 
     Return:
         :results:               dictionary with newXBounds and a list of booleans
@@ -70,7 +73,8 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         
         if output["xAlmostEqual"] and not output["xSolved"]:     
-            lookForSolutionInBox(model, k, dict_options)
+            if not sampling_options ==None and solv_options == None:
+                lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
             output = reduceConsistentBox(output, model, functions, dict_options, 
                                          k, dict_varId_fIds, newtonSystemDic, boxNo)
                 
@@ -300,7 +304,7 @@ def getTearVariables(model):
         :model:     instance of type model
         
     """
-    
+    # TODO: For blocks
     model.jacobian = dM.getCasadiJandF(model.xSymbolic, model.fSymbolic)[0]
     jacobian = model.getCasadiJacobian()
     res_permutation = MC33.doMC33(jacobian)  
@@ -807,11 +811,6 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
             dict_options_temp["relTol"] = 0.1 * xBounds[x_id].delta
             dict_options_temp["absTol"] = 0.1 * xBounds[x_id].delta
 
-        #if mpmath.almosteq(xBounds[x_id].a, xBounds[x_id].b,
-        #                   dict_options["absTol"],
-        #                   dict_options["relTol"]):
-        #    store_reduced_xBounds(f, x_id, [xBounds[x_id]], varBounds)
-        #    continue
         if dict_options["Parallel b's"]:
             b = parallelization.get_tight_bBounds(f, x_id, xBounds, dict_options)
 
@@ -819,13 +818,6 @@ def reduceXBounds_byFunction(f, xBounds, dict_options, varBounds):
             b = get_tight_bBounds(f, x_id, xBounds, dict_options) # TODO: Parallel
             if b == mpmath.mpi('-inf','inf') or b == []: reduced_xBounds = [xBounds[x_id]]
             else: reduced_xBounds = get_reducedxBounds(f, b, x_id, copy.deepcopy(xBounds), dict_options_temp)
-
-            #if reduced_xBounds == [xBounds[x_id]] and f.b_sym[x_id].free_symbols!=set():
-                #if x_id==7: print ("Before ", f.x_sym[7], " ", b)
-                #b = get_b_from_branching(f, x_id, xBounds, dict_options) 
-                #if x_id==7: print ("Behind ", f.x_sym[7], " ", b)
-                #if not b == mpmath.mpi('-inf','inf') and b != []:
-                #    reduced_xBounds = get_reducedxBounds(f, b, x_id, copy.deepcopy(xBounds), dict_options)
             
         store_reduced_xBounds(f, x_id, reduced_xBounds, varBounds)
  
@@ -3463,71 +3455,45 @@ def HybridGS(newtonSystemDic, xBounds, i, dict_options):
         return interval
 
 
-def lookForSolutionInBox(model, boxID, dict_options):
+def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_options):
     """Uses Matlab File and tries to find Solution with initial points in the box samples by HSS.
      Writes Results in File, if one is found: 
         Args: 
-            :model:   instance of class model
-            :boxID:   id of current Box
-            :dict_options:   dictionary of options         
-        Return:
-                             
+            :model:            instance of class model
+            :boxID:            id of current Box
+            :dict_options:     dictionary of options  
+            :sampling_options: dictionary with sampling settings
+            :solv_options:     dicionary with settings for numerical solver
+                                     
         """
-    import modOpt.initialization as moi
-    import matlab.engine
     
     #get samples
-    sampling_options = {"number of samples": 100,
-                        "sampleNo_min_resiudal": 4,
-                        "sampling method": 'sobol' #sobol, hammersley, latin_hypercube
-                        }
-    res = {} 
+    # sampling_options = {"number of samples": 0,
+    #                     "sampleNo_min_resiudal": 1,
+    #                     "sampling method": 'sobol' #sobol, hammersley, latin_hypercube
+    #                     }
+    # solv_options = {"solver": ['matlab-fsolve-mscript'], # 'newton', 'SLSQP', 'trust-constr', 'ipopt, fsolve, TNC'
+    #                 "mode": 1, # relevant for ipopt 1 = minimization of function residuals, 2 = equality constraints, constant objective
+    #                 "FTOL": 1e-6,
+    #                 "iterMax": 1000,
+    #                 "iterMax_tear": 10,
+    #                 "iterMax_solver": 10,
+    #                 "parallel_boxes": False,
+    #                 "CPU count": 3}
+
     print("This is box no: ", boxID)
-    cur_model = copy.deepcopy(model)
-    cur_model.xBounds[boxID] = ConvertMpiBoundsToList(model.xBounds, boxID)[0]
-    res = moi.sample_box(cur_model, boxID, sampling_options, dict_options, res)
-    #iterVarsSampler = moi.SamplingMethods(samplingMethod=iterVars.samplingMethod, numberOfSamples=iterVars.numberOfSamples, inputSpace=iterVars)
-    #iterVars.sampleData = iterVarsSampler.getSamples()
+    dict_options["sampling"]=True
+    dict_options["scaling"]= "None"
+    dict_options["scaling procedure"]="None"
     
-    #add midpoint
+    allBoxes = copy.deepcopy(model.xBounds)
+    model.xBounds = [model.xBounds[boxID]]
+    results = mos.solveBlocksSequence(model, solv_options, dict_options, sampling_options)
+    mos.results.write_successful_results({0: results}, dict_options, sampling_options, solv_options) 
+    if model.failed: model.failed = False
+    model.xBounds = allBoxes
 
-    varNames = list(map(str, model.xSymbolic))
-
-    midPoint = getPointInBox(model.xBounds[boxID], len(model.xBounds[boxID])*['mid'])
-    sampleData = numpy.vstack((res[boxID], midPoint))
-    
-    #try all sample points in matlab fsolve
-    if dict_options['Debug-Modus']: print('running Matlab: fsolve')
-    eng = matlab.engine.start_matlab()
-    
-    NewRootFound = False
-    i = 0
-    for init in sampleData:
-        try:
-            res = eval('eng.'+dict_options["fileName"]+'(matlab.double(init.tolist()),varNames, nargout=2)') #file and function need to have the same name, as System
-            root = numpy.array(res[0][0])
-            froot = numpy.array(res[1])
-            solved = numpy.allclose(froot, numpy.zeros((len(froot),1)), atol=1e-5)
-            if solved: print("Solution found for sample", i)
-            i+=1
-        except:
-            solved = False
-        
-        #check, if solution was found before
-        if solved:
-            RootExists=False
-            for fs in model.FoundSolutions:
-                if numpy.allclose(fs, root, rtol=0.1, atol=0.1): RootExists=True
-            if not RootExists: 
-                model.FoundSolutions.append(root)
-                NewRootFound = True
-
-    #write Solutions to file, if new was found
-    if NewRootFound:
-        saveSolutions(model, dict_options)
-
-
-
+  
 def ConvertMpiBoundsToList(xBounds, boxID):
     """Converts the xBounds, containing mpi to a list for sampling methods
         Args: 

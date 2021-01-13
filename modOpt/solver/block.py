@@ -62,6 +62,7 @@ class Block:
         self.colSca = numpy.ones(len(self.colPerm))
         self.allConstraints = constraints
         self.jacobianSympy = jacobianSympy
+        self.FoundSolutions = []
 
         
     def getSubsystemVariableIDs(self, xInF):

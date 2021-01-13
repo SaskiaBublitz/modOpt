@@ -10,6 +10,7 @@ from modOpt.solver import (newton, results, scipyMinimization,
 parallelization, block, matlabSolver)
 import modOpt.storage as mostg
 import modOpt.scaling as mos
+import modOpt.initialization as moi
 import copy
 import time
 
@@ -18,10 +19,10 @@ import time
 Main that starts solving procedure in NLE's
 ****************************************************
 """
-__all__ = ['solveSamples', 'solveSystem_NLE', 'solveBoxes']
+__all__ = ['solveSamples', 'solveSystem_NLE', 'solveBoxes', 'solveBlocksSequence']
 
 
-def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options):
+def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options,sampling_options=None):
     """ solves multiple samples in boxes related to an equation system
     
     Args:
@@ -35,6 +36,7 @@ def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options
     Returns:                None
     
     """
+    dict_options["sampling"] == True
     boxes = mostg.get_entry_from_npz_dict(dict_options["BoxReduction_fileName"], dict_options["redStep"]) 
     
     mainfilename = dict_options["fileName"] 
@@ -45,25 +47,28 @@ def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options
     dict_options["mainfileName"] = mainfilename  
     dict_options["npzName"] = npzName  
         
-    if solv_options["parallel_boxes"]: 
-        results = parallelization.solveBoxesParallel(model, boxes, dict_variables, dict_equations, 
+    if solv_options["parallel_boxes"]:  #TODO: needs to be adjusted
+        res = parallelization.solveBoxesParallel(model, boxes, dict_variables, dict_equations, 
                     dict_options, solv_options) 
     
     else:
-        results = {}
+        res = {}
         if "boxes" in dict_options.keys():
             for l in dict_options["boxes"]:
-                results = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
-                        dict_options, solv_options, results)                
+                res[l]  = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
+                        dict_options, solv_options, sampling_options)                
         else:
             for l in range(0, len(boxes)):
-                results = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
-                        dict_options, solv_options, results)
-    print(results)
-    store_results(results, boxes, dict_options)
+                res[l]  = solveOneBox(model, boxes, l, dict_variables, dict_equations, 
+                        dict_options, solv_options, sampling_options)
+    results.write_successful_results(res, dict_options, sampling_options, solv_options)           
+    #store_results(res, boxes, dict_options)
 
 
-def store_results(results, boxes, dict_options):
+def store_results(res, boxes, dict_options):
+    if "sampling" in dict_options.keys():
+        mostg.store_list_in_npz_dict(dict_options["npzName"], results, 0, allow_pickle=True)
+        return
     if "boxes" in dict_options.keys():#isinstance(dict_options["boxes"],list):
         boxNo = len(dict_options["boxes"])
     else:
@@ -73,15 +78,223 @@ def store_results(results, boxes, dict_options):
         else: k = l
         mostg.store_list_in_npz_dict(dict_options["npzName"], results['%d'%k], l, allow_pickle=True)
 
-def solveOneBox(model, boxes, l, dict_variables, dict_equations, dict_options, solv_options, results):
+
+def solveOneBox(model, boxes, l, dict_variables, dict_equations, dict_options, solv_options, sampling_options=None):
     model.xBounds = [boxes[l]]
     dict_options["box_ID"] = l
-    initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
-    results['%d'%l]  = solveSamples(model, initValues, 
-                                   dict_equations, 
-                                   dict_variables, solv_options, dict_options)
-    return results
+ 
+    #else:
+    #    initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
+    #    results['%d'%l]  = solveSamples(model, initValues, 
+    #                               dict_equations, 
+    #                               dict_variables, solv_options, dict_options)
+
+    return solveBlocksSequence(model, solv_options, dict_options, sampling_options)
+
+
+def sample_multiple_solutions(model, b, rBlocks, cBlocks, xInF, sampling_options, dict_options, solv_options, res_blocks):
+    """ samples and solves a model that contains multiple solutions in the already solved blocks.
+    Hence, each solution needs to be sampled and solved for the current block separately.
     
+    Args:
+        :model:             instance of class model
+        :b:                 integer with block index
+        :rBlocks:           list with permuation index for rows 
+        :cBlocks:           list with permuation index for columns 
+        :xInf:              nested list with functions in global order that contains 
+                            global ID's of all variables that occur in this function
+        :sampling_options:  user-specified dictionary with sampling settings
+        :dict_options:      user-specified dictionary with absolute tolerance value
+        :solv_options:      user-specified dictionary with solver settings
+        :res_blocks:        dictionary for all block iteration results
+    
+    Return:
+        :res_blocks:    updated dictionary by current iteration results
+        :solved:        boolean variable, which is true if solution was found
+
+    """
+
+    newSubSolutions = []
+
+    subSolutions = copy.deepcopy(model.stateVarValues)
+    for x in subSolutions:
+        model.stateVarValues= [x]
+        solved, res_blocks = sample_and_solve_one_block(model, b, rBlocks, cBlocks, xInF, 
+                                            sampling_options, dict_options, solv_options,
+                                            res_blocks)
+        if solved: 
+            newSubSolutions.append(*model.stateVarValues)
+        
+    if not newSubSolutions == []: model.stateVarValues = newSubSolutions
+    else: model.failed == True
+    return res_blocks
+
+
+def sample_and_solve_one_block(model, b, rBlocks, cBlocks, xInF, sampling_options, dict_options, solv_options, res_blocks):
+    """ samples and solves one block for at a certain point of already solved variables.
+    Note: There can be multiple solutions in a former block, so that this functions needs to
+    be called for each of them. There is only one box used for sampling therefore the boxID
+    is manually set to 0 in sample_box_in_block.
+    
+    Args:
+        :model:             instance of class model
+        :b:                 integer with block index
+        :rBlocks:           list with permuation index for rows 
+        :cBlocks:           list with permuation index for columns 
+        :xInf:              nested list with functions in global order that contains 
+                            global ID's of all variables that occur in this function
+        :sampling_options:  user-specified dictionary with sampling settings
+        :dict_options:      user-specified dictionary with absolute tolerance value
+        :solv_options:      user-specified dictionary with solver settings
+        :res_blocks:        dictionary for all block iteration results
+    
+    Return:
+        :res_blocks:    updated dictionary by current iteration results
+        :solved:        boolean variable, which is true if solution was found
+
+    """
+
+    samples = {}    
+    cur_block = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
+               model.fSymCasadi, model.stateVarValues[0], 
+               model.xBounds[0], model.parameter,
+               model.constraints, model.xSymbolic, model.jacobianSympy
+               )
+    
+    moi.sample_box_in_block(cur_block, 0, sampling_options, dict_options, samples)
+    
+    return solve_samples_block(model, cur_block, b, samples[0], solv_options, 
+                                                               dict_options,
+                                                               res_blocks)    
+
+
+def solve_samples_block(model, block, b, samples, solv_options, dict_options, res_blocks):
+    """ iterates generated samples in a block 
+    
+    Args:
+        :model:         instance of class model
+        :block:         instance of class block
+        :b:             integer with block index
+        :samples:       list with samples of current block
+        :dict_options:  user-specified dictionary with absolute tolerance value
+        :res_blocks:    dictionary for all block iteration results
+    
+    Return:
+        :res_blocks:    updated dictionary by current iteration results
+        :solved:        boolean variable, which is true if solution was found
+
+    """
+    solved = False
+
+    for s in range(0, len(samples)):
+        block.x_tot[block.colPerm] = samples[s]
+        
+        if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
+                                model, block)
+        
+        res_solver = startSolver(block, b, solv_options, dict_options)  
+        sort_results_from_solver_to_block(block, b, res_solver, res_blocks, dict_options)
+        
+    if not block.FoundSolutions == []: 
+        res_blocks[b]["colPerm"] = block.colPerm
+        res_blocks[b]["rowPerm"] = block.rowPerm
+        update_model_to_block_results(block, model)
+        solved = True
+    else:
+        #model.stateVarValues[0] = block.x_tot 
+        #res_solver[b] = res_solver # stores failed system, it has no key "FoundSolutions"
+        solved = False
+        
+    return res_blocks, solved
+
+
+def update_model_to_block_results(block, model):
+    """ updates the model to all found solutions in the current block.
+    
+    Args:
+        :block:         instance of class block
+        :model:         instance of class model
+
+    """
+    
+    model.stateVarValues = [model.stateVarValues[0]] * len(block.FoundSolutions)
+    for s in range(0, len(block.FoundSolutions)):
+        model.stateVarValues[s][block.colPerm] = block.FoundSolutions[s]    
+
+        
+def sort_results_from_solver_to_block(block, b, res_solver, res_blocks, dict_options):
+    """ sorts results from iteration of one sample in one block to dictionary 
+    for all blocks results
+    
+    Args:
+        :block:         instance of class block
+        :b:             integer with block index
+        :res_solver:    dictionary with solver output from current sample
+        :res_blocks:    dictionary for all block iteration results
+        :dict_options:  user-specified dictionary with absolute tolerance value
+
+    """
+    
+    if res_solver["Exitflag"]==1 and solutionInBounds(block):
+        solution_id = update_block_solutions(block, dict_options)
+        
+        if len(block.FoundSolutions) == solution_id + 1: # condition that new solution for block was found
+            if not b in res_blocks.keys(): # first solution for block
+                res_blocks[b] = {}
+                for key in res_solver.keys():
+                    res_blocks[b][key]=[res_solver[key]]
+                
+            else: # >1 solution for block 
+                for key in res_solver.keys():
+                    res_blocks[b][key].append(res_solver[key])
+            res_blocks[b]["FoundSolutions"] = block.FoundSolutions
+            
+        else: # already found solution, if less iterations were applied this time it is updated in res_blocks
+           res_blocks[b]["IterNo"][solution_id] = min(res_blocks[b]["IterNo"][solution_id],
+                                                      res_solver["IterNo"]) 
+
+def solutionInBounds(block):
+    """ checks if all variable solutions are within their bounds
+    
+    Args:
+        :block:     instance of class block
+        
+    Return:         Boolean = True if in bounds, = False if out of bounds
+
+    """
+    
+    for i in range(0, len(block.colPerm)):
+        bounds = block.xBounds_tot[block.colPerm][i]
+        x = block.x_tot[block.colPerm][i]
+        if isinstance(bounds, list) or isinstance(bounds, numpy.ndarray):
+            if x< bounds[0] or x>bounds[1] :
+                return False
+        else:  
+            if not block.x_tot[block.colPerm][i] in block.xBounds_tot[block.colPerm][i]:
+                return False
+    return True
+
+
+def update_block_solutions(block, dict_options):
+    """ updates found solutions of block, only stores new solutions and returns
+    index of found block solution.
+    
+    Args:
+        :block:         instance of class block
+        :dict_options:  user-specified dictionary with absolute tolerance value
+        
+    Return: id of the currently found solution in block
+    
+    """  
+    i = 0
+    if not block.FoundSolutions == []:
+        for solution in block.FoundSolutions:
+            if numpy.allclose(block.x_tot[block.colPerm], solution, atol=dict_options["absTol"]):
+                return i 
+            i+=1
+    block.FoundSolutions.append(block.x_tot[block.colPerm])
+    
+    return len(block.FoundSolutions) - 1 
 
 
 def solveSamples(model, initValues, dict_equations, dict_variables, solv_options, dict_options):
@@ -107,98 +320,10 @@ def solveSamples(model, initValues, dict_equations, dict_variables, solv_options
         
         dict_options["sample_ID"] = k
         model.stateVarValues = [initValues[k]]    
-        #res_multistart['%d' %k] = iterate_solver(model, mainfilename, k, l, 
-        #                                         dict_equations, dict_variables, 
-        #                                         solv_options, dict_options)
-        
+
         res_multistart['%d' %k] = solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
 
     return res_multistart
-
-def iterate_solver(model, mainfilename, k, l, dict_equations, dict_variables, solv_options, dict_options):
-    """ alternates between all solvers in list solver of solv_options and stores current best point in 
-    min_results. The dictionary min_results in only updated if the current solver can further reduce the residual.
-    if the residual can not be further reduced by the current solver sequence res_solver with the best point is returned.
-    
-    Args:
-        :model:             object of class model in modOpt.model that contains all
-                            information of the NLE-evaluation and decomposition
-        :mainfilename:      string with general file name
-        :k:                 integer with index of current sample
-        :l:                 integer with index of current box
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables                            
-        :solv_options:      dictionary with user defined solver settings
-        :dict_options:      dictionary with user specified settings
-
-    Returns:
-        :res_solver:        dictionary with solver sequence output
-    
-    """
-    
-    res_solver = {} 
-    rBlocks, cBlocks, xInF = getBlockInformation(model)
-    initial_model = copy.deepcopy(model)
-    res_solver["Model"] = model
-    res_solver["IterNo"] = numpy.zeros(len(rBlocks))
-    res_solver["Exitflag"] = numpy.ones(len(rBlocks)) * 3
-    res_solver["CondNo"] = numpy.zeros(len(rBlocks)) * -1
-    res_solver["Residual"] = model.getFunctionValuesResidual()
-    solver_sequence = solv_options["solver"]
-    
-    iterNo = 1
-    min_FRES = res_solver["Residual"]
-    min_results = copy.deepcopy(res_solver)
-        
-    while iterNo <= solv_options["iterMax_solver"]:
-        old_FRES = min_FRES  
-        print("current solver iteration step: ", iterNo, " of sample:", k, " in box: ", l)   
-        
-        for cur_solver in solver_sequence:
-            solv_options["solver"] = cur_solver
-            res_solver = solveSystem_NLE(res_solver["Model"], dict_equations, 
-                                         dict_variables, solv_options, dict_options)
-            
-            if res_solver["Residual"] > min_FRES or numpy.isnan(res_solver["Residual"]) or numpy.isinf(res_solver["Residual"]):
-                res_solver = copy.deepcopy(min_results) 
-                continue
-            
-            elif res_solver["Residual"] <= solv_options["FTOL"]:
-                results.write_successfulResults(res_solver, mainfilename, k, l, 
-                                        initial_model, 
-                                        solv_options, dict_options)
-                
-                solv_options["solver"] = solver_sequence
-                res_solver["initial_model"] = initial_model
-                print("The currently achieved minimum residual is: ", 
-                      res_solver["Residual"],  " for sample:", k, " in box: ", l)
-                return res_solver
-            
-            else:
-                old_IterNo_solver = min_results["IterNo"]
-                min_results = copy.deepcopy(res_solver)
-                min_results["IterNo"] += old_IterNo_solver
-                min_FRES = res_solver["Residual"]           
-        iterNo +=1
-        
-        if min_FRES == old_FRES: 
-            res_solver = min_results 
-            res_solver["Exitflag"] = 2
-            solv_options["solver"] = solver_sequence
-            res_solver["initial_model"] = initial_model
-            
-            print("The achieved minimum residual is: ", res_solver["Residual"],  
-                  " for sample:", k, " in box: ", l)
-            return res_solver
-        
-    print("The achieved minimum residual is: ", res_solver["Residual"],  
-          " for sample:", k, " in box: ", l)
-    res_solver = min_results    
-    res_solver["Exitflag"] = 0
-    solv_options["solver"] = solver_sequence
-    res_solver["initial_model"] = initial_model
-    
-    return res_solver
 
       
 def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
@@ -222,7 +347,7 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
 
             
     if dict_options["decomp"] == 'DM' or dict_options["decomp"] == 'None': 
-        res_solver = solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables)
+        res_solver = solveBlocksSequence(model, solv_options, dict_options)
         updateToSolver(res_solver, dict_equations, dict_variables)
         return res_solver
     
@@ -231,7 +356,7 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
         res_solver=[]
 
         while not numpy.linalg.norm(model.getFunctionValues()) <= solv_options["FTOL"] and i <= solv_options["iterMax_tear"]:
-            res_solver = solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables)
+            res_solver = solveBlocksSequence(model, solv_options, dict_options)
             updateToSolver(res_solver, dict_equations, dict_variables)
             model = res_solver["Model"] 
             print (numpy.linalg.norm(model.getFunctionValues())) 
@@ -260,8 +385,9 @@ def updateToSolver(res_solver, dict_equations, dict_variables):
         dict_variables[model.xSymbolic[i]][0] = model.stateVarValues[0][i]
         dict_variables[model.xSymbolic[i]][3] = model.colSca[i]
     
-    
-def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_variables):
+        
+def solveBlocksSequence(model, solv_options, dict_options,
+                        sampling_options=None):
     """ solve block decomposed system in sequence. This method can also be used
     if no decomposition is done. In this case the system contains one block that 
     equals the entire system.
@@ -271,71 +397,87 @@ def solveBlocksSequence(model, solv_options, dict_options, dict_equations, dict_
                             information of the NLE-evaluation and decomposition
         :solv_options:      dictionary with user defined solver settings
         :dict_options:      dictionary with user specified settings
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
  
     Return:
         :res_solver:    dictionary with solver results
        
     """
     # Initialization of known system quantities
-    rBlocks, cBlocks, xInF = getBlockInformation(model)
-    res_solver = createSolverResultDictionary(len(rBlocks))
 
+    rBlocks, cBlocks, xInF = getBlockInformation(model)
+    #res_solver = createSolverResultDictionary(len(rBlocks))
+    res_blocks = {}
     # Block iteration:    
     for b in range(len(rBlocks)): 
-        curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
-                               model.fSymCasadi, model.stateVarValues[0], 
-                               model.xBounds[0], model.parameter,
-                               model.constraints, model.xSymbolic, model.jacobianSympy
-                               )
-        
-        if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
-                       model, curBlock, dict_equations, dict_variables)
-        
-        if isinstance(solv_options["solver"],list):
-            if len(solv_options["solver"])==1: solv_options["solver"] = solv_options["solver"][0]
-            # else: TODO alternating algorithm for solver list
-            
-        if solv_options["solver"] == 'newton': 
-            doNewton(curBlock, b, solv_options, dict_options, res_solver, 
-                     dict_equations, dict_variables)
-        
-        if solv_options["solver"] == "fsolve":
-            doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver, 
-                     dict_equations, dict_variables)
-        
-        if solv_options["solver"] in ['SLSQP', 'trust-constr', 'TNC']:
-            doScipyOptiMinimize(curBlock, b, solv_options, dict_options, 
-                                res_solver, dict_equations, dict_variables)
-            
-        if solv_options["solver"] == 'ipopt':
-            doipoptMinimize(curBlock, b, solv_options, dict_options, 
-                                 res_solver, dict_equations, dict_variables)
-
-        if solv_options["solver"] == 'matlab-fsolve':
-            doMatlabSolver(curBlock, b, solv_options, dict_options, 
-                                 res_solver, dict_equations, dict_variables)
-
-        if solv_options["solver"] == 'matlab-fsolve-mscript':
-            doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, 
-                                 res_solver, dict_equations, dict_variables)            
-            
+        if "sampling" in dict_options.keys():
+            if len(model.stateVarValues) > 1: 
+                res_blocks = sample_multiple_solutions(model, b, rBlocks, cBlocks, 
+                                                       xInF, sampling_options, 
+                                                       dict_options, solv_options, 
+                                                       res_blocks)
+            else:      
+                res_blocks, solved = sample_and_solve_one_block(model, b, rBlocks, 
+                                                                cBlocks, xInF, 
+                                                                sampling_options,
+                                                                dict_options,
+                                                                solv_options, 
+                                                                res_blocks)
+                
+                if not solved: 
+                    model.failed = True
+                    res_blocks["Model"] = model  
+                    return res_blocks
+                                
+        else:
+            curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
+                    model.fSymCasadi, model.stateVarValues[0], 
+                    model.xBounds[0], model.parameter,
+                    model.constraints, model.xSymbolic, model.jacobianSympy
+                               )            
+            res_blocks[b] = startSolver(curBlock, b, solv_options, dict_options)
         #if isinstance(solv_options["solver"], list):
         #   TODO alternating solvers
         # TODO: Add other solvers, e.g. ipopt
-
-        if res_solver["Exitflag"][b] < 1: 
-            model.failed = True
+        
+            if res_blocks[b]["Exitflag"] < 1: 
+                model.failed = True
             
-        # Update model    
-        model.stateVarValues[0] = curBlock.x_tot
+            # Update model    
+            model.stateVarValues[0] = curBlock.x_tot
     
-    # Write Results:         
-    putResultsInDict(model, res_solver)
+    # Write Results:
+    res_blocks["Model"] = model        
+    #putResultsInDict(model, res_solver)
 
-    return res_solver 
+    return res_blocks 
 
+
+def startSolver(curBlock, b, solv_options, dict_options):
+    res_solver = {}
+    if isinstance(solv_options["solver"],list):
+        if len(solv_options["solver"])==1: solv_options["solver"] = solv_options["solver"][0]
+        # else: TODO alternating algorithm for solver list
+        
+    if solv_options["solver"] == 'newton': 
+        doNewton(curBlock, b, solv_options, dict_options, res_solver)
+    
+    if solv_options["solver"] == "fsolve":
+        doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver)
+    
+    if solv_options["solver"] in ['SLSQP', 'trust-constr', 'TNC']:
+        doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver)
+        
+    if solv_options["solver"] == 'ipopt':
+        doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver)
+
+    if solv_options["solver"] == 'matlab-fsolve':
+        doMatlabSolver(curBlock, b, solv_options, dict_options, res_solver)
+
+    if solv_options["solver"] == 'matlab-fsolve-mscript':
+        doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, res_solver) 
+        
+    return res_solver           
+        
 
 def getBlockInformation(model):
     """ collects information available from block decomposition
@@ -376,7 +518,7 @@ def createSolverResultDictionary(blockNo):
     return res_solver
 
   
-def getInitialScaling(dict_options, model, curBlock, dict_equations, dict_variables):
+def getInitialScaling(dict_options, model, curBlock):
     """solve block decomposed system in sequence. This method can also be used
     if no decomposition is done. In this case the system contains one block that 
     equals the entire system.
@@ -386,8 +528,6 @@ def getInitialScaling(dict_options, model, curBlock, dict_equations, dict_variab
         :model:             object of class model in modOpt.model that contains all
                             information of the NLE-evaluation and decomposition
         :curBlock:          object of type Block
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
         
     """
     
@@ -395,10 +535,10 @@ def getInitialScaling(dict_options, model, curBlock, dict_equations, dict_variab
             curBlock.setScaling(model)
         
     elif dict_options["scaling procedure"] =='block_init' or dict_options["scaling procedure"] =='block_iter': # blockwise scaling
-            mos.scaleSystem(curBlock, dict_equations, dict_variables, dict_options)   
+            mos.scaleSystem(curBlock, dict_options)   
 
 
-def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+def doNewton(curBlock, b, solv_options, dict_options, res_solver):
     """ starts Newton-Raphson Method
     
     Args:
@@ -408,25 +548,25 @@ def doNewton(curBlock, b, solv_options, dict_options, res_solver, dict_equations
         :solv_options:      dictionary with user specified solver settings
         :dict_options:      dictionary with user specified structure settings
         :res_solver:        dictionary with results from solver
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
-        
+       
     """
     
     try: 
-        exitflag, iterNo = newton.doNewton(curBlock, solv_options, dict_options, dict_equations, dict_variables)
-        res_solver["IterNo"][b] = iterNo
-        res_solver["Exitflag"][b] = exitflag
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        exitflag, iterNo = newton.doNewton(curBlock, solv_options, dict_options)
+        res_solver["IterNo"] = iterNo
+        res_solver["Exitflag"] = exitflag
+        res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["FRES"] = curBlock.getFunctionValues()    
         
     except: 
         print ("Error in Block ", b)
-        res_solver["IterNo"][b] = 0
-        res_solver["Exitflag"][b] = -1    
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1 
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan'   
         
 
-def doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+def doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver):
     """ starts Newton-Raphson Method
     
     Args:
@@ -436,26 +576,26 @@ def doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         :solv_options:      dictionary with user specified solver settings
         :dict_options:      dictionary with user specified structure settings
         :res_solver:        dictionary with results from solver
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
         
     """
     
     try: 
         exitflag, iterNo = scipyMinimization.fsolve(curBlock, solv_options, 
-                                                    dict_options, dict_equations, dict_variables)
-        res_solver["IterNo"][b] = iterNo
-        res_solver["Exitflag"][b] = exitflag
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+                                                    dict_options)
+        res_solver["IterNo"] = iterNo
+        res_solver["Exitflag"] = exitflag
+        res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["FRES"] = curBlock.getFunctionValues()
         
     except: 
         print ("Error in Block ", b)
-        res_solver["IterNo"][b] = 0
-        res_solver["Exitflag"][b] = -1    
-        res_solver["CondNo"][b] = 'nan'
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1 
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan'    
+    
         
-        
-def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver):
     """ starts minimization procedure from scipy
     
     Args:
@@ -464,25 +604,25 @@ def doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver, dic
         :solv_options:      dictionary with user specified solver settings
         :dict_options:      dictionary with user specified structure settings
         :res_solver:        dictionary with results from solver
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
         
     """
     
     try: 
-        exitflag, iterNo = scipyMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
-        res_solver["IterNo"][b] = iterNo
-        res_solver["Exitflag"][b] = exitflag
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        exitflag, iterNo = scipyMinimization.minimize(curBlock, solv_options, dict_options)
+        res_solver["IterNo"] = iterNo
+        res_solver["Exitflag"] = exitflag
+        res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["FRES"] = curBlock.getFunctionValues()
         
     except: 
         print ("Error in Block ", b)
-        res_solver["IterNo"][b] = 0
-        res_solver["Exitflag"][b] = -1 
-        res_solver["CondNo"][b] = 'nan'
-        
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1 
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan'    
+       
     
-def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver):
     """ starts minimization procedure from scipy
     
     Args:
@@ -491,28 +631,27 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver, dict_eq
         :solv_options:      dictionary with user specified solver settings
         :dict_options:      dictionary with user specified structure settings
         :res_solver:        dictionary with results from solver
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
         
     """
     
     try:
         from modOpt.solver import ipoptMinimization
-        exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables)
-        res_solver["IterNo"][b] = iterNo-1
-        res_solver["Exitflag"][b] = exitflag
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
-        
-        
+        exitflag, iterNo = ipoptMinimization.minimize(curBlock, solv_options, dict_options)
+        res_solver["IterNo"] = iterNo-1
+        res_solver["Exitflag"] = exitflag
+        res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["FRES"] = curBlock.getFunctionValues()
     except: 
         print ("Error in Block ", b)
-        res_solver["IterNo"][b] = 0
-        res_solver["Exitflag"][b] = -1
-        res_solver["CondNo"][b] = 'nan'
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan'
+
+    
 
 
-
-def doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+def doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, res_solver):
     """ starts matlab runner for externam matlab file with fsolve
     CAUTION: Additional matlab file is required
     
@@ -522,24 +661,28 @@ def doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, res_solver, 
         :solv_options:      dictionary with user specified solver settings
         :dict_options:      dictionary with user specified structure settings
         :res_solver:        dictionary with results from solver
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
         
     """
 
     try:
-        exitflag, iterNo = matlabSolver.fsolve_mscript(curBlock, solv_options, dict_options, dict_equations, dict_variables)
-        res_solver["IterNo"][b] = iterNo-1
-        res_solver["Exitflag"][b] = exitflag
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
-        
+        exitflag, iterNo = matlabSolver.fsolve_mscript(curBlock, solv_options, dict_options)
+        res_solver["IterNo"] = iterNo-1
+        res_solver["Exitflag"] = exitflag
+        if exitflag == 1:
+            res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+            res_solver["FRES"] = curBlock.getFunctionValues()
+        else: 
+            res_solver["CondNo"] = 'nan'
+            res_solver["FRES"] = 'nan'        
     except: 
         print ("Error in Block ", b)
-        res_solver["IterNo"][b] = 0
-        res_solver["Exitflag"][b] = -1
-        res_solver["CondNo"][b] = 'nan'
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan'
+    
 
-def doMatlabSolver(curBlock, b, solv_options, dict_options, res_solver, dict_equations, dict_variables):
+def doMatlabSolver(curBlock, b, solv_options, dict_options, res_solver):
     """ starts matlab runner for externam matlab file with fsolve
     CAUTION: Additional matlab file is required
     
@@ -549,25 +692,23 @@ def doMatlabSolver(curBlock, b, solv_options, dict_options, res_solver, dict_equ
         :solv_options:      dictionary with user specified solver settings
         :dict_options:      dictionary with user specified structure settings
         :res_solver:        dictionary with results from solver
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables
         
     """
 
     try:
-        exitflag, iterNo = matlabSolver.fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables)
-        res_solver["IterNo"][b] = iterNo-1
-        res_solver["Exitflag"][b] = exitflag
-        res_solver["CondNo"][b] = numpy.linalg.cond(curBlock.getScaledJacobian())
-        
+        exitflag, iterNo = matlabSolver.fsolve(curBlock, solv_options, dict_options)
+        res_solver["IterNo"] = iterNo-1
+        res_solver["Exitflag"] = exitflag
+        res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["FRES"] = curBlock.getFunctionValues()
     except: 
         print ("Error in Block ", b)
-        res_solver["IterNo"][b] = 0
-        res_solver["Exitflag"][b] = -1
-        res_solver["CondNo"][b] = 'nan'
-
-
-
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan'
+    
+    
 def putResultsInDict(model, res_solver):
     """ updates model and results dictionary
     Args:

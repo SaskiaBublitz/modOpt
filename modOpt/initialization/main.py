@@ -16,7 +16,8 @@ import modOpt.storage as mostge
 All methods to specify a specific sample point selection
 ********************************************************
 """
-__all__ = ['get_samples_with_n_lowest_residuals', 'doSampling', 'sample_box']
+__all__ = ['get_samples_with_n_lowest_residuals', 'doSampling', 'sample_box',
+           'sample_box_in_block']
 
 
 def doSampling(model, dict_options, sampling_options):
@@ -88,6 +89,7 @@ def sample_box(model, boxID, sampling_options, dict_options, res):
     Returns:                updated dictionary res by samples of current box
 
     """
+
     iterVars = VarListType.VariableList(performSampling=True, 
                                   numberOfSamples=sampling_options["number of samples"],
                                   samplingMethod=sampling_options["sampling method"], 
@@ -105,6 +107,76 @@ def sample_box(model, boxID, sampling_options, dict_options, res):
     return res
     
     
+def sample_box_in_block(block, boxID, sampling_options, dict_options, res):
+    """ samples one box with ID boxID by selected method from sampling_options and 
+    stores the samples with the minimum functional residual.
+    
+    Args:
+        :model:             instance of class model
+        :boxID:             ID of current box as integer
+        :sampling_options:  dictionary with number of samples to generate and 
+                            sampleNo_min_residual which is the number of candidates
+                            with lowest residuals that are stored
+        :dict_options:      dictionary with user-settings regarding parallelization
+                            and box reduction steps applied before
+        :res:               dictionary for storage of samples with minimum residual
+                            for all boxes
+
+    Returns:                updated dictionary res by samples of current box
+
+    """
+    if sampling_options["number of samples"] == 0:
+        arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, dict_options)
+        res[boxID] = [block.x_tot[block.colPerm]]
+        print("Function resiudals of sample point: ", numpy.linalg.norm(block.getFunctionValues()))
+
+    else:        
+        iterVars = VarListType.VariableList(performSampling=True, 
+                                  numberOfSamples=sampling_options["number of samples"],
+                                  samplingMethod=sampling_options["sampling method"], 
+                                  samplingDistribution='uniform',
+                                  seed=None,
+                                  distributionParams=(),
+                                  block=block, 
+                                  boxID=boxID)
+        iterVarsSampler = Sampling.Variable_Sampling(iterVars, number_of_samples=iterVars.numberOfSamples)
+
+        iterVars.sampleData = numpy.array(iterVarsSampler.create_samples())
+        sampleNo = sampling_options['sampleNo_min_resiudal']   
+    
+        res[boxID] = get_samples_with_n_lowest_residuals_in_block(block, sampleNo, iterVars.sampleData)
+    return res
+
+
+def get_samples_with_n_lowest_residuals_in_block(block, n, sampleData):
+    """ tests the first n samples that have the lowest function residuals from 
+    sampleData
+    
+    Args:
+        :model:             instance of class model
+        :n:                 integer with real number of tested samples
+        :sampleData:        numpy array sampling points 
+    
+    Returns:                numpy array with n samples with lowest residual
+    
+    """
+    residuals = []
+    
+    # Calc residuals:
+    #if dict_options != parallel: 
+    for curSample in sampleData:
+        block.x_tot[block.colPerm]=curSample
+        
+        residuals.append(numpy.linalg.norm(block.getFunctionValues()))
+    
+    # Sort samples by minimum residuals
+    residuals = numpy.array(residuals)
+    sample_index = numpy.argsort(residuals)
+    residuals = residuals[sample_index]
+    print ("Function residuals of sample points:\t", residuals[0:n])
+    
+    return sampleData[sample_index][0:n]
+
 
 
 def get_samples_with_n_lowest_residuals(model, n, sampleData):

@@ -14,7 +14,7 @@ from sympy.parsing.sympy_parser import parse_expr
 Newton Solver Procedure
 ****************************************************
 """
-def fsolve_mscript(curBlock, solv_options, dict_options, dict_equations, dict_variables):
+def fsolve_mscript(curBlock, solv_options, dict_options):
     """ matlab is invoked on model-specific matlab script that needs to be created by UDLS 
     from MOSAICmodeling. The name of the matlab file needs to be identical to the output 
     file name set by the user in dict_options.
@@ -23,9 +23,7 @@ def fsolve_mscript(curBlock, solv_options, dict_options, dict_equations, dict_va
         :curBlock:          instance of class Block
         :solv_options:      dictionary with settings for the solver
         :dict_options:      dictionary containing the output file's name
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables   
-    
+        
     Return:
         :exitflag:          1 = solved, 0 is not solved
         :iterNo:            number of iterations as integer
@@ -60,7 +58,7 @@ def fsolve_mscript(curBlock, solv_options, dict_options, dict_equations, dict_va
         print("Error: The system could not be parsed to Matlab.")
         return 0, -1
     
-def fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables):
+def fsolve(curBlock, solv_options, dict_options):
     """ matlab is invoked using a general matlab script included in modOpt. 
     This general script invokes the python function systemToSolve to iterate 
     the python model. This option takes in general longer than fsolve_mscript 
@@ -72,8 +70,6 @@ def fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables)
         :curBlock:          instance of class Block
         :solv_options:      dictionary with settings for the solver
         :dict_options:      dictionary containing the output file's name
-        :dict_equations:    dictionary with information about equations
-        :dict_variables:    dictionary with information about iteration variables   
     
     Return:
         :exitflag:          1 = solved, 0 is not solved
