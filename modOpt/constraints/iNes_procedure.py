@@ -64,7 +64,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         newtonSystemDic = {}
         xBounds = model.xBounds[k]
         
-        if dict_options['newton_method'] in newtonMethods and dict_options['combined_algorithm']!=True:
+        if dict_options['newton_method'] in newtonMethods or dict_options['split_Box']=='forecastSplit':
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)
 
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
@@ -1314,6 +1314,7 @@ def reduceBoxDetNewtonHC4(xBounds, model, functions, dict_options):
         y = [xNewBounds[i]]
         if dict_options["Debug-Modus"]: print(i)
         checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
+        if type(xNewBounds[i])==list: break
         y = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
         if y == [] or y ==[[]]: 
             saveFailedSystem(output, functions[0], model, 0)
@@ -1523,7 +1524,7 @@ def checkIntervalAccuracy(xNewBounds, i, dict_options):
     """
     
     if xNewBounds[i].delta == 0:
-        xNewBounds[i] = [xNewBounds[i]]
+        xNewBounds[i] = xNewBounds[i]
     else:
         accurate = variableSolved([xNewBounds[i]], dict_options)
         notdegenerate = xNewBounds[i].delta > 1.0e-15
@@ -3306,7 +3307,7 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
     
         if N.a == '-inf' or N.b=='+inf':
             N = xBounds[i]
-            
+   
         intersection = ivIntersection(N, intersection)
         if intersection == []:
             return intersection
