@@ -372,7 +372,7 @@ def getBestSplit(xBounds,model, functions, dict_varId_fIds, boxNo, dict_options,
     '''
     
     dict_options_temp=copy.deepcopy(dict_options)
-    dict_options_temp.update({"hc_method":'HC4', "bc_method":'none',"newton_method":'none'})
+    dict_options_temp.update({"hc_method":'none', "bc_method":'none',"newton_method":'detNewton',"InverseOrHybrid": 'both'})
     oldBounds = copy.deepcopy(numpy.array(xBounds)[0])  
     smallestAvrSide = numpy.Inf
     
@@ -547,7 +547,7 @@ def getNewtonIntervalSystem(xBounds, model, options):
                 JacInv.append(numpy.linalg.inv(J))
             except: 
                 print('singular point')
-                JacInv.append(numpy.array(numpy.matrix(J).getH())) # if singular return adjunct 
+                JacInv.append(numpy.linalg.pinv(J))
         
         #remove inf parts in inverse
         for inf in infRows:
@@ -607,7 +607,7 @@ def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds):
         currentJacpoint = removeInfAndConvertToFloat(currentJacpoint, 1)
         currentFunc = removeInfAndConvertToFloat(currentFunc, 1)
         currentAbsDet = numpy.absolute(numpy.linalg.det(currentJacpoint))
-        decisionValue = currentAbsDet - numpy.sum(numpy.absolute(currentFunc[0]))
+        decisionValue = currentAbsDet
         if decisionValue>=biggestDValue:
             biggestDValue = decisionValue
             chosenPoint = tp
@@ -657,8 +657,10 @@ def removeInfAndConvertToFloat(array, subs):
 
     for l in range(0, len(array)):
         for n, iv in enumerate(array[l]):
-            if iv == float('inf') or iv == float('-inf'):
-                array[l][n] = subs
+            if iv == float('inf'):
+                array[l][n] = numpy.nan_to_num(numpy.inf)
+            if iv == float('-inf'):
+            	array[l][n] = -numpy.nan_to_num(numpy.inf)
             if iv == mpmath.mpi('-inf','+inf'):
                 array[l][n] = subs
             elif isinstance(iv, mpmath.ctx_iv.ivmpf):
@@ -1810,7 +1812,7 @@ def lambdifyToMpmathIvComplex(x, f):
             "cos" : mpmath.iv.cos,
             "acos": ivacos,
             "asin": ivasin,
-            "atan": ivatan,
+            "tan": ivtan,
             "log" : ivlog,
             "sqrt": ivsqrt}
 
@@ -1853,16 +1855,16 @@ def ivasin(iv):
     elif iv.a>=-1 and iv.a<=1 and iv.b>1: return mpmath.mpi(mpmath.asin(iv.a),mpmath.asin(1))
     else: return mpmath.mpi(mpmath.asin(-1), mpmath.asin(1))
         
-def ivatan(iv):
+def ivtan(iv):
     """calculates the atan of an interval iv, stripping it from the imaginary part"""
 
-    if iv.a>=-mpmath.pi/2 and iv.b<=mpmath.pi/2:
-        return mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(iv.b))
-    elif iv.a<-mpmath.pi/2 and iv.b<=mpmath.pi/2 and iv.b>=-mpmath.pi/2:
-        return mpmath.mpi(mpmath.atan(-mpmath.pi/2),mpmath.atan(iv.b))
-    elif iv.a>=-mpmath.pi/2 and iv.a<=mpmath.pi/2 and iv.b>mpmath.pi/2:
-        return mpmath.mpi(mpmath.atan(iv.a),mpmath.atan(mpmath.pi/2))
-    else: return mpmath.mpi(mpmath.atan(-mpmath.pi/2), mpmath.atan(mpmath.pi/2))
+    if iv.a>-mpmath.pi/2 and iv.b<mpmath.pi/2:
+        return mpmath.mpi(mpmath.tan(iv.a),mpmath.tan(iv.b))
+    elif iv.a<=-mpmath.pi/2 and iv.b<mpmath.pi/2 and iv.b>-mpmath.pi/2:
+        return mpmath.mpi('-inf',mpmath.tan(iv.b))
+    elif iv.a>-mpmath.pi/2 and iv.a<mpmath.pi/2 and iv.b>=mpmath.pi/2:
+        return mpmath.mpi(mpmath.tan(iv.a),'inf')
+    else: return mpmath.mpi('-inf', 'inf')
 
 
 def calculateCurrentBounds(f, i, xBounds, dict_options):
