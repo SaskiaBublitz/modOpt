@@ -257,9 +257,10 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
         newtonSystemDic = {}
 
     output = iNes_procedure.contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-             
+            
     if output["xAlmostEqual"] and not output["xSolved"]: 
         if not sampling_options ==None and not solv_options == None:
+
             iNes_procedure.lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
         output = iNes_procedure.reduceConsistentBox(output, model, functions, 
                                                     dict_options, k, 

@@ -99,7 +99,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
     for iterNo in range(1, dict_options["redStepMax"]+1): 
         if dict_options["Debug-Modus"]: print(f'Red. Step {iterNo}')
         if dict_options["Parallel Branches"]:
-            output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
+            output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, 
+                                                 dict_options, sampling_options, solv_options)
         
         else: 
             output = iNes_procedure.reduceBoxes(model, functions, dict_varId_fIds, 

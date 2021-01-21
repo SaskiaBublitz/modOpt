@@ -72,7 +72,8 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
 
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
         
-        if output["xAlmostEqual"] and not output["xSolved"]:     
+        if output["xAlmostEqual"] and not output["xSolved"]:    
+
             if not sampling_options ==None and not solv_options == None:
                 lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
             output = reduceConsistentBox(output, model, functions, dict_options, 
