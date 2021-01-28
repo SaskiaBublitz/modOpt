@@ -1305,8 +1305,8 @@ def reduceBoxDetNewtonHC4(xBounds, model, functions, dict_options):
         # apply detNewton Hybrid and Inverse for every variable
         y = [xNewBounds[i]]
         if dict_options["Debug-Modus"]: print(i)
-        checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
-        y = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
+        if not checkIntervalAccuracy(xNewBounds, i, dict_options_temp):
+            y = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
         if y == [] or y ==[[]]: 
             saveFailedSystem(output, functions[0], model, 0)
             return output
@@ -1482,13 +1482,18 @@ def doHC4(model, functions, xBounds, xNewBounds, output):
     """
     empty = False
     HC4_IvV = HC4(model, xBounds)
-
     if HC4_IvV.is_empty():
         saveFailedSystem(output, functions[0], model, 0)
         empty = True
     else:
         for i in range(0, len(model.xSymbolic)):
-                xNewBounds[i] = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
+                y = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
+                if y == [] or y == [[]]:
+                    if mpmath.almosteq(xBounds[i].b, mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).a, 1.0e-7):
+                        y = mpmath.mpi(xBounds[i].a, mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).b)
+                    elif mpmath.almosteq(xBounds[i].a, mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).b, 1.0e-7):
+                        y = mpmath.mpi(mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).a, xBounds[i].b)                                       
+                xNewBounds[i] = y
                 if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
                     saveFailedSystem(output, functions[0], model, 0)
                     empty = True
@@ -1514,8 +1519,7 @@ def checkIntervalAccuracy(xNewBounds, i, dict_options):
                     variable
     """
     
-    if xNewBounds[i].delta == 0:
-        xNewBounds[i] = [xNewBounds[i]]
+    if xNewBounds[i].delta == 0: return True#xNewBounds[i] = [xNewBounds[i]]
     else:
         accurate = variableSolved([xNewBounds[i]], dict_options)
         notdegenerate = xNewBounds[i].delta > 1.0e-15
@@ -1525,7 +1529,8 @@ def checkIntervalAccuracy(xNewBounds, i, dict_options):
                 dict_options["absTol"] = 0.1 * xNewBounds[i].delta 
             else:  
                 dict_options["relTol"] = 0.1 * xNewBounds[i][0].delta
-                dict_options["absTol"] = 0.1 * xNewBounds[i][0].delta    
+                dict_options["absTol"] = 0.1 * xNewBounds[i][0].delta   
+        return False
 
 
 def variableSolved(BoundsList, dict_options):
