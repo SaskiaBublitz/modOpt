@@ -26,19 +26,35 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
                         value
         
     """
+    if "Model" in res_solver.keys():
+        model = res_solver["Model"]
     
-    model = res_solver["Model"]
+        if model.xBounds !=[]:
+            absEps = dict_options["absTol"]
+            model.stateVarValues = numpy.empty((len(model.xBounds), len(model.xBounds[0])))
+            for i in range(0, len(model.xBounds)):
+                for j in range(0, len(model.xBounds[i])):
+                    if type(model.xBounds[i][j]) == numpy.ndarray:
+                        midPoint = (model.xBounds[i][j][0] + model.xBounds[i][j][1]) / 2.0
+                    else:
+                        midPoint = float(mpmath.mpf(model.xBounds[i][j].mid))
+                        if midPoint != 0: 
+                            model.stateVarValues[i][j]= midPoint
+                        else :
+                            model.stateVarValues[i][j] = absEps
+
+    if "Block" in res_solver.keys():
+        block = res_solver["Block"]
     
-    if model.xBounds !=[]:
-        absEps = dict_options["absTol"]
-        model.stateVarValues = numpy.empty((len(model.xBounds), len(model.xBounds[0])))
-        for i in range(0, len(model.xBounds)):
-            for j in range(0, len(model.xBounds[i])):
-                if type(model.xBounds[i][j]) == numpy.ndarray:
-                   midPoint = (model.xBounds[i][j][0] + model.xBounds[i][j][1]) / 2.0
+        if block.xBounds_tot !=[]:
+            absEps = dict_options["absTol"]
+            for i in block.colPerm:
+
+                if type(block.xBounds_tot[i]) == numpy.ndarray:
+                    midPoint = (block.xBounds_tot[i][0] + block.xBounds_tot[i][1]) / 2.0
                 else:
-                    midPoint = float(mpmath.mpf(model.xBounds[i][j].mid))
+                    midPoint = float(mpmath.mpf(block.xBounds_tot[i].mid))
                 if midPoint != 0: 
-                    model.stateVarValues[i][j]= midPoint
+                    block.x_tot[i]= midPoint
                 else :
-                    model.stateVarValues[i][j] = absEps
+                    block.x_tot[i] = absEps

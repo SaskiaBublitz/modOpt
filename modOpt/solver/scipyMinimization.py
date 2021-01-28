@@ -12,9 +12,18 @@ Minimization Procedures from scipy.optimization
 ****************************************************
 """
 
-__all__ = ['minimize']
+__all__ = ['minimize', 'fsolve']
 
-def fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables):
+def fsolve(curBlock, solv_options, dict_options):
+    """  solves nonlinear algebraic equation system (NLE) by fsolve method
+    from scipy.optimize package
+    
+    Args:
+        :curBlock:      object of class Block with block information
+        :solv_options:  dictionary with solver settings
+        :dict_options:  dictionary with user-specified settings
+          
+    """
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
     x0 = curBlock.getIterVarValues()
@@ -42,15 +51,14 @@ def iter_functions(x, curBlock, dict_options):
     return curBlock.getPermutedFunctionValues()     
 
 
-def minimize(curBlock, solv_options, dict_options, dict_eq, dict_var):
+def minimize(curBlock, solv_options, dict_options):
     """  solves nonlinear algebraic equation system (NLE) by minimization method
     from scipy.optimize package
     
     Args:
         :curBlock:      object of class Block with block information
         :solv_options:  dictionary with solver settings
-        :dict_eq:       dictionary with information about equations
-        :dict_var:      dictionary with information about iteration variables   
+        :dict_options:  dictionary with user-specified settings
           
     """
     # TODO: Add scaling

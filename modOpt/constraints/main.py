@@ -9,9 +9,11 @@ import time
 import copy
 import sympy
 import numpy
+from  modOpt.model import Model
 from modOpt import storage
 from modOpt.constraints import iNes_procedure, parallelization
 from modOpt.constraints.function import Function
+from modOpt.solver import block
 
 """
 ***************************************************
@@ -20,38 +22,56 @@ Main that invokes methods for variable constraints reduction
 """
 __all__ = ['reduceVariableBounds', 'nestBlocks']
 
-def reduceVariableBounds(model, options):
+def reduceVariableBounds(model, dict_options, sampling_options=None, solv_options=None):
     """ variable bounds are reduced based on user-defined input
     
     Args: 
-        :model:       object of class model in modOpt.model that contains all
-                      information of the NLE-evaluation from MOSAICm. 
-        :options:     dictionary with user-specified information
+        :model:            object of class model in modOpt.model that contains all
+                           information of the NLE-evaluation from MOSAICm. 
+        :dict_options:     dictionary with user-specified information
+        :sampling_options: dictionary with sampling settings
+        :solv_options:     dicionary with settings for numerical solver
         
     Return:
-        :res_solver:    dictionary with resulting model of procedure, iteration 
-                        number and time (if time measurement is chosen)
+        :res_solver:      dictionary with resulting model of procedure, iteration 
+                            number and time (if time measurement is chosen)
     
     """
     
     res_solver = {}
-    tic = time.time()
-    model.blocks = [range(0, len(model.xSymbolic))]       
+    tic = time.time()     
     res_solver["Model"] = copy.deepcopy(model)
     res_solver["time"] = []
 
-    doIntervalNesting(res_solver, options)
+    doIntervalNesting(res_solver, dict_options, sampling_options, solv_options)
     toc = time.time()
     res_solver["time"] = toc - tic
     return res_solver
+
+
+def getSymbolicVarsandFunsOfBlock(model, rBlocks, cBlocks):
+    
+    xSymbolic = []
+    fSymbolic = []
+    
+    for c in cBlocks:
+        xSymbolic.append(model.xSymbolic[c])
+    for r in rBlocks:
+        fSymbolic.append(model.fSymbolic[r])
+    return model.stateVarValues[0][cBlocks], xSymbolic, fSymbolic
+    
+    
+
         
-def doIntervalNesting(res_solver, dict_options):
+def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_options=None):
     """ iterates the state variable intervals related to model using the
     Gauss-Seidel Operator combined with an interval nesting strategy
     
     Args:
         :res_solver:      dictionary for storing procedure output
         :dict_options:    dictionary with solver options
+        :sampling_options: dictionary with sampling settings
+        :solv_options:     dicionary with settings for numerical solver
             
     """
     
@@ -59,7 +79,7 @@ def doIntervalNesting(res_solver, dict_options):
     
     model = res_solver["Model"]
     #dict_options["maxBoxNo"] =  int((len(model.xBounds[0]))**0.5)
-    #iterNo = 0
+    iterNo = 0
     dict_options["tear_id"] = 0
     npzFileName = dict_options["fileName"] + "_r" + str(dict_options["redStepMax"]) + "_boxes.npz"
     newModel = copy.deepcopy(model)
@@ -79,10 +99,12 @@ def doIntervalNesting(res_solver, dict_options):
     for iterNo in range(1, dict_options["redStepMax"]+1): 
         if dict_options["Debug-Modus"]: print(f'Red. Step {iterNo}')
         if dict_options["Parallel Branches"]:
-            output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
+            output = parallelization.reduceBoxes(model, functions, dict_varId_fIds, 
+                                                 dict_options, sampling_options, solv_options)
         
         else: 
-            output = iNes_procedure.reduceBoxes(model, functions, dict_varId_fIds, dict_options)
+            output = iNes_procedure.reduceBoxes(model, functions, dict_varId_fIds, 
+                                                dict_options, sampling_options, solv_options)
 
         xSolved = output["xSolved"]
         xAlmostEqual = output["xAlmostEqual"]
@@ -174,6 +196,4 @@ def createNewtonSystem(model):
     model.jacobianSympy = model.getSympySymbolicJacobian()
     model.jacobianLambNumpy = sympy.lambdify(model.xSymbolic, model.jacobianSympy,'numpy')
     model.jacobianLambMpmath = iNes_procedure.lambdifyToMpmathIvComplex(model.xSymbolic,
-                                                    list(numpy.array(model.jacobianSympy)))
-    
-    
+                                                    list(numpy.array(model.jacobianSympy)))   

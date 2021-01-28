@@ -14,63 +14,68 @@ from sympy.parsing.sympy_parser import parse_expr
 Newton Solver Procedure
 ****************************************************
 """
-
-def fsolve_old(curBlock, solv_options, dict_options, dict_equations, dict_variables):
-    """  solves nonlinear algebraic equation system (NLE) by starting seperate matlab 
-    function containing fsolve
-    CAUTION: Additional matlab file is required
+def fsolve_mscript(curBlock, solv_options, dict_options):
+    """ matlab is invoked on model-specific matlab script that needs to be created by UDLS 
+    from MOSAICmodeling. The name of the matlab file needs to be identical to the output 
+    file name set by the user in dict_options.
     
     Args:
-        :curBlock:      object of class Block with block information
-        :solv_options:  dictionary with solver settings
-        :dict_equations:       dictionary with information about equations
-        :dict_variables:      dictionary with information about iteration variables   
-          
+        :curBlock:          instance of class Block
+        :solv_options:      dictionary with settings for the solver
+        :dict_options:      dictionary containing the output file's name
+        
+    Return:
+        :exitflag:          1 = solved, 0 is not solved
+        :iterNo:            number of iterations as integer
+    
     """
-
+    
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
-    x0 = curBlock.getIterVarValues()
-    sortedVariables = list(map(str, dict_variables.keys()))
+    x_init = curBlock.x_tot
+    rowPerm = curBlock.rowPerm + numpy.ones(len(curBlock.rowPerm)) # col index in matlab starts with 1
+    colPerm = curBlock.colPerm + numpy.ones(len(curBlock.colPerm)) # row index in matlab starts with 1
+    varNames = list(map(str, curBlock.x_sym_tot))
+
+    try:
+        eng = matlab.engine.start_matlab()
+        results = eval('eng.'+dict_options["fileName"]+'_dm'+'(matlab.double(x_init.tolist()), matlab.double(colPerm.tolist()), matlab.double(rowPerm.tolist()), varNames, FTOL, iterMax, nargout=4)') #file and function need to have the same name, as System
+        if isinstance(results[0], float): x = numpy.array([results[0]])
+        else: x = numpy.array(results[0][0])
+        exitflag = results[2]
+        output = results[3]
+
+        if any(numpy.iscomplex(x)): 
+            print("Warning: Complex number(s) is/are casted to real")
+            x = x.real
+              
+        curBlock.x_tot[curBlock.colPerm] = x
+
+        if exitflag >= 1: return 1, output['iterations']
+        else: return 0, output['iterations']
+        
+    except:
+        print("Error: The system could not be parsed to Matlab.")
+        return 0, -1
     
-    eng = matlab.engine.start_matlab()
-    results = eval('eng.'+dict_options["fileName"]+'(matlab.double('+str(x0.tolist())+'),'+ str(FTOL)+','+ str(iterMax)+','+str(sortedVariables)+', nargout=4)')
-    x = numpy.array(results[0][0])
-    exitflag = results[2]
-    output = results[3]
-
-    if any(numpy.iscomplex(x)): x = x0
+def fsolve(curBlock, solv_options, dict_options):
+    """ matlab is invoked using a general matlab script included in modOpt. 
+    This general script invokes the python function systemToSolve to iterate 
+    the python model. This option takes in general longer than fsolve_mscript 
+    due to the extra model transformations between matlab and python during the 
+    iteration. It should only be used if the UDLS for the fsolve_mscript is not 
+    available since the latter is able to iterate complex variables contrary to 
     
-    curBlock.x_tot[curBlock.colPerm] = x
-
-    if exitflag >= 1: return 1, output['iterations']
-    else: return 0, output['iterations']
-
-
-def get_sym_iter_functions_and_vars(curBlock):
-    x_sym = []
-    y_sym = []
-    x = []
-    y = []
-    for glbID in curBlock.yb_ID:
-        if glbID in curBlock.colPerm:
-            x_sym.append(curBlock.x_sym_tot[glbID])
-            x.append(curBlock.x_tot[glbID])
-        else:
-            y_sym.append(curBlock.x_sym_tot[glbID])
-            y.append(curBlock.x_tot[glbID])  
-            
-    fSymbolic = numpy.array(curBlock.allConstraints(curBlock.x_sym_tot, curBlock.parameter))[curBlock.rowPerm].tolist()
-
-    if y != []: 
-        for i in range(0, len(fSymbolic)):
-            fy = sympy.lambdify(y_sym, fSymbolic[i])
-            fSymbolic[i] = fy(*y)
+    Args:
+        :curBlock:          instance of class Block
+        :solv_options:      dictionary with settings for the solver
+        :dict_options:      dictionary containing the output file's name
     
-    return x_sym, x, fSymbolic
-            
+    Return:
+        :exitflag:          1 = solved, 0 is not solved
+        :iterNo:            number of iterations as integer
     
-def fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables):
+    """    
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
 
@@ -97,6 +102,29 @@ def fsolve(curBlock, solv_options, dict_options, dict_equations, dict_variables)
     if exitflag >= 1: return 1, output['iterations']
     else: return 0, output['iterations']
     
+
+def get_sym_iter_functions_and_vars(curBlock):
+    x_sym = []
+    y_sym = []
+    x = []
+    y = []
+    for glbID in curBlock.yb_ID:
+        if glbID in curBlock.colPerm:
+            x_sym.append(curBlock.x_sym_tot[glbID])
+            x.append(curBlock.x_tot[glbID])
+        else:
+            y_sym.append(curBlock.x_sym_tot[glbID])
+            y.append(curBlock.x_tot[glbID])  
+            
+    fSymbolic = numpy.array(curBlock.allConstraints(curBlock.x_sym_tot, curBlock.parameter))[curBlock.rowPerm].tolist()
+
+    if y != []: 
+        for i in range(0, len(fSymbolic)):
+            fy = sympy.lambdify(y_sym, fSymbolic[i])
+            fSymbolic[i] = fy(*y)
+    
+    return x_sym, x, fSymbolic
+
 
 def systemToSolve(x, fSymbolic, xSymbolic):
     """ iterated function in matlab

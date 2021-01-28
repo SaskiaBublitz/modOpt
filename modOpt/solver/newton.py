@@ -13,15 +13,13 @@ Newton Solver Procedure
 """
 __all__ = ['doNewton']
 
-def doNewton(curBlock, solv_options, dict_options, dict_eq, dict_var):
+def doNewton(curBlock, solv_options, dict_options):
     """  solves nonlinear algebraic equation system (NLE) by Newton
     Raphson procedure
     
     Args:
         :curBlock:      object of class Block with block information
         :solv_options:  dictionary with solver settings
-        :dict_eq:       dictionary with information about equations
-        :dict_var:      dictionary with information about iteration variables   
           
     """
     
@@ -37,7 +35,7 @@ def doNewton(curBlock, solv_options, dict_options, dict_eq, dict_var):
         x = x + dx
         
         updateIterVars(dict_options, curBlock, x)
-        scaleBlockInIteration(dict_options, curBlock, dict_eq, dict_var)
+        scaleBlockInIteration(dict_options, curBlock)
         
         iterNo = iterNo + 1
         tol = numpy.linalg.norm(curBlock.getScaledFunctionValues())
@@ -79,16 +77,13 @@ def updateIterVars(dict_options, curBlock, x):
         curBlock.x_tot[curBlock.colPerm] = x
 
     
-def scaleBlockInIteration(dict_options, curBlock, dict_eq, dict_var):
+def scaleBlockInIteration(dict_options, curBlock):
     """ if chosen, scales block during iteration
     
     Args:
         :dict_options:          dictionary with user specified settings
-        :curBlock:              instance of class Block
-        :dict_eq:               dictionary with information about equations
-        :dict_var:              dictionary with information about iteration variables   
-          
+        :curBlock:              instance of class Block          
     """    
     
     if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] == 'block_iter':
-                mos.scaleSystem(curBlock, dict_eq, dict_var, dict_options) 
+                mos.scaleSystem(curBlock, dict_options) 

@@ -15,7 +15,17 @@ Minimization Procedures from scipy.optimization
 """
 
 __all__ = ['minimize']
-def minimize(curBlock, solv_options, dict_options, dict_equations, dict_variables):
+
+def minimize(curBlock, solv_options, dict_options):
+    """ This function calls the ipopt solver.
+    
+    Args:
+        :curBlock:      object of class Block with block information
+        :solv_options:  dictionary with solver settings
+        :dict_options:  dictionary with user-specified settings  
+        
+    """
+    
     x0 = numpy.array(curBlock.getIterVarValues(), dtype=float)
     xBounds = curBlock.getIterVarBoundValues()    
     x_L = numpy.array(xBounds[:,0], dtype=float)
@@ -52,17 +62,15 @@ def minimize(curBlock, solv_options, dict_options, dict_equations, dict_variable
         else: return 1, solv_options["iterMax"]  
 
 
-def minimize27(curBlock, solv_options, dict_options, dict_equations, dict_variables):
-    """  solves nonlinear algebraic equation system (NLE) by minimization method
-    from scipy.optimize package
+def minimize27(curBlock, solv_options, dict_options):
+    """  solves nonlinear algebraic equation system (NLE) with ipopt in python27 
+    based on Erik's interface
     
     Args:
         :curBlock:      object of class Block with block information
-        :solv_options:  dictionary with solver settings
-        :dict_eq:       dictionary with information about equations
-        :dict_var:      dictionary with information about iteration variables   
-          
+        :solv_options:  dictionary with solver settings          
     """
+    
     # TODO: Add scaling
     #if dict_options["scaling"] != 'None': 
     #    x0 = curBlock.getScaledIterVarValues()
