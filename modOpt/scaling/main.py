@@ -18,14 +18,12 @@ Main that invokes scaling methods
 __all__ = ['scaleSystem']
 
 
-def scaleSystem(model, dict_eq, dict_var, dict_options):
+def scaleSystem(model, dict_options):
     """ equation system is scaled by user-defined input
     
     Args:
         :model:         object of class model in modOpt.model that contains all
-                        information of the NLE-evaluation from MOSAICm. 
-        :dict_eq:       dictionary with equation data
-        :dict_var:      dictionary with variable data                        
+                        information of the NLE-evaluation from MOSAICm.                     
         :dict_options:  dictionary with user-specified information
         
     """
@@ -54,7 +52,7 @@ def scaleSystem(model, dict_eq, dict_var, dict_options):
     # TODO: Scaling with Bounds
     model.updateToScaling(res_scaling)
     
-    updateDictionaries(dict_eq, dict_var, res_scaling, model)
+    #updateDictionaries(dict_eq, dict_var, res_scaling, model)
 
     return True
 

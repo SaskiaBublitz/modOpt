@@ -4,6 +4,7 @@ Import packages
 ***************************************************
 """
 import numpy
+import mpmath
 
 """
 ***************************************************
@@ -14,8 +15,142 @@ Output
 
 __all__ = ['writeInitialSettings', 'writeResults', 'writeResultsAnalytics', 
            'write_successfulResults', 'write_results_with_bounds',
-           'write_initial_values_with_bounds', 'write_analytics']
+           'write_initial_values_with_bounds', 'write_analytics', 'write_successful_results']
 
+def write_successful_results(res_boxes, dict_options, sampling_options, solv_options):
+    """ writes out results from sampling and solving procedure blockwise. 
+    
+    Args:
+        :res_boxes:         dictionary with solver results sorted by variable boxes
+        :dict_options:      dictionary with user-specified box reduction, model structure settings
+        :sampling_options:  dictionary with user-specified sampling settings
+        :solv_options:      dictionary with user-specified solver settings
+    
+    """
+    
+    if res_boxes == {}: return True
+
+    for box in res_boxes.keys():
+        res_box = res_boxes[box]
+        model = res_box["Model"]
+        if model.failed: return True
+        solutions = model.stateVarValues
+        bounds = model.xBounds[box]
+        xSymbolic = model.xSymbolic
+
+        for solution in solutions:
+            write_solution(xSymbolic, solution, bounds, dict_options, solv_options)
+            write_block_analysis(res_box, solution, model, 
+                                 dict_options, solv_options)
+        return True
+
+
+def write_block_analysis(res_box, solution, model, dict_options, solv_options):
+    """ writes out analysis of the blocks from blockwise sampling and solving 
+    procedure . 
+    
+    Args:
+        :res_box:           dictionary with results from one box sorted by blocks
+        :dict_options:      dictionary with user-specified box reduction, model structure settings
+        :sampling_options:  dictionary with user-specified sampling settings
+        :solv_options:      dictionary with user-specified solver settings
+        
+    """
+    
+    fileName = getFileName(dict_options, solv_options)
+    res_file = open(''.join([fileName, "_analysis.txt"]), "w")
+    res_file.write(" ****************** Analysis File ****************** \n\n") 
+    writeSolverSettings(res_file, solv_options)
+    writeRestructuringSettings(res_file, dict_options)
+    writeFunctionLegend(res_file, model)
+    
+    res_file.write(" ****************** Table with Function Results ****************** \n\n") 
+    res_file.write("BlockID  GLbID   CondNo  Exitflag  IterNo  Residual\n") 
+    for block in res_box.keys():
+        if block == "Model": continue
+        res_block = res_box[block]
+        colPerm = res_block["colPerm"]
+        sol_id = get_id_block_solution(solution[colPerm], res_block["FoundSolutions"])
+        wirte_block_analysis_table(res_file, res_block, block, sol_id)
+
+def wirte_block_analysis_table(res_file, res_block, block, sol_id):
+    """ writes out table with blockwise results for blockwise sampling and solving 
+    procedure . 
+    
+    Args:
+        :res_file:          textfile object
+        :res_box:           dictionary with results from one box sorted by blocks
+        :block:             object of type block
+        :sol_id:            integer with index of current solution in block
+        
+    """    
+
+    exitflag = res_block["Exitflag"][sol_id]
+    iterNo = res_block["IterNo"][sol_id]
+    condNo = res_block["CondNo"][sol_id]
+    FRES = res_block["FRES"][sol_id]
+    rowPerm = res_block["rowPerm"]
+
+
+
+    for i in range(0,len(rowPerm)):
+        res_file.write("%s  %s  %s  %s  %s  %s\n"%(block, 
+                                                 rowPerm[i],
+                                                 condNo,
+                                                 exitflag,
+                                                 iterNo,
+                                                 FRES[i]))    
+    
+    
+    
+
+
+def write_solution(xSymbolic, solution, bounds, dict_options, solv_options):
+    """ writes out file wit solution and current bounds with blockwise sampling and solving 
+    procedure . 
+    
+    Args:
+        :xSymbolic:         list with symbolic variables
+        :xSymbolic:         numpy array with current variable bounds
+        :dict_options:      dictionary with user-specified box reduction, model structure settings
+        :solv_options:      dictionary with user-specified solver settings
+        
+    """
+    fileName = getFileName(dict_options, solv_options)
+    res_file = open(''.join([fileName, "_results.txt"]), "w")
+    
+    res_file.write(" ****************** Iteration Variable Values ****************** \n\n") 
+    if isinstance(bounds[0], list):
+        for i in range(0, len(xSymbolic)):
+            res_file.write("%s    %s    %s    %s\n"%(xSymbolic[i], 
+                                                 solution[i],
+                                                 bounds[i][0],
+                                                 bounds[i][1]))
+    else:
+        for i in range(0, len(xSymbolic)):
+            res_file.write("%s    %s    %s    %s\n"%(xSymbolic[i], 
+                                                 solution[i],
+                                                 float(mpmath.mpf(bounds[i].a)),
+                                                 float(mpmath.mpf(bounds[i].b))))
+        
+
+def get_id_block_solution(solution_block, foundSolutions):
+    """ gets id of a total system's solution in block.
+    
+    Args:
+        :solution_block:        numpy.array with block sub-vector of current solution
+        :foundSolutions:        list with numpy.arrays containing all block solutions
+    
+    Return:
+        :sol_id:                id of current solution in block
+
+    """
+    
+    for sol_id in range(0, len(foundSolutions)):
+        if(solution_block == foundSolutions[sol_id]).all():
+            return sol_id
+    
+    
 
 def write_successfulResults(res_solver, mainfilename, k, l, initial_model, solv_options, dict_options):
     """ method writes successful sample into a text file 
@@ -358,5 +493,7 @@ def getFileName(dict_options, solv_options):
     if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', str(solv_options["mode"])])
     if solv_options["solver"]=='TNC': name = ''.join([name,'TNC_', str(solv_options["mode"])])
     if solv_options["solver"]=='ipopt': name = ''.join([name,'ipopt_', str(solv_options["mode"])])
-    
+    if solv_options["solver"]=='matlab-fsolve': name = ''.join([name,'matlabFsolve'])
+    if solv_options["solver"]=='matlab-fsolve-mscript': name = ''.join([name,'matlabFsolvemscript'])
+    if solv_options["solver"]=='fsolve': name = ''.join([name,'fsolve'])
     return name

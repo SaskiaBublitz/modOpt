@@ -166,7 +166,7 @@ def get_tight_bBounds_Worker(f, y_id, x_id, xBounds, dict_options, b_min, b_max)
     return True
 
 
-def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
+def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_options=None, solv_options=None):
     """ reduction of multiple boxes
     
     Args:
@@ -175,6 +175,8 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         :dict_varId_fIds:       dictionary with variable's glb id (key) and list 
                                  with function's glb id they appear in   
         :dict_options:          dictionary with user specified algorithm settings
+        :sampling_options:      dictionary with sampling settings
+        :solv_options:          dicionary with settings for numerical solver
     
     Return:
         :output:                dictionary with newXBounds and a list of booleans
@@ -198,7 +200,9 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
         p = Process(target=reduceBoxes_Worker, args=(k, model,
                                                                functions, dict_varId_fIds,
                                                                dict_options,
-                                                               results))
+                                                               results,
+                                                               sampling_options,
+                                                               solv_options))
         jobs.append(p)
     # TODO: Check current boxNo = len(newXBounds) + (nl - (k+1))
     
@@ -221,7 +225,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options):
     return output
 
 
-def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, results):
+def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, results, sampling_options=None, solv_options=None):
     """ contains work that can be done in parallel during the reduction of multiple 
     solution interval sets stored in xBounds. The package multiprocessing is used 
     for parallelization.
@@ -234,7 +238,9 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
                                 with function's glb id they appear in           
         :dict_options:          dictionary with user specified algorithm settings
         :results:               dictionary from multiprocessing where results are stored
-                                after a job is done    
+                                after a job is done   
+        :sampling_options:      dictionary with sampling settings
+        :solv_options:          dicionary with settings for numerical solver
                                 
     Return:                     True if method finishes ordinary
                              
@@ -251,8 +257,11 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
         newtonSystemDic = {}
 
     output = iNes_procedure.contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-             
+            
     if output["xAlmostEqual"] and not output["xSolved"]: 
+        if not sampling_options ==None and not solv_options == None:
+
+            iNes_procedure.lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
         output = iNes_procedure.reduceConsistentBox(output, model, functions, 
                                                     dict_options, k, 
                                                     dict_varId_fIds, 
@@ -260,7 +269,7 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
    
     for box in output["xNewBounds"]:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
-
+        
     if output.__contains__("noSolution"):
         results['%d' %k] = ([], output["noSolution"])
     else:

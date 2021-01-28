@@ -5,6 +5,7 @@ Created on Aug 17, 2018
 '''
 from numpy import float
 import numpy as np
+import mpmath
 
 from modOpt.initialization import VarType 
 
@@ -156,7 +157,7 @@ class InitialVarList(VarListType):
 
 class VariableList(VarListType):
 
-    def __init__(self, performSampling=False, numberOfSamples=1, samplingMethod='hammersley', samplingDistribution='uniform', distributionParams=(), seed=None, restartFile='', model=None, boxID=None):
+    def __init__(self, performSampling=False, numberOfSamples=1, samplingMethod='hammersley', samplingDistribution='uniform', distributionParams=(), seed=None, restartFile='', model=None, boxID=None, block=None):
         super().__init__()
         
         if restartFile:
@@ -171,18 +172,41 @@ class VariableList(VarListType):
         self.distributionParams = distributionParams
         if model != None:
             self.add_vars_from_model(model, boxID)
+        if block != None:
+            self.add_vars_from_block(block, boxID)
     
     def add(self, varName, value=[], loc=0, scale=1, modelVarID ='', engUnit='-', samplingDistribution=None, distributionParams=()):
         self.globalID += 1
         listItem = VarType.VarType(self.globalID,varName,value,loc,scale,modelVarID,engUnit,samplingDistribution,distributionParams)
         self.varlist.append(listItem)
-
+    
+    def add_vars_from_block(self, block, boxID):
+        varNames = block.x_sym_tot
+        
+        for glbID in block.colPerm:
+            if isinstance(block.xBounds_tot[glbID], mpmath.ctx_iv.ivmpf):
+                scale = float(mpmath.mpf((block.xBounds_tot[glbID].a - block.xBounds_tot[glbID].b).mid))/6.0 # standard deviation
+                loc = float(mpmath.mpf(block.xBounds_tot[glbID].mid))
+            else:
+                scale = (block.xBounds_tot[glbID, 1] - block.xBounds_tot[glbID, 0])/6.0 # standard deviation
+                loc = 0.5 * (block.xBounds_tot[glbID, 0] +block.xBounds_tot[glbID, 1]) # Mean value 
+            self.add(varName = varNames[glbID], 
+                     loc = loc,
+                     scale = scale,
+                     samplingDistribution=self.samplingDistribution,
+                     distributionParams=self.distributionParams)
+    
+    
     def add_vars_from_model(self, model, boxID):   
         varNames = model.xSymbolic
         
         for glbID in range(0, len(varNames)):
-            scale = (model.xBounds[boxID][glbID, 1] - model.xBounds[boxID][glbID, 0])/6.0 # standard deviation
-            loc = 0.5 * (model.xBounds[boxID][glbID, 0] +model.xBounds[boxID][glbID, 1]) # Mean value 
+            if isinstance(model.xBounds[boxID][glbID], mpmath.ctx_iv.ivmpf):
+                scale = float(mpmath.mpf((model.xBounds[boxID][glbID].a - model.xBounds[boxID][glbID].b).mid))/6.0 # standard deviation
+                loc = float(mpmath.mpf(model.xBounds[boxID][glbID].mid))
+            else:
+                scale = (model.xBounds[boxID][glbID, 1] - model.xBounds[boxID][glbID, 0])/6.0 # standard deviation
+                loc = 0.5 * (model.xBounds[boxID][glbID, 0] +model.xBounds[boxID][glbID, 1]) # Mean value 
             self.add(varName = varNames[glbID], 
                      loc = loc,
                      scale = scale,
