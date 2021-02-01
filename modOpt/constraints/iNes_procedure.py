@@ -67,7 +67,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
         newtonSystemDic = {}
         xBounds = model.xBounds[k]
         
-        if dict_options['newton_method'] in newtonMethods or dict_options['split_Box']=='forecastSplit':
+        if dict_options['newton_method'] in newtonMethods:
             newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)
 
         output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
@@ -237,7 +237,8 @@ def splitBox(xNewBounds, model, functions, dict_options, k, dict_varId_fIds, new
         splitVar = getTearVariableLargestDerivative(model, k)
         xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                            numpy.array(xNewBounds[0]), boxNo_split, dict_options)
-    elif dict_options["split_Box"]=="forecastSplit": 
+    elif (dict_options["split_Box"]=="forecastSplit" or dict_options["split_Box"]=="forecast_HC4" 
+          or dict_options["split_Box"]=="forecast_newton"): 
         # splits box by best variable
         xNewBounds = getBestSplit(xNewBounds, model, functions, dict_varId_fIds, k, dict_options, newtonSystemDic)
     
@@ -376,26 +377,24 @@ def getBestSplit(xBounds,model, functions, dict_varId_fIds, boxNo, dict_options,
     Return:
         :xNewBounds:    best reduced two variable boxes
     '''
-    
-    dict_options_temp=copy.deepcopy(dict_options)
-    dict_options_temp.update({"hc_method":'none', "bc_method":'none',"newton_method":'detNewton',"InverseOrHybrid": 'both'})
+      
     oldBounds = copy.deepcopy(numpy.array(xBounds)[0])  
     smallestAvrSide = numpy.Inf
     
+    #try all splits
     for i in range(len(model.xSymbolic)):
         BoundsToSplit = copy.deepcopy(numpy.array(xBounds)[0])
         splittedBox = separateBox(BoundsToSplit, [i])
+        
+        #reduce both boxes
+        output0, output1 = reduceHC4_orNewton(splittedBox, model, functions, dict_varId_fIds, boxNo, dict_options)
 
-        # reduces first splitted box
-        output0 = reduceBox(numpy.array(splittedBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, newtonSystemDic)
         if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
             avrSide0 = identifyReduction(output0["xNewBounds"], oldBounds)
         else:
             #if one of splitted boxes is empty always prefer this split
             return [tuple(splittedBox[1])]
         
-        # reduces second splitted box
-        output1 = reduceBox(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, newtonSystemDic)
         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
             avrSide1 = identifyReduction(output1["xNewBounds"], oldBounds)
         else:
@@ -410,6 +409,45 @@ def getBestSplit(xBounds,model, functions, dict_varId_fIds, boxNo, dict_options,
             xNewBounds = [output0["xNewBounds"][0], output1["xNewBounds"][0]]
             
     return xNewBounds
+
+
+def reduceHC4_orNewton(splittedBox, model, functions, dict_varId_fIds, boxNo, dict_options):
+    '''reduces both side of the splitted box with detNewton or HC4
+
+    Args:
+        :splittedBox:   list of two boxes with variable bounds of class momath.iv
+        :model:         instance of type model
+        :functions:     list with instances of class function
+        :dict_options:  dictionary of options
+    Return:
+        :output0:    reduced box 1
+        :output1:    reduced box 2
+    '''
+    
+    dict_options_temp=copy.deepcopy(dict_options)
+    
+    #if newton for split
+    if dict_options["split_Box"]=="forecast_newton" or dict_options["split_Box"]=="forecastSplit":
+        dict_options_temp.update({"hc_method":'none', "bc_method":'none',"newton_method":'detNewton',
+                                  "InverseOrHybrid": 'both', "Affine_arithmetic": False})
+        
+        newtonSystemDic0 = getNewtonIntervalSystem(numpy.array(splittedBox[0]), model, dict_options_temp)     
+        newtonSystemDic1 = getNewtonIntervalSystem(numpy.array(splittedBox[1]), model, dict_options_temp) 
+        
+        output0 = reduceBox(numpy.array(splittedBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, newtonSystemDic0)
+        output1 = reduceBox(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, newtonSystemDic1)
+        
+    #if HC4 for split    
+    elif dict_options["split_Box"]=="forecast_HC4":
+        dict_options_temp.update({"hc_method":'HC4', "bc_method":'none',"newton_method":'none',
+                                  "InverseOrHybrid": 'both', "Affine_arithmetic": False})
+        
+        output0 = reduceBox(numpy.array(splittedBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, {})
+        output1 = reduceBox(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, {})
+        
+    return output0, output1
+        
+    
     
         
 def identifyReduction(newBox,oldBox):
