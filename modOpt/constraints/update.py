@@ -32,7 +32,7 @@ def updateDictToModel(dict_variables, res_solver):
 
     
     for i in range(0, len(dict_variables)):
-        glbIdx = dict_variables[list(dict_variables)[i]][1]
+        glbIdx = dict_variables[list(dict_variables)[i]][3]
         curXValues = []
         curXLowerBounds = []
         curXUpperBounds = []

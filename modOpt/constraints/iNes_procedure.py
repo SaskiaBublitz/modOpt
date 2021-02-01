@@ -238,7 +238,7 @@ def splitBox(xNewBounds, model, functions, dict_options, k, dict_varId_fIds, new
         xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
                            numpy.array(xNewBounds[0]), boxNo_split, dict_options)
     elif (dict_options["split_Box"]=="forecastSplit" or dict_options["split_Box"]=="forecast_HC4" 
-          or dict_options["split_Box"]=="forecast_newton"): 
+          or dict_options["split_Box"]=="forecast_newton"):  
         # splits box by best variable
         xNewBounds = getBestSplit(xNewBounds, model, functions, dict_varId_fIds, k, dict_options, newtonSystemDic)
     
@@ -446,8 +446,6 @@ def reduceHC4_orNewton(splittedBox, model, functions, dict_varId_fIds, boxNo, di
         output1 = reduceBox(numpy.array(splittedBox[1]), model, functions, dict_varId_fIds, boxNo, dict_options_temp, {})
         
     return output0, output1
-        
-    
     
         
 def identifyReduction(newBox,oldBox):
@@ -1527,17 +1525,17 @@ def doHC4(model, functions, xBounds, xNewBounds, output):
         empty = True
     else:
         for i in range(0, len(model.xSymbolic)):
-                y = ivIntersection(xBounds[i], mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])))
-                if y == [] or y == [[]]:
-                    if mpmath.almosteq(xBounds[i].b, mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).a, 1.0e-7):
-                        y = mpmath.mpi(xBounds[i].a, mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).b)
-                    elif mpmath.almosteq(xBounds[i].a, mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).b, 1.0e-7):
-                        y = mpmath.mpi(mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1])).a, xBounds[i].b)                                       
-                xNewBounds[i] = y
-                if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
-                    saveFailedSystem(output, functions[0], model, 0)
-                    empty = True
-                    break            
+            HC4IV_mpmath = mpmath.mpi(HC4_IvV[i][0],(HC4_IvV[i][1]))
+            y = ivIntersection(xBounds[i], HC4IV_mpmath)
+            if y == [] or y == [[]]:
+                if (mpmath.almosteq(xBounds[i].b, HC4IV_mpmath.a, 1.0e-7) or
+                    mpmath.almosteq(xBounds[i].a, HC4IV_mpmath.b, 1.0e-7)):
+                    y = mpmath.mpi(min(xBounds[i].a,HC4IV_mpmath.a), max(xBounds[i].b,HC4IV_mpmath.b))                                      
+            xNewBounds[i] = y
+            if  xNewBounds[i]  == [] or  xNewBounds[i]  ==[[]]: 
+                saveFailedSystem(output, functions[0], model, 0)
+                empty = True
+                break            
     return output, empty
 
        
@@ -3346,6 +3344,9 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
    
         intersection = ivIntersection(N, intersection)
         if intersection == []:
+            if (mpmath.almosteq(xBounds[i].b, N.a, 1.0e-7) or
+                mpmath.almosteq(xBounds[i].a, N.b, 1.0e-7)):
+                    intersection = [mpmath.mpi(min(xBounds[i].a, N.a), max(xBounds[i].b, N.b))] 
             return intersection
         if checkVariableBound(intersection, dict_options):
                         break
@@ -3493,6 +3494,9 @@ def HybridGS(newtonSystemDic, xBounds, i, dict_options):
                         
                     intersection = ivIntersection(N, intersection)
                     if intersection == []:
+                        if (mpmath.almosteq(xBounds[i].b, N.a, 1.0e-7) or
+                            mpmath.almosteq(xBounds[i].a, N.b, 1.0e-7)):
+                                intersection = [mpmath.mpi(min(xBounds[i].a, N.a), max(xBounds[i].b, N.b))] 
                         return intersection
                     if checkVariableBound(intersection, dict_options):
                         return [intersection]
