@@ -589,7 +589,7 @@ def getNewtonIntervalSystem(xBounds, model, options):
                 JacInv.append(numpy.linalg.inv(J))
             except: 
                 print('singular point')
-                JacInv.append(numpy.linalg.pinv(J))
+                JacInv.append(numpy.array(numpy.matrix(J).getH()))
         
         #remove inf parts in inverse
         for inf in infRows:
@@ -3337,7 +3337,8 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
             if j!=i:
                 ivsum = ivsum + numpy.dot(numpy.dot(Y[bp][i], JacInterval[:,j]), (xBounds[j]-Boundspoint[bp][j]))
                 
-        N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
+        try: N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
+        except: N = mpmath.mpi('-inf', '+inf')
     
         if N.a == '-inf' or N.b=='+inf':
             N = xBounds[i]
