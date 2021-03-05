@@ -5,7 +5,6 @@ Import packages
 """
 import pathlib
 import numpy
-import matlab.engine
 from modOpt.solver import block
 import sympy
 from sympy.parsing.sympy_parser import parse_expr
@@ -29,7 +28,7 @@ def fsolve_mscript(curBlock, solv_options, dict_options):
         :iterNo:            number of iterations as integer
     
     """
-    
+    import matlab.engine
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
     x_init = curBlock.x_tot
@@ -75,7 +74,8 @@ def fsolve(curBlock, solv_options, dict_options):
         :exitflag:          1 = solved, 0 is not solved
         :iterNo:            number of iterations as integer
     
-    """    
+    """
+    import matlab.engine    
     FTOL = solv_options["FTOL"]
     iterMax = solv_options["iterMax"]
 
