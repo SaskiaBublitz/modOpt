@@ -14,9 +14,8 @@ Following subpackages are included:
 	1. Prerequisites
 	* Python 3.7 with pip installed 
 
-	2. Open the terminal and type in following command:
-	
-	> pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@modOpt_v_3.0
+	2. Open the terminal and type in following command:	
+	``` pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@modOpt_v_3.0 ```
 	
 	3. Open python in terminal and check if package is imported:
 	
