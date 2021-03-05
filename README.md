@@ -12,12 +12,14 @@ Following subpackages are included:
 # Installation Guide for Users
 
 	1. Prerequisites
-		* Python 3.7 with pip installed 
+	* Python 3.7 with pip installed 
 
 	2. Open the terminal and type in following command:
+	
 	> pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@modOpt_v_3.0
 	
 	3. Open python in terminal and check if package is imported:
+	
 	> python
 	> import modOpt
 	
@@ -35,17 +37,25 @@ Following subpackages are included:
 	6. Change to modOpt directory:
 	> cd modOpt
 	7. Change to your branch by:
+	
 	> git checkout dev_YourName
+	
 	The remote branch should then automatically be tracked.
 	8. For Windows-users: Open a new python-understanding terminal and change to the modOpt directory:
+	
 	> cd <path_to_location>/modOpt
+	
 	9. Install python package by:
+	
 	> pip install .
 		* *Notes*: 
 			* With the additional option -e changes in the modOpt package are automatically updated to your installations
 			* If you have no installation rights use the option --user 
+	
 	10. Check in terminal if package is imported correctly in python:
+	
 	> python
+	>
 	> import modOpt
 
 # Commit and Push Starter Guide
