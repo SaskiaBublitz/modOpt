@@ -111,16 +111,19 @@ def write_solution(xSymbolic, solution, bounds, dict_options, solv_options):
     
     Args:
         :xSymbolic:         list with symbolic variables
-        :xSymbolic:         numpy array with current variable bounds
+        :solution:          numpy array with current variable bounds
         :dict_options:      dictionary with user-specified box reduction, model structure settings
         :solv_options:      dictionary with user-specified solver settings
         
     """
+    if not "sol_count" in dict_options.keys(): dict_options["sol_count"] = 1
+    else: dict_options["sol_count"] +=1
+    
     fileName = getFileName(dict_options, solv_options)
-    res_file = open(''.join([fileName, "_results.txt"]), "w")
+    res_file = open(''.join([fileName, "_", str(dict_options["sol_count"]),"_results.txt"]), "w")
     
     res_file.write(" ****************** Iteration Variable Values ****************** \n\n") 
-    if isinstance(bounds[0], list):
+    if isinstance(bounds[0], list) or isinstance(bounds[0], numpy.ndarray):
         for i in range(0, len(xSymbolic)):
             res_file.write("%s    %s    %s    %s\n"%(xSymbolic[i], 
                                                  solution[i],

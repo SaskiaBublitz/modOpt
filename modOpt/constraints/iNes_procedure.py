@@ -1263,7 +1263,7 @@ def reduceBoxHC43PNewtonBnormal(xBounds, model, functions, dict_varId_fIds, boxN
             y = [xNewBounds[i]]
             if dict_options["Debug-Modus"]: print(i)
             checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
-            y = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
+            y, unique = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
             if y == [] or y ==[[]]: 
                 saveFailedSystem(output, functions[0], model, 0)
                 return output
@@ -1344,7 +1344,7 @@ def reduceBoxDetNewtonHC4(xBounds, model, functions, dict_options):
         y = [xNewBounds[i]]
         if dict_options["Debug-Modus"]: print(i)
         if not checkIntervalAccuracy(xNewBounds, i, dict_options_temp):
-            y = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
+            y, unique = doIntervalNewton(newtonSystemDic, y, xNewBounds, i, dict_options_temp)
         if y == [] or y ==[[]]: 
             saveFailedSystem(output, functions[0], model, 0)
             return output
@@ -1403,6 +1403,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     xSolved = True
     dict_options_temp = copy.deepcopy(dict_options)
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
+    uniqueSolutionInBox = True
     
     # if HC4 is active
     if dict_options['hc_method']=='HC4':
@@ -1416,11 +1417,13 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
         
         # if any newton method is active       
         if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:
-            y = doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options_temp)
+            y, unique = doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options_temp)
+            if not unique: 
+                uniqueSolutionInBox = False
             if y == [] or y ==[[]]: 
                 saveFailedSystem(output, functions[0], model, 0)
                 return output
-                    
+                      
         # if b_normal is active
         if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='b_normal':
             for j in dict_varId_fIds[i]:
@@ -1447,6 +1450,8 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
         dict_options_temp["absTol"] = dict_options["absTol"]  
         
     # Prepare output dictionary for return
+    if dict_options['newton_method'] in newtonMethods and uniqueSolutionInBox: 
+        print("The current box contains a unique solution.")      
     output["xAlmostEqual"] = xUnchanged
     output["xSolved"] = xSolved       
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
@@ -1490,14 +1495,18 @@ def doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options):
         :y:             current interval after reduction in mpmath.mpi formate
 
     """    
+
     if dict_options['InverseOrHybrid']!='Hybrid':     
-        y = setOfIvSetIntersection([y, NewtonReduction(newtonSystemDic, xBounds, i, dict_options)])
+        y_new = NewtonReduction(newtonSystemDic, xBounds, i, dict_options)
 
     # if hybrid or both are active
     if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options):  
-        y = setOfIvSetIntersection([y, HybridGS(newtonSystemDic, xBounds, i, dict_options)])
+        y_new = HybridGS(newtonSystemDic, xBounds, i, dict_options)
         
-    return y
+    unique = checkUniqueness(y_new, y[0])
+    y = setOfIvSetIntersection([y, y_new])
+        
+    return y, unique
      
 
 def doHC4(model, functions, xBounds, xNewBounds, output):
@@ -1940,15 +1949,15 @@ def calculateCurrentBounds(f, i, xBounds, dict_options):
         except: return [], [], []
       
     try:
-       gxInterval = getBoundsOfFunctionExpression(f.g_sym[i], 
-                                                  f.x_sym, xBounds, dict_options)
+       gxInterval = mpmath.mpi(getBoundsOfFunctionExpression(f.g_sym[i], 
+                                                  f.x_sym, xBounds, dict_options))
        if type(gxInterval) == mpmath.iv.mpc: gxInterval = []
       
     except: return [], [], bInterval
 
     try:
-       dgdxInterval = getBoundsOfFunctionExpression(f.dgdx_sym[i], 
-                                                    f.x_sym, xBounds, dict_options)
+       dgdxInterval = mpmath.mpi(getBoundsOfFunctionExpression(f.dgdx_sym[i], 
+                                                    f.x_sym, xBounds, dict_options))
        if type(dgdxInterval) == mpmath.iv.mpc: dgdxInterval = []
 
     except: return gxInterval, [], bInterval
@@ -1983,7 +1992,8 @@ def getBoundsOfFunctionExpression(f, xSymbolic, xBounds, dict_options):
 
     if dict_options["Affine_arithmetic"]: 
         fInterval = intersectWithAffineFunctionIntervals(xSymbolic, xBounds, [f], [fInterval])
-    return mpmath.mpi(str(fInterval[0]))
+        return mpmath.mpi(str(fInterval[0]))
+    else: return fInterval
         
         
 def intersectWithAffineFunctionIntervals(xSymbolic, xBounds, f, fIntervals):
@@ -2245,12 +2255,12 @@ def getReducedIntervalOfLinearFunction(a, i, xBounds, bi):
     Return:                  reduced x-Interval(s)   
     """        
     
-    if bool(0 in bi - a * xBounds[i]) == False: return [] # if this is the case, there is no solution in xBoundsi
+    if bool(0 in mpmath.mpi(bi) - a * xBounds[i]) == False: return [] # if this is the case, there is no solution in xBoundsi
 
-    if bool(0 in bi) and bool(0 in a):  # if this is the case, bi/aInterval would return [-inf, +inf]. Hence the approximation of x is already smaller
+    if bool(0 in mpmath.mpi(bi)) and bool(0 in mpmath.mpi(a)):  # if this is the case, bi/aInterval would return [-inf, +inf]. Hence the approximation of x is already smaller
                 return [xBounds[i]]
     else: 
-        return gaussSeidelOperator(a, bi, xBounds[i]) # bi/aInterval  
+        return gaussSeidelOperator(mpmath.mpi(a), mpmath.mpi(bi), xBounds[i]) # bi/aInterval  
 
 
 def checkAndRemoveComplexPart(interval):
@@ -3321,14 +3331,14 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
                          solution for x can be in, if interval remains [] there
                          is no solution within the initially guessed interval of x                  
     """
-    interval=[]
+    #interval=[]
              
     Boundspoint = newtonSystemDic['Boxpoint']
     fpoint = newtonSystemDic['f(Boxpoint)']
     JacInterval = newtonSystemDic['J(Box)']
     Y = newtonSystemDic['J(Boxpoint)-1']
 
-    intersection = xBounds[i]
+    intersection = [xBounds[i]]
     for bp in range(len(Boundspoint)):
         Yfmid = numpy.dot(Y[bp][i],fpoint[bp])
         D = numpy.dot(Y[bp][i],JacInterval[:,i])
@@ -3337,24 +3347,32 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
             if j!=i:
                 ivsum = ivsum + numpy.dot(numpy.dot(Y[bp][i], JacInterval[:,j]), (xBounds[j]-Boundspoint[bp][j]))
                 
-        try: N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
-        except: N = mpmath.mpi('-inf', '+inf')
+        try: #N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
+            quotient = ivDivision(mpmath.mpi(Yfmid+ivsum),mpmath.mpi(D))
+            xc = Boundspoint[bp][i]
+            N = [xc - l for l in quotient]
+        except: N = [mpmath.mpi('-inf', '+inf')]
     
-        if N.a == '-inf' or N.b=='+inf':
-            N = xBounds[i]
+        #if N.a == '-inf' or N.b=='+inf':
+        #    N = [xBounds[i]]
    
-        intersection = ivIntersection(N, intersection)
+        intersection = setOfIvSetIntersection([N, intersection])
+        
         if intersection == []:
-            if (mpmath.almosteq(xBounds[i].b, N.a, 1.0e-7) or
-                mpmath.almosteq(xBounds[i].a, N.b, 1.0e-7)):
-                    intersection = [mpmath.mpi(min(xBounds[i].a, N.a), max(xBounds[i].b, N.b))] 
+            if (mpmath.almosteq(xBounds[i].b, N[0].a, dict_options["absTol"]) or
+                mpmath.almosteq(xBounds[i].a, N[0].b, dict_options["absTol"])):
+                    intersection = [mpmath.mpi(min(xBounds[i].a, N[0].a), max(xBounds[i].b, N[0].b))] 
             return intersection
-        if checkVariableBound(intersection, dict_options):
-                        break
+        
+        degenerate = []
+        for iv in intersection:
+            degenerate.append(checkVariableBound(iv, dict_options))
+            if all(degenerate): break
+            
 
 
-    if intersection !=[]: interval.append(intersection)
-    return interval
+    #if intersection !=[]: interval.append(intersection)
+    return intersection
 
 
 def identify_function_with_no_solution(output, functions, xBounds, dict_options):
@@ -3468,15 +3486,14 @@ def HybridGS(newtonSystemDic, xBounds, i, dict_options):
                          solution for x can be in, if interval remains [] there
                          is no solution within the initially guessed interval of x                  
         """
-
-        interval=[]
-                 
+        
+        #interval=[]
         Boundspoint = newtonSystemDic['Boxpoint']
         fpoint = newtonSystemDic['f(Boxpoint)']
         JacInterval = newtonSystemDic['J(Box)']
         #Y = newtonSystemDic['J(Boxpoint)-1']
 
-        intersection = xBounds[i]
+        intersection = [xBounds[i]]
         for bp in range(len(Boundspoint)):
             for y in range(len(xBounds)):
                 Yfmid = fpoint[bp][y]
@@ -3487,23 +3504,37 @@ def HybridGS(newtonSystemDic, xBounds, i, dict_options):
                         if j!=i:
                             ivsum = ivsum + numpy.dot(JacInterval[y,j], (xBounds[j]-Boundspoint[bp][j]))
                     
-                    try:    N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
-                    except: N = mpmath.mpi('-inf', '+inf')
+                    #try:    N = Boundspoint[bp][i] - ivDivision((Yfmid+ivsum),mpmath.mpi(D))[0]
+                    try:
+                        quotient = ivDivision(mpmath.mpi(Yfmid+ivsum),mpmath.mpi(D))
+                        x = Boundspoint[bp][i] 
+                        N = [x - l for l in quotient]
+                    except: N = [mpmath.mpi('-inf', '+inf')]
                 
-                    if N.a == '-inf' or N.b=='+inf':
-                        N = xBounds[i]
-                        
-                    intersection = ivIntersection(N, intersection)
+                    #if N.a == '-inf' or N.b=='+inf':
+                    #    N = [xBounds[i]]
+                    
+                    #intersection = ivIntersection(N, intersection)
+                    intersection = setOfIvSetIntersection([N, intersection])
                     if intersection == []:
-                        if (mpmath.almosteq(xBounds[i].b, N.a, 1.0e-7) or
-                            mpmath.almosteq(xBounds[i].a, N.b, 1.0e-7)):
-                                intersection = [mpmath.mpi(min(xBounds[i].a, N.a), max(xBounds[i].b, N.b))] 
+                        if (mpmath.almosteq(xBounds[i].b, N[0].a, dict_options["absTol"]) or
+                            mpmath.almosteq(xBounds[i].a, N[0].b, dict_options["absTol"])):
+                                intersection = [mpmath.mpi(min(xBounds[i].a, N[0].a), max(xBounds[i].b, N[0].b))] 
                         return intersection
-                    if checkVariableBound(intersection, dict_options):
-                        return [intersection]
+                    degenerate = []
+                    for iv in intersection:
+                        degenerate.append(checkVariableBound(iv, dict_options))
+                    if all(degenerate): break
 
-        if intersection !=[]: interval.append(intersection)
-        return interval
+        #if intersection !=[]: interval.append(intersection)
+        return intersection
+
+def checkUniqueness(new_x, old_x):
+    unique = [False] * len(new_x)
+    for x in new_x:
+        if x.a > old_x.a and x.b < old_x.b:
+            unique[new_x.index(x)] = True
+    return all(unique)
 
 
 def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_options):
@@ -3538,7 +3569,8 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     dict_options["scaling procedure"]="None"
     
     allBoxes = copy.deepcopy(model.xBounds)
-    model.xBounds = [model.xBounds[boxID]]
+    
+    model.xBounds = ConvertMpiBoundsToList(model.xBounds,boxID)
     results = mos.solveBlocksSequence(model, solv_options, dict_options, sampling_options)
     mos.results.write_successful_results({0: results}, dict_options, sampling_options, solv_options) 
     if model.failed: model.failed = False
