@@ -1493,6 +1493,8 @@ def doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options):
     
     Returns:
         :y:             current interval after reduction in mpmath.mpi formate
+        :unique:        boolean that states if the criterion for uniqueness is 
+                        met by the i-th variable
 
     """    
 
@@ -3299,7 +3301,9 @@ def checkWidths(X, relEps, absEps):
     """ returns the maximum interval width of a set of intervals X
 
         Args:
-            :X:                     list with set of intervals
+            :X:             list with set of intervals
+            :relEps:        relative tolerance
+            :absEps:        absolute tolerance
 
         Return:
             :mpmath.mpi interval:   of maximum width
@@ -3325,6 +3329,7 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
             :JacmidInv:     inverse of Jacmid
             :xBounds:       current Bounds
             :i:             index of reducing Bound
+            :dict_options:  dictionary with user settings
             
         Return:
             :interval:   interval(s) of mpi format from mpmath library where
@@ -3476,11 +3481,12 @@ def HybridGS(newtonSystemDic, xBounds, i, dict_options):
         """ Computation of the Interval-Newton Method with hybrid approach to reduce the single interval xBounds[i]: 
         Args: 
             :newtonSystemDic:   dictionary, containing:
-                :Boxpoint:      Point in IntervalBox
-                :f(Boxpoint):   functionvalues at Boxpoint
-                :JacInterval:   evaluated jacobimatrix with Bounds
-            :xBounds:       current Bounds
-            :i:             index of reducing Bound           
+            :Boxpoint:          Point in IntervalBox
+            :f(Boxpoint):       functionvalues at Boxpoint
+            :JacInterval:       evaluated jacobimatrix with Bounds
+            :xBounds:           current Bounds
+            :i:                 index of reducing Bound       
+            :dict_options:      dictionary with user-settings
         Return:
             :interval:   interval(s) of mpi format from mpmath library where
                          solution for x can be in, if interval remains [] there
@@ -3530,6 +3536,18 @@ def HybridGS(newtonSystemDic, xBounds, i, dict_options):
         return intersection
 
 def checkUniqueness(new_x, old_x):
+    """ checks if the condition for a unique solution in a box is fullfilled wich
+    states that the new_x must be a subinterval of the interior of old_x. This 
+    has to be met by all x of a box. 
+    
+    Args:
+        :new_x:     interval in the formate mpmath.mpi
+        :old_x:     interval in the formate mpmath.mpi
+    
+    Return: boolean true if the criterion is fulfilled and false otherwise
+    
+    """
+    
     unique = [False] * len(new_x)
     for x in new_x:
         if x.a > old_x.a and x.b < old_x.b:
