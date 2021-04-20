@@ -38,7 +38,7 @@ def fsolve_mscript(curBlock, solv_options, dict_options):
 
     try:
         eng = matlab.engine.start_matlab()
-        results = eval('eng.'+dict_options["fileName"]+'_dm'+'(matlab.double(x_init.tolist()), matlab.double(colPerm.tolist()), matlab.double(rowPerm.tolist()), varNames, FTOL, iterMax, nargout=4)') #file and function need to have the same name, as System
+        results = eval('eng.'+dict_options["fileName"]+'(matlab.double(x_init.tolist()), matlab.double(colPerm.tolist()), matlab.double(rowPerm.tolist()), varNames, FTOL, iterMax, nargout=4)') #file and function need to have the same name, as System
         if isinstance(results[0], float): x = numpy.array([results[0]])
         else: x = numpy.array(results[0][0])
         exitflag = results[2]

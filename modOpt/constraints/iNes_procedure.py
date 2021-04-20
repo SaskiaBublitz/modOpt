@@ -54,11 +54,12 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
 
     """
     results = {}
+    results["num_solved"] = False
     allBoxes = []
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
     xAlmostEqual = False * numpy.ones(len(model.xBounds), dtype=bool)
     xSolved = False * numpy.ones(len(model.xBounds), dtype=bool)
-
+    
     boxNo = len(model.xBounds)
     nl = len(model.xBounds)
 
@@ -75,7 +76,8 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
         if output["xAlmostEqual"] and not output["xSolved"]:    
 
             if not sampling_options ==None and not solv_options == None:
-                lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
+                num_solved = lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
+                if num_solved: results["num_solved"] = True
             output = reduceConsistentBox(output, model, functions, dict_options, 
                                          k, dict_varId_fIds, newtonSystemDic, boxNo)
                 
@@ -3585,14 +3587,17 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     dict_options["sampling"]=True
     dict_options["scaling"]= "None"
     dict_options["scaling procedure"]="None"
-    
+    solved = False
     allBoxes = copy.deepcopy(model.xBounds)
     
     model.xBounds = ConvertMpiBoundsToList(model.xBounds,boxID)
     results = mos.solveBlocksSequence(model, solv_options, dict_options, sampling_options)
     mos.results.write_successful_results({0: results}, dict_options, sampling_options, solv_options) 
     if model.failed: model.failed = False
+    else: 
+        solved = True 
     model.xBounds = allBoxes
+    return solved
 
   
 def ConvertMpiBoundsToList(xBounds, boxID):

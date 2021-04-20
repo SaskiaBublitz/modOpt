@@ -87,7 +87,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
     dict_varId_fIds = {}
     timeMeasure = []
     tic = time.time()
-    
+    num_solved = []
     createNewtonSystem(model)
     
     for i in range(0, len(model.fSymbolic)):
@@ -109,6 +109,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
         xSolved = output["xSolved"]
         xAlmostEqual = output["xAlmostEqual"]
         timeMeasure.append(time.time() - tic)
+        num_solved.append(output["num_solved"])
 
               
         if output.__contains__("noSolution"):
@@ -146,7 +147,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
       newModel.setXBounds(validXBounds)
       res_solver["Model"] = newModel
       
-    storage.store_time(npzFileName, timeMeasure, iterNo) 
+    storage.store_time(npzFileName, timeMeasure, iterNo)
+    storage.store_solved(npzFileName, num_solved, iterNo+1) 
     res_solver["iterNo"] = iterNo
     
     return True
