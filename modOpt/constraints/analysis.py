@@ -31,8 +31,9 @@ def analyseResults(dict_options, initialModel, res_solver):
     modelWithReducedBounds = res_solver["Model"]
     varSymbolic = initialModel.xSymbolic
     tol = dict_options["absTol"]
-    initVarBounds = initialModel.xBounds[0]
-    initLength = calcVolumeLength(initVarBounds, len(varSymbolic)) # volume calculation failed for large systems with large initial volumes
+    initVarBounds = initialModel.xBounds
+    initLength = calc_length(initVarBounds, tol)
+    #initLength = calcVolumeLength(initVarBounds, len(varSymbolic),tol) # volume calculation failed for large systems with large initial volumes
 
     if modelWithReducedBounds != []:
         reducedVarBounds = modelWithReducedBounds.xBounds
@@ -40,13 +41,15 @@ def analyseResults(dict_options, initialModel, res_solver):
         dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
         initLengths = calcInitLengths(initVarBounds, tol)
         
-        boundsRatios = getVarBoundsRatios(initVarBounds, reducedVarBounds)
+        boundsRatios = getVarBoundsRatios(initVarBounds[0], reducedVarBounds)
 
         lengths = calcHypercubicLength(reducedVarBounds, tol)        
         boundRatiosOfVars = getBoundRatiosOfVars(boundsRatios)
 
-        lengthFractions = getLengthFractions(initLengths, lengths)
-        hypercubicLFraction = sum(lengthFractions)
+        lengthFractions = 0#getLengthFractions(initLengths, lengths)
+        hypercubicLFraction = get_hypercubic_length(dict_options, 
+                                                    initVarBounds, 
+                                                    reducedVarBounds)
         #hypercubicLFraction = getHyperCubicLengthFraction(initLengths, lengths, dim_reduced)
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
@@ -57,7 +60,7 @@ def analyseResults(dict_options, initialModel, res_solver):
 
 def get_hypercubic_length(dict_options, init_box, reduced_boxes):
     tol = dict_options["absTol"]
-    initLength = calcInitLengths(init_box, tol)
+    initLength = calc_length(init_box, tol)
     length = calc_length(reduced_boxes, tol)
     return length / initLength
 
@@ -282,7 +285,7 @@ def getLengthFractions(initLengths, lengths):
     
     lengthFractions = []
     for k in range(0, len(lengths)):
-        lengthFractions.append(lengths[k] / initLengths)
+        lengthFractions.append(lengths[k] / initLengths[k])
         
     return lengthFractions
 
@@ -375,9 +378,9 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
     res_file.write("Jacobian Nonzero Density: \t%s\n"%(density))
     res_file.write("Jacobian Nonlinearity Ratio: \t%s\n"%(nonLinRatio))
     res_file.write("Length of initial box: \t%s\n"%(initVolume))
-    res_file.write("\nHypercubicLengthFractions\t ")
-    for j in range(0, noOfVarSets):
-        res_file.write("%s\t"%(hypercubicLFractions[j]))
+    res_file.write("\nHypercubicLengthFraction\t ")
+    #for j in range(0, noOfVarSets):
+    #    res_file.write("%s\t"%(hypercubicLFractions[j]))
     res_file.write("%s"%(hypercubicLFraction)) 
     
     if solvedVars != []:

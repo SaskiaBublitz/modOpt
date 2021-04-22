@@ -208,7 +208,7 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
     
     startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
     #if results.__contains__("tear_id"): dict_options["tear_id"] = results["tear_id"]
-    print(results)
+
     output["newXBounds"], output["xAlmostEqual"], output["xSolved"], tearVarIds, output["num_solved"]  = getReducedXBoundsResults(results, model, dict_options["maxBoxNo"])
     
     if tearVarIds != []:
