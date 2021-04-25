@@ -3,10 +3,12 @@
 Imported packages
 ***************************************************
 """
+import mpmath
 import sympy
 import numpy
 import casadi
 import copy
+from modOpt.constraints import iNes_procedure, affineArithmetic
 
 """
 ***************************************************
@@ -35,7 +37,7 @@ class Function:
                             
     """
     
-    def __init__(self, f_sym, x_symbolic):
+    def __init__(self, f_sym, x_symbolic, aff=None):
         """ Initialization method for class Block
         
         Args:
@@ -56,6 +58,70 @@ class Function:
         self.glb_ID = self.get_glb_ID(x_symbolic)
         self.g_sym, self.b_sym = self.get_g_b_functions()
         self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions()
+        self.f_mpmath = self.get_mpmath_functions(self.x_sym, [self.f_sym])
+        self.g_mpmath = self.get_mpmath_functions(self.x_sym, self.g_sym)
+        self.b_mpmath = self.get_mpmath_functions(self.x_sym, self.b_sym)
+        self.dgdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dgdx_sym)
+        self.dbdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dbdx_sym)
+        if aff:
+            self.f_aff = self.get_aff_functions(self.x_sym, [self.f_sym])
+            self.g_aff = self.get_aff_functions(self.x_sym, self.g_sym)
+            self.b_aff = self.get_aff_functions(self.x_sym, self.b_sym)
+            self.dgdx_aff = self.get_aff_functions(self.x_sym, self.dgdx_sym)
+            self.dbdx_aff = self.get_aff_functions(self.x_sym, self.dbdx_sym)      
+        else:
+            self.f_aff = [None] * len(self.f_mpmath)
+            self.g_aff = [None] * len(self.g_mpmath)
+            self.b_aff = [None] * len(self.b_mpmath)
+            self.dgdx_aff = [None] * len(self.dgdx_mpmath)
+            self.dbdx_aff = [None] * len(self.dbdx_mpmath)
+            
+       
+    #def eval_aff_function_from_list(f_list, box, f_ID):
+    #    return eval_aff_function(box, f_mpmath[f_ID])
+        
+    #def eval_mpmath_function_from_list(f_list, box, f_ID):
+    #    return eval_mpmath_function(box, f_mpmath[f_ID])        
+    
+    
+    def eval_aff_function(self, box, f_aff):
+        if isinstance(f_aff, mpmath.ctx_iv.ivmpf): return f_aff    
+        
+        try:
+            box_aff = affineArithmetic.Affine.mpiList2affList(box)
+            return affineArithmetic.Affine.aff2mpi(f_aff(*box_aff))
+                  
+        except:
+            return []
+    
+    def eval_mpmath_function(self, box, f_mpmath):
+        if isinstance(f_mpmath, mpmath.ctx_iv.ivmpf): return f_mpmath    
+        try:         
+            fInterval = f_mpmath(*box)#timeout(fMpmathIV, xBounds)
+            if fInterval == False: return mpmath.mpi('-inf','inf')
+            else: return fInterval
+        
+        except:
+            return []
+
+
+    def get_aff_functions(self, x, f_sym):
+        f_aff = []
+        for f in f_sym:
+            if isinstance(f, sympy.Float) and len(str(f)) > 15:
+                f_aff.append(iNes_procedure.roundValue(f, 16))
+            else: f_aff.append(iNes_procedure.lambdifyToAffapyAffine(x, f))
+        return f_aff
+
+    
+    def get_mpmath_functions(self, x, f_sym):
+        f_mpmath = []
+        for f in f_sym:
+            if isinstance(f, sympy.Float) and len(str(f)) > 15:
+                f_mpmath.append(iNes_procedure.roundValue(f, 16))
+            else: f_mpmath.append(iNes_procedure.lambdifyToMpmathIvComplex(x, f))
+        return f_mpmath
+                  
 
     def get_glb_ID(self,x_symbolic):
         glb_ID = []
