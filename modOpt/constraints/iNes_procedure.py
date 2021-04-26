@@ -81,8 +81,9 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
                 newtonSystemDic = getNewtonIntervalSystem(xBounds, model, dict_options)
             
             output = contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
-            
-            if output["xAlmostEqual"] and not output["xSolved"]:  
+
+            if numpy.array(output["xAlmostEqual"]).all() and not output["xSolved"]:  
+
                 if not sampling_options ==None and not solv_options == None:
                     num_solved = lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
                     if num_solved: results["num_solved"] = True
@@ -1251,7 +1252,7 @@ def reduceBoxHC4Bnormal(xBounds, model, functions, dict_varId_fIds, boxNo, dict_
                     return output
 
                 if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-                    y = xBounds[i]
+                    y = [xBounds[i]]
 
                 if variableSolved(y, dict_options_temp): break
                 else: xSolved = False
@@ -1265,11 +1266,14 @@ def reduceBoxHC4Bnormal(xBounds, model, functions, dict_varId_fIds, boxNo, dict_
         if not variableSolved(y, dict_options): xSolved = False
         xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
                                        {"absTol":0.001, 'relTol':0.001})               
-
-    output["xAlmostEqual"] = xUnchanged 
+   
     output["xSolved"] = xSolved    
     output["xNewBounds"] = list(itertools.product(*xNewListBounds))
-    
+    if len(output["xNewBounds"])>1: 
+        output["xAlmostEqual"] = [False]*len(output["xNewBounds"])
+    else: 
+        output["xAlmostEqual"] = xUnchanged
+                                        
     return output
 
 
@@ -1470,6 +1474,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     for i in range(0, len(model.xSymbolic)):
         y = [xNewBounds[i]]
         if dict_options["Debug-Modus"]: print(i)
+
         checkIntervalAccuracy(xNewBounds, i, dict_options_temp)
         
         # if any newton method is active       
@@ -1492,8 +1497,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
                     return output
 
                 if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
-                    y = xBounds[i]
-    
+                    y = [xBounds[i]]
                 if variableSolved(y, dict_options_temp): break
                 else: xSolved = False 
 
@@ -1509,9 +1513,12 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
     # Prepare output dictionary for return
     if dict_options['newton_method'] in newtonMethods and uniqueSolutionInBox: 
         print("The current box contains a unique solution.")      
-    output["xAlmostEqual"] = xUnchanged
     output["xSolved"] = xSolved       
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
+    if len(output["xNewBounds"])>1: 
+        output["xAlmostEqual"] = [False]*len(output["xNewBounds"])
+    else: 
+        output["xAlmostEqual"] = xUnchanged
     return output
 
 
