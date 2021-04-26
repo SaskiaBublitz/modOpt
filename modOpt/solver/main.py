@@ -115,7 +115,7 @@ def sample_multiple_solutions(model, b, rBlocks, cBlocks, xInF, sampling_options
     """
 
     newSubSolutions = []
-
+    
     subSolutions = copy.deepcopy(model.stateVarValues)
     for x in subSolutions:
         model.stateVarValues= [x]
@@ -405,6 +405,7 @@ def solveBlocksSequence(model, solv_options, dict_options,
     # Initialization of known system quantities
 
     rBlocks, cBlocks, xInF = getBlockInformation(model)
+
     #res_solver = createSolverResultDictionary(len(rBlocks))
     res_blocks = {}
     # Block iteration:    

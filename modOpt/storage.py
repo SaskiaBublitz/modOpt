@@ -14,7 +14,7 @@ Methods to store boxes, sample points and other data
 ****************************************************
 """
 
-__all__ = ['store_newBoxes', 'get_entry_from_npz_dict', 'store_time']
+__all__ = ['store_newBoxes', 'get_entry_from_npz_dict', 'store_time', 'store_solved']
 
 def store_time(dict_name, time, position):
     """ stores time in npz directory with name dict_name
@@ -29,6 +29,21 @@ def store_time(dict_name, time, position):
 
     """
     store_list_in_npz_dict(dict_name, time, position)
+
+
+def store_solved(dict_name, solved, position):
+    """ stores time in npz directory with name dict_name
+    
+    Args:
+        :dict_name:         string with npz directory name
+        :solved:            Boolean True for successful runs
+        :position:          integer with position number of time array in 
+                            npz directory
+
+    Returns                 None
+
+    """
+    store_list_in_npz_dict(dict_name, solved, position)
 
 
 def store_newBoxes(dict_name, model, iterNo):

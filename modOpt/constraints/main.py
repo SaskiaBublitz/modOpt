@@ -87,14 +87,15 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
     dict_varId_fIds = {}
     timeMeasure = []
     tic = time.time()
-    
+    num_solved = []
     createNewtonSystem(model)
     
     for i in range(0, len(model.fSymbolic)):
-        functions.append(Function(model.fSymbolic[i], model.xSymbolic))
+        functions.append(Function(model.fSymbolic[i], model.xSymbolic, dict_options["Affine_arithmetic"]))
         sort_fId_to_varIds(i, functions[i].glb_ID, dict_varId_fIds)
     
     storage.store_newBoxes(npzFileName, model, 0) 
+    dict_options["xAlmostEqual"] = [False] * len(model.xBounds)
     
     for iterNo in range(1, dict_options["redStepMax"]+1): 
         if dict_options["Debug-Modus"]: print(f'Red. Step {iterNo}')
@@ -107,8 +108,17 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
                                                 dict_options, sampling_options, solv_options)
 
         xSolved = output["xSolved"]
-        xAlmostEqual = output["xAlmostEqual"]
+        dict_options["xAlmostEqual"] = []
+        
+        for xAE in  output["xAlmostEqual"]:
+            if isinstance(xAE, list):
+                for xAE_curBox in xAE:
+                    dict_options["xAlmostEqual"].append(xAE_curBox)
+            else:
+                dict_options["xAlmostEqual"].append(xAE)
+
         timeMeasure.append(time.time() - tic)
+        num_solved.append(output["num_solved"])
 
               
         if output.__contains__("noSolution"):
@@ -124,7 +134,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
         if xSolved.all():
             break
         
-        elif xAlmostEqual.all():
+        elif numpy.array(dict_options["xAlmostEqual"]).all():
             dict_options["maxBoxNo"] +=1
                 
         else: 
@@ -146,7 +156,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
       newModel.setXBounds(validXBounds)
       res_solver["Model"] = newModel
       
-    storage.store_time(npzFileName, timeMeasure, iterNo) 
+    storage.store_time(npzFileName, timeMeasure, iterNo)
+    storage.store_solved(npzFileName, num_solved, iterNo+1) 
     res_solver["iterNo"] = iterNo
     
     return True

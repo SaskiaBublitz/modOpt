@@ -14,7 +14,7 @@ analysis tools
 ***************************************************
 """
 
-__all__ = ['analyseResults', 'trackErrors']
+__all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length']
 
 def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
@@ -30,22 +30,26 @@ def analyseResults(dict_options, initialModel, res_solver):
     
     modelWithReducedBounds = res_solver["Model"]
     varSymbolic = initialModel.xSymbolic
-    initVarBounds = initialModel.xBounds[0]
-    initLength = calcVolumeLength(initVarBounds, len(varSymbolic)) # volume calculation failed for large systems with large initial volumes
+    tol = dict_options["absTol"]
+    initVarBounds = initialModel.xBounds
+    initLength = calc_length(initVarBounds, tol)
+    #initLength = calcVolumeLength(initVarBounds, len(varSymbolic),tol) # volume calculation failed for large systems with large initial volumes
 
     if modelWithReducedBounds != []:
         reducedVarBounds = modelWithReducedBounds.xBounds
         solvedVarsID, solvedVarsNo = getSolvedVars(reducedVarBounds)
         dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
-        initLengths = calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo, dim_reduced)
+        initLengths = calcInitLengths(initVarBounds, tol)
         
-        boundsRatios = getVarBoundsRatios(initVarBounds, reducedVarBounds)
+        boundsRatios = getVarBoundsRatios(initVarBounds[0], reducedVarBounds)
 
-        lengths = calcHypercubicLength(reducedVarBounds, dim_reduced)        
+        lengths = calcHypercubicLength(reducedVarBounds, tol)        
         boundRatiosOfVars = getBoundRatiosOfVars(boundsRatios)
 
-        lengthFractions = getLengthFractions(initLengths, lengths)
-        hypercubicLFraction = sum(lengthFractions)
+        lengthFractions = 0#getLengthFractions(initLengths, lengths)
+        hypercubicLFraction = get_hypercubic_length(dict_options, 
+                                                    initVarBounds, 
+                                                    reducedVarBounds)
         #hypercubicLFraction = getHyperCubicLengthFraction(initLengths, lengths, dim_reduced)
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
@@ -53,14 +57,20 @@ def analyseResults(dict_options, initialModel, res_solver):
                              boundRatiosOfVars, initLength, lengthFractions, 
                              hypercubicLFraction, solvedVarsID, density, nonLinRatio)
 
-def calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo, dim_reduced):
+
+def get_hypercubic_length(dict_options, init_box, reduced_boxes):
+    tol = dict_options["absTol"]
+    initLength = calc_length(init_box, tol)
+    length = calc_length(reduced_boxes, tol)
+    return length / initLength
+
+
+def calcInitLengths(initVarBounds, tol):#dim_reduced):
     """calculates initial edge lengths for each box (neglecting solved variables)
     
     Args:
         :initVarBounds:     numpy array with initial bounds
-        :solvedVarsID:      Nested list [[i,j],...] with i box-ID and j variable-ID 
-                            of solved interval as integer
-        :solvedVarsNo :     List with numbers of solved intervals in the boxes (int)
+        :tol:       float with tolerance for interval width
     
     Returns:
         :initLengths:       list with floats of individual boxes initial lengths 
@@ -68,28 +78,31 @@ def calcInitLengths(initVarBounds, solvedVarsID, solvedVarsNo, dim_reduced):
     """
     initLengths = []
         
-    for k in range(0, len(solvedVarsNo)):
-        notSolvedVarBounds = initVarBounds
-        curBoxsolvedVarsNo = solvedVarsNo[k]
-        if curBoxsolvedVarsNo !=0:
-            for curSolvedVarId in solvedVarsID:
-                if curSolvedVarId[0] == k: notSolvedVarBounds = numpy.delete(notSolvedVarBounds,k)
+    #for k in range(0, len(initVarBounds)):
+        #notSolvedVarBounds = initVarBounds
+        #curBoxsolvedVarsNo = solvedVarsNo[k]
+        #if curBoxsolvedVarsNo !=0:
+        #    for curSolvedVarId in solvedVarsID:
+        #        if curSolvedVarId[0] == k: 
+                    #notSolvedVarBounds = numpy.delete(notSolvedVarBounds,k)
+        #            initVarBounds[k] = tol
                     
                     
-            initLengths.append(calcVolumeLength(notSolvedVarBounds, dim_reduced[k]))       
-            
-        else:
-            initLengths.append(calcVolumeLength(initVarBounds, dim_reduced[k]))
+            #initLengths.append(calcVolumeLength(notSolvedVarBounds, dim_reduced[k]))       
+            #initLengths.append(calcVolumeLength(initVarBounds, len(initVarBounds)), tol)   
+        #else:
+    initLengths.append(calcVolumeLength(initVarBounds, len(initVarBounds), tol))
             
     return initLengths
 
 
-def calcVolumeLength(box, dim):
+def calcVolumeLength(box, dim, tol):
     """ calculates box edge length assuming it as a hypercube
     
     Args:
-        :box:      list with variable bounds in mpmath.mpi logic
-        :dim:      box dimension as integer
+        :box:       list with variable bounds in mpmath.mpi logic
+        :dim:       box dimension as integer
+        :tol:       float with tolerance for interval width
     
     Returns:
         :length:   box edge length as float
@@ -98,16 +111,45 @@ def calcVolumeLength(box, dim):
     
     length = 1.0
     
-    solvedID, solvedVarsNo = getSolvedVars([box])
+    #solvedID, solvedVarsNo = getSolvedVars([box])
     #dim =dim - solvedVarsNo[0]
     
     for interval in box:
-        width = float(mpmath.mpf(interval.delta)) 
-        if width != 0.0:
+        if type(interval) == mpmath.iv.mpf:
+            width = float(mpmath.mpf(interval.delta))
+        else:
+            width = interval[1] - interval[0]
+        if width >= tol:
             length*=(width)**(1.0/dim)
+        else:
+            length*=(tol)**(1.0/dim)
     return length
 
 
+def calcVolume(box, tol):
+    volume = 1.0
+    
+    for interval in box:
+        if type(interval) == mpmath.iv.mpf:
+            width = float(mpmath.mpf(interval.delta))
+        else:
+            width = interval[1] - interval[0]
+        if width >= tol:
+            volume*=width
+        else:
+            volume*=tol
+    return volume    
+
+def calc_length(boxes, tol):
+    dim = len(boxes[0])
+    volume = 0.0
+    for box in boxes:
+        volume += calcVolume(box, tol)
+    return volume**(1.0/dim)
+    
+    
+    
+    
 def getSolvedVars(boxes):
     """ filters out variable intervals with zero width (solved)
     
@@ -176,12 +218,12 @@ def getVarBoundsRatios(initBox, reducedVarBounds):
     return varBoundsRatios
 
 
-def calcHypercubicLength(boxes, dim):
+def calcHypercubicLength(boxes, tol):
     """ calculates hypercubic lengths of boxes
     
     Args:
         :boxes:     list with boxes and that contain intervals in mpmath.mpi formate
-        :dim:       list with dimensions of boxes as integer
+        :tol:       float with tolerance for interval width
         
     Returns:
         :lengths:   list with hypercubic lengths as floats
@@ -190,7 +232,7 @@ def calcHypercubicLength(boxes, dim):
     
     lengths = []
     for i in range(0, len(boxes)):
-        lengths.append(calcVolumeLength(boxes[i], dim[i]))
+        lengths.append(calcVolumeLength(boxes[i], len(boxes[i]), tol))
     return lengths
 
 
@@ -336,9 +378,9 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
     res_file.write("Jacobian Nonzero Density: \t%s\n"%(density))
     res_file.write("Jacobian Nonlinearity Ratio: \t%s\n"%(nonLinRatio))
     res_file.write("Length of initial box: \t%s\n"%(initVolume))
-    res_file.write("\nHypercubicLengthFractions\t ")
-    for j in range(0, noOfVarSets):
-        res_file.write("%s\t"%(hypercubicLFractions[j]))
+    res_file.write("\nHypercubicLengthFraction\t ")
+    #for j in range(0, noOfVarSets):
+    #    res_file.write("%s\t"%(hypercubicLFractions[j]))
     res_file.write("%s"%(hypercubicLFraction)) 
     
     if solvedVars != []:
