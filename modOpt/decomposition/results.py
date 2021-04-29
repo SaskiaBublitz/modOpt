@@ -299,7 +299,7 @@ def plotColoredIncidence(res_solver, dict_options, plot_options, solv_options):
     
     incidence = prepareIncidence(J, ex, dict_options)
     
-    plot_options["color"] = cl.ListedColormap(["white","red","black", "blue"], name = 'from_list', N = None)
+    plot_options["color"] = cl.ListedColormap(["white","red","black", (23/255.0, 113.0/255.0, 145.0/255.0)], name = 'from_list', N = None)
     plot_options["lineStyle"] = '-'
     plot_options["lineWidth"] = 0.1
     plot_options["fontSize"] = int(210/J.shape[0])

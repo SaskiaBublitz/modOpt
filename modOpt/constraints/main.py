@@ -81,6 +81,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
     #dict_options["maxBoxNo"] =  int((len(model.xBounds[0]))**0.5)
     iterNo = 0
     dict_options["tear_id"] = 0
+    dict_options["disconti"] = [False] * len(model.xBounds)
+    dict_options["xAlmostEqual"] = [False] * len(model.xBounds)
     npzFileName = dict_options["fileName"] + "_r" + str(dict_options["redStepMax"]) + "_boxes.npz"
     newModel = copy.deepcopy(model)
     functions = []
@@ -88,14 +90,14 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
     timeMeasure = []
     tic = time.time()
     num_solved = []
-    createNewtonSystem(model)
+    
     
     for i in range(0, len(model.fSymbolic)):
         functions.append(Function(model.fSymbolic[i], model.xSymbolic, dict_options["Affine_arithmetic"]))
         sort_fId_to_varIds(i, functions[i].glb_ID, dict_varId_fIds)
-    
+    createNewtonSystem(model)
     storage.store_newBoxes(npzFileName, model, 0) 
-    dict_options["xAlmostEqual"] = [False] * len(model.xBounds)
+    
     
     for iterNo in range(1, dict_options["redStepMax"]+1): 
         if dict_options["Debug-Modus"]: print(f'Red. Step {iterNo}')
@@ -111,7 +113,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
         dict_options["xAlmostEqual"] = []
         
         for xAE in  output["xAlmostEqual"]:
-            if isinstance(xAE, list):
+            if isinstance(xAE, list): # if interval splits
                 for xAE_curBox in xAE:
                     dict_options["xAlmostEqual"].append(xAE_curBox)
             else:
@@ -136,14 +138,16 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
         
         elif numpy.array(dict_options["xAlmostEqual"]).all():
             dict_options["maxBoxNo"] +=1
-                
-        else: 
-            continue
         
-    # Updating model:
+        change_order_of_boxes(model, output)    
+        #else: 
+        continue
+        
+        
+    # Updating model:    
     validXBounds = []
     for xBounds in model.xBounds:
-        if iNes_procedure.solutionInFunctionRange(model, xBounds, dict_options):
+        if iNes_procedure.solutionInFunctionRange(functions, xBounds, dict_options):
             validXBounds.append(xBounds)
        
     if validXBounds == []: 
@@ -161,6 +165,19 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
     res_solver["iterNo"] = iterNo
     
     return True
+
+def change_order_of_boxes(model, output):
+   
+    id_disconti_boxes = [l for l in range(0,len(output["disconti"])) if output["disconti"][l]==True] 
+    
+    if id_disconti_boxes:
+        order_all =  copy.deepcopy(id_disconti_boxes)
+        for l in range(0, len(model.xBounds)):
+            if not l in id_disconti_boxes: order_all.append(l)           
+        model.xBounds = [model.xBounds[new_pos] for new_pos in order_all]
+
+    
+
 
 
 def sort_fId_to_varIds(fId, varIds, dict_varId_fIds):
