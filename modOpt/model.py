@@ -86,7 +86,7 @@ class Model:
         self.colSca = numpy.ones(len(X))
         self.failed = False
         self.constraints = CONSTRAINTS
-        self.fLamb = []
+        self.fLamb = self.lambdifySympyFunctions()
         self.jacobianSympy = []
         self.jacobianLambNumpy = []
         self.jacobianLambMpmath = []
@@ -135,13 +135,7 @@ class Model:
     
     def getFunctionValues(self):
         """ Return: Function Values at current state variable values"""
-        functionValues = []
-        
-        for fun in self.fSymbolic:
-            fun = sympy.lambdify(self.xSymbolic, fun)
-            functionValues.append(fun(*self.stateVarValues[0]))
-        
-        return numpy.array(functionValues)
+        return self.fLamb(*self.stateVarValues[0])
     
     
     def getScaledFunctionValues(self):
@@ -311,8 +305,10 @@ class Model:
     def getModelDimension(self):
         "returns system dimension"
         return len(self.xSymbolic)
-
-            
+    
+    def lambdifySympyFunctions(self):     
+        return sympy.lambdify(self.xSymbolic, self.fSymbolic)
+                  
 def createBlocks(blocks):
     """ creates blocks for permutation order 1 to n based on block border list
     from preordering algorithm

@@ -15,8 +15,6 @@ from modOpt.constraints import parallelization
 from modOpt.constraints.FailedSystem import FailedSystem
 from modOpt.decomposition import MC33
 from modOpt.decomposition import dM
-import modOpt.initialization as moi
-import modOpt.decomposition as mod
 import modOpt.solver as mos
 import modOpt.constraints.realIvPowerfunction # redefines __power__ (**) for ivmpf
 
@@ -64,18 +62,20 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
     
     boxNo = len(model.xBounds)
     nl = len(model.xBounds)
-    
-    for k in range(0, nl):
+
+    for k in range(nl):
         newtonSystemDic = {}
         xBounds = model.xBounds[k]
-        if xAlmostEqual[k]:
+        
+        if xAlmostEqual[k] and not disconti[k]:
             output = {"xNewBounds": [xBounds],
                       "xAlmostEqual": xAlmostEqual[k],
                       "xSolved": xSolved[k],                      
                 }
             
             output = reduceConsistentBox(output, model, functions, dict_options, 
-                                         k, dict_varId_fIds, newtonSystemDic, boxNo)
+                                         k, dict_varId_fIds, newtonSystemDic, boxNo,
+                                         newtonMethods)
             
         else:  
             if dict_options["Debug-Modus"]: print(f'Box {k+1}')
@@ -94,6 +94,11 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
         if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             boxNo = len(allBoxes) + (nl - (k+1))
+            xAlmostEqual[k]=[]
+            continue
+        
+        if output.__contains__("uniqueSolutionInBox"):
+            boxNo = len(allBoxes) + (nl - (k+1))
             continue
         
         boxNo = len(allBoxes) + len(output["xNewBounds"]) + (nl - (k+1))          
@@ -101,8 +106,10 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
         xAlmostEqual[k] = output["xAlmostEqual"]
         xSolved[k] = output["xSolved"]
                 
-    if allBoxes == []: 
-        results["noSolution"] = saveFailedIntervalSet
+    if allBoxes == [] and output.__contains__("uniqueSolutionInBox"):
+        print("All solutions have been found. The last boxes before proof by Interval-Newton are returned.")
+        xSolved = numpy.array([True])
+    elif allBoxes == []: results["noSolution"] = saveFailedIntervalSet
       
     else:
         model.xBounds = allBoxes 
@@ -129,7 +136,7 @@ def updateSetOfBoxes(allBoxes, xBounds, output, boxNo, k, dict_options, results)
     
     if boxNo <= dict_options["maxBoxNo"]:
         for box in output["xNewBounds"]: allBoxes.append(numpy.array(box, dtype=object))
-         
+    
         results["disconti"] += len(output["xNewBounds"])*[output["disconti"]]
         
  
@@ -180,7 +187,8 @@ def contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options,
     return output
 
 
-def reduceConsistentBox(output, model, functions, dict_options, k, dict_varId_fIds, newtonSystemDic, boxNo):
+def reduceConsistentBox(output, model, functions, dict_options, k, dict_varId_fIds, 
+                        newtonSystemDic, boxNo, newtonMethods):
     """ reduces a consistent box after the contraction step
     
     Args:
@@ -192,6 +200,7 @@ def reduceConsistentBox(output, model, functions, dict_options, k, dict_varId_fI
         :dict_varId_fIds:    dictionary with function ocurrences of variables
         :newtonSystemDic.    dictionary with system information for Interval-Newton
         :boxNo:              integer with number of boxes
+        :newtonMethods:     dictionary with netwon method names
         
     Return:
         :output:             modified dictionary with new split or cut box(es)
@@ -202,23 +211,29 @@ def reduceConsistentBox(output, model, functions, dict_options, k, dict_varId_fI
     possibleCutOffs = False
             
     if dict_options["cut_Box"]: # if cut_Box is chosen,parts of the box are now tried to cut off 
-        newBox, possibleCutOffs = cutOffBox(model, newBox, dict_options)
+        print("Now the box is cutted")
+        newBox, possibleCutOffs = cutOfBox_tear(model, newBox, dict_options)
         if possibleCutOffs:  # if cut_Box was successful,the box is now tried to be reduced again
+            if dict_options['newton_method'] in newtonMethods:
+                newtonSystemDic = getNewtonIntervalSystem(numpy.array(newBox[0]), model, dict_options)
             output = contractBox(numpy.array(newBox[0]), model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)           
             newBox = output["xNewBounds"]
-           
-    if not possibleCutOffs or output["xAlmostEqual"]:  # if cut_Box was not successful or it didn't help to reduce the box, then the box is now splitted
+            if output["xAlmostEqual"]: print("The cutted box is still complete.")
+    if not possibleCutOffs or output["xAlmostEqual"]:  # if cut_Box was not successful or it didn't help to reduce the box, then the box is now splitted      
         boxNo_split = dict_options["maxBoxNo"] - boxNo
         if boxNo_split > 0:
+            print("Now the box is teared")
             output["xNewBounds"] = splitBox(newBox, model, functions, 
                                             dict_options, k, dict_varId_fIds, 
                                             newtonSystemDic, boxNo_split)
             if output["xNewBounds"] == []:
                 saveFailedSystem(output, functions[0], model, 0)
-            output["xAlmostEqual"] = [False, False]
-            
+            output["xAlmostEqual"] = [False] * len(output["xNewBounds"])   
+        else:
+           output["xAlmostEqual"] =  [True]
     output["disconti"] = False        
     return output
+
 
 def checkBoxesForRootInclusion(functions, boxes, dict_options):
     if boxes == []: return []
@@ -266,6 +281,50 @@ def splitBox(xNewBounds, model, functions, dict_options, k, dict_varId_fIds, new
     xNewBounds = checkBoxesForRootInclusion(functions, xNewBounds, dict_options)
     return xNewBounds
 
+
+def cutOfBox_tear(model, xBounds, dict_options):
+    if model.tearVarsID == []: getTearVariables(model)
+    xNewBounds = list(xBounds[0])
+    #tear_box = list(xBounds[0][i] for i in model.tearVarsID)
+    cutOff=False
+    xChanged = numpy.array([True]*len(model.tearVarsID))
+    while xChanged.any(): 
+        for u in model.tearVarsID:
+            i=1
+            while i<100: #number of cutt offs are limited to 100 due to step sie of 0.01*delta
+                CutBoxBounds = list(xNewBounds)
+                xu = CutBoxBounds[u]
+                if mpmath.mpf(xu.delta) < mpmath.mpf(xBounds[0][u].delta)*0.02*i: break #if total box is to small for further cutt offs
+                cur_x = float(mpmath.mpf(xu.b)) - float(mpmath.mpf(xBounds[0][u].delta)*0.01*i)
+                CutBoxBounds[u] = mpmath.mpi(cur_x, xu.b) #define small box to cut
+                
+                if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options): #check,if small box is empty
+                    xNewBounds[u] = mpmath.mpi(xu.a, cur_x)
+                    cutOff = True
+                    i+=1
+                    continue
+                else:
+                    break
+            if i == 1: xChanged[model.tearVarsID.index(u)] = False
+            #try to cut off lower part
+            i=1
+            while i<100:
+                CutBoxBounds = list(xNewBounds)
+                xu = CutBoxBounds[u]
+                if mpmath.mpf(xu.delta) < mpmath.mpf(xBounds[0][u].delta)*0.02*i: break
+                cur_x = float(mpmath.mpf(xu.a)) + float(mpmath.mpf(xBounds[0][u].delta)*0.01*i)
+                CutBoxBounds[u] = mpmath.mpi(xu.a, cur_x)
+                
+                if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
+                    xNewBounds[u] = mpmath.mpi(cur_x, xu.b)
+                    cutOff = True
+                    i=i+1
+                    continue
+                else:
+                    break
+            if not xChanged[model.tearVarsID.index(u)] and not i ==1: 
+                xChanged[model.tearVarsID.index(u)]=True
+    return [list(xNewBounds)], cutOff
 
 def cutOffBox(model, xBounds, dict_options):
     '''trys to cut off all empty sides of the box, to reduce the box without splitting
@@ -1511,6 +1570,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
                                    dict_options_temp)
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, functions[j], model, i)
+                    output["disconti"]=[]
                     return output
 
                 if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
@@ -1525,8 +1585,25 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
                                                           dict_options, dict_options_temp)
         
     # Uniqueness test of solution:
+    xNewBounds = list(itertools.product(*xNewBounds))
     if dict_options['newton_method'] in newtonMethods and uniqueSolutionInBox: 
-        print("The current box contains a unique solution.")     
+        
+        for solution in model.FoundSolutions:
+            xFound = numpy.array([False]*len(solution))
+            
+            for i in range(0, len(solution)):
+                if solution[i] in xNewBounds[0][i]:
+                    xFound[i] = True
+                elif (numpy.isclose(float(mpmath.mpf(xNewBounds[0][i].a)),
+                                         solution[i], 1e-5)
+                           or numpy.isclose(float(mpmath.mpf(xNewBounds[0][i].b)),
+                                         solution[i], 1e-5)):
+                    xFound[i] = True
+                    print("Warning: Inaccuracy possible.")
+                else: continue
+
+            if xFound.all():    
+                output["uniqueSolutionInBox"] = True
         
     # Prepare output dictionary for return
     return prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged)
@@ -1534,7 +1611,7 @@ def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, n
 
 def prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged):
     output["xSolved"] = xSolved       
-    output["xNewBounds"] = list(itertools.product(*xNewBounds))
+    output["xNewBounds"] = xNewBounds
     if len(output["xNewBounds"])>1: 
         output["xAlmostEqual"] = [False]*len(output["xNewBounds"])
     else: 
@@ -1547,8 +1624,10 @@ def update_quantities(y, i, subBoxNo, xNewBounds, xBounds, xUnchanged, xSolved,
     subBoxNo = subBoxNo * len(y) 
     xNewBounds[i] = y
     if not variableSolved(y, dict_options): xSolved = False
+    
     xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
-                                   {"absTol":0.001, 'relTol':0.001})   
+                                   {"absTol":0.001, 'relTol':0.001})  
+    
     dict_options_temp["relTol"] = dict_options["relTol"]
     dict_options_temp["absTol"] = dict_options["absTol"]  
     return xSolved, xUnchanged, subBoxNo
@@ -1599,7 +1678,7 @@ def doIntervalNewton(newtonSystemDic, y, xBounds, i, dict_options):
     # if hybrid or both are active
     if dict_options['InverseOrHybrid']=='Hybrid' or dict_options['InverseOrHybrid']=='both' and not variableSolved(y, dict_options):  
         y_new = HybridGS(newtonSystemDic, xBounds, i, dict_options)
-        
+
     unique = checkUniqueness(y_new, y[0])
     y = setOfIvSetIntersection([y, y_new])
         
@@ -3479,13 +3558,13 @@ def NewtonReduction(newtonSystemDic, xBounds, i, dict_options):
         intersection = setOfIvSetIntersection([N, intersection])
         
         if intersection == []:
-            if(numpy.isclose(float(mpmath.mpf(xBounds[i].b)), 
-               float(mpmath.mpf(N[0].a)),dict_options["absTol"]) or
-               numpy.isclose(float(mpmath.mpf(xBounds[i].a)), 
-               float(mpmath.mpf(N[0].b)),dict_options["absTol"])):
+            #if(numpy.isclose(float(mpmath.mpf(xBounds[i].b)), 
+            #   float(mpmath.mpf(N[0].a)),dict_options["absTol"]) or
+            #   numpy.isclose(float(mpmath.mpf(xBounds[i].a)), 
+            #   float(mpmath.mpf(N[0].b)),dict_options["absTol"])):
            # if (mpmath.almosteq(xBounds[i].b, N[0].a, dict_options["absTol"]) or
            #     mpmath.almosteq(xBounds[i].a, N[0].b, dict_options["absTol"])):
-                    intersection = [mpmath.mpi(min(xBounds[i].a, N[0].a), max(xBounds[i].b, N[0].b))] 
+            #        intersection = [mpmath.mpi(min(xBounds[i].a, N[0].a), max(xBounds[i].b, N[0].b))] 
             return intersection
         
         degenerate = []
@@ -3532,7 +3611,7 @@ def solutionInFunctionRange(functions, xBounds, dict_options):
     for f in functions:
         
         if dict_options["Affine_arithmetic"]: 
-            fInterval = eval_fInterval(f, f.f_mpmath, [xBounds[i] for i in f.glb_ID], f.f_aff[0])
+            fInterval = eval_fInterval(f, f.f_mpmath[0], [xBounds[i] for i in f.glb_ID], f.f_aff[0])
         else:
             fInterval = eval_fInterval(f, f.f_mpmath[0], [xBounds[i] for i in f.glb_ID])
        # fInterval = f.f_mpmath(numpy.array(xBounds)[f.glbID])
@@ -3583,7 +3662,7 @@ def HC4(model, xBounds):
     """
     k=0
     #keep Bounds in max tolerance to prevent rounding error
-    toleranceXBounds = list(xBounds)
+    toleranceXBounds = numpy.array(xBounds)
     for i in range(len(xBounds)):
         toleranceXBounds[i] = mpmath.mpi(xBounds[i].a-1e-7, xBounds[i].b+1e-7)
 
@@ -3686,6 +3765,8 @@ def checkUniqueness(new_x, old_x):
     for x in new_x:
         if x.a > old_x.a and x.b < old_x.b:
             unique[new_x.index(x)] = True
+        elif x.delta == 0:
+            unique[new_x.index(x)] = True           
     return all(unique)
 
 
@@ -3724,6 +3805,21 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     
     model.xBounds = ConvertMpiBoundsToList(model.xBounds,boxID)
     results = mos.solveBlocksSequence(model, solv_options, dict_options, sampling_options)
+    
+    if results != {} and not results["Model"].failed:
+        if model.FoundSolutions == []: model.FoundSolutions += results["Model"].stateVarValues
+        else:
+            for solution in model.FoundSolutions:
+                for newsolution in results["Model"].stateVarValues:
+                    for i in range(len(newsolution)):
+                        if numpy.isclose(newsolution[i], solution[i], dict_options["relTol"], 
+                                       dict_options["absTol"]):
+                            continue
+                        else:
+                            model.FoundSolutions += solution
+                            break
+            
+    
     mos.results.write_successful_results({0: results}, dict_options, sampling_options, solv_options) 
     if model.failed: model.failed = False
     else: 

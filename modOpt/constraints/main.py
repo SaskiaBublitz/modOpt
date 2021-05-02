@@ -116,6 +116,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
             if isinstance(xAE, list): # if interval splits
                 for xAE_curBox in xAE:
                     dict_options["xAlmostEqual"].append(xAE_curBox)
+            elif xAE == []:
+                continue
             else:
                 dict_options["xAlmostEqual"].append(xAE)
 
@@ -132,14 +134,13 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
         
         
         storage.store_newBoxes(npzFileName, model, iterNo)
-        
         if xSolved.all():
             break
         
         elif numpy.array(dict_options["xAlmostEqual"]).all():
             dict_options["maxBoxNo"] +=1
-        
-        change_order_of_boxes(model, output)    
+        change_order_of_boxes(model, output, dict_options) 
+        dict_options["disconti"] = output["disconti"]
         #else: 
         continue
         
@@ -166,20 +167,18 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None, solv_opti
     
     return True
 
-def change_order_of_boxes(model, output):
-   
+def change_order_of_boxes(model, output, dict_options):
+    
     id_disconti_boxes = [l for l in range(0,len(output["disconti"])) if output["disconti"][l]==True] 
     
     if id_disconti_boxes:
-        order_all =  copy.deepcopy(id_disconti_boxes)
+        order_all =  id_disconti_boxes
         for l in range(0, len(model.xBounds)):
             if not l in id_disconti_boxes: order_all.append(l)           
         model.xBounds = [model.xBounds[new_pos] for new_pos in order_all]
-
+        dict_options["disconti"] = [output["disconti"][new_pos] for new_pos in order_all]
+        dict_options["xAlmostEqual"] = [dict_options["xAlmostEqual"][new_pos] for new_pos in order_all]
     
-
-
-
 def sort_fId_to_varIds(fId, varIds, dict_varId_fIds):
     """ writes current function's global id to a dictionary whose keys equal
     the global id's of the variables. Hence, all variables that occur in the 
@@ -220,7 +219,7 @@ def createNewtonSystem(model):
         :model: model of equation system
     '''
     
-    model.fLamb = sympy.lambdify(model.xSymbolic, model.fSymbolic)
+    #model.fLamb = sympy.lambdify(model.xSymbolic, model.fSymbolic)
     model.jacobianSympy = model.getSympySymbolicJacobian()
     model.jacobianLambNumpy = sympy.lambdify(model.xSymbolic, model.jacobianSympy,'numpy')
     model.jacobianLambMpmath = iNes_procedure.lambdifyToMpmathIvComplex(model.xSymbolic,

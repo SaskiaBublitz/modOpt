@@ -3,7 +3,6 @@
 Import packages
 ***************************************************
 """
-import copy
 import numpy
 from modOpt.initialization import main
 from multiprocessing import Manager, Process #cpu_count

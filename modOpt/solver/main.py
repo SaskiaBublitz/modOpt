@@ -116,7 +116,7 @@ def sample_multiple_solutions(model, b, rBlocks, cBlocks, xInF, sampling_options
 
     newSubSolutions = []
     
-    subSolutions = copy.deepcopy(model.stateVarValues)
+    subSolutions = list(model.stateVarValues)
     for x in subSolutions:
         model.stateVarValues= [x]
         solved, res_blocks = sample_and_solve_one_block(model, b, rBlocks, cBlocks, xInF, 
@@ -186,8 +186,8 @@ def solve_samples_block(model, block, b, samples, solv_options, dict_options, re
     """
     solved = False
 
-    for s in range(0, len(samples)):
-        block.x_tot[block.colPerm] = samples[s]
+    for sample in samples:
+        block.x_tot[block.colPerm] = sample
         
         if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
                                 model, block)
@@ -216,7 +216,6 @@ def update_model_to_block_results(block, model):
         :model:         instance of class model
 
     """
-    
     model.stateVarValues = [model.stateVarValues[0]] * len(block.FoundSolutions)
     for s in range(0, len(block.FoundSolutions)):
         model.stateVarValues[s][block.colPerm] = block.FoundSolutions[s]    

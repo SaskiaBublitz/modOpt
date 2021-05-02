@@ -115,7 +115,7 @@ def calcVolumeLength(box, dim, tol):
     #dim =dim - solvedVarsNo[0]
     
     for interval in box:
-        if type(interval) == mpmath.iv.mpf:
+        if isinstance(interval, mpmath.iv.mpf):
             width = float(mpmath.mpf(interval.delta))
         else:
             width = interval[1] - interval[0]
@@ -130,7 +130,7 @@ def calcVolume(box, tol):
     volume = 1.0
     
     for interval in box:
-        if type(interval) == mpmath.iv.mpf:
+        if isinstance(interval, mpmath.iv.mpf):
             width = float(mpmath.mpf(interval.delta))
         else:
             width = interval[1] - interval[0]
@@ -231,8 +231,8 @@ def calcHypercubicLength(boxes, tol):
     """
     
     lengths = []
-    for i in range(0, len(boxes)):
-        lengths.append(calcVolumeLength(boxes[i], len(boxes[i]), tol))
+    for box in boxes:
+        lengths.append(calcVolumeLength(box, len(box), tol))
     return lengths
 
 
@@ -261,7 +261,7 @@ def getBoundRatiosOfVars(boundsRatios):
                 varBoundRatios.append(boundsRatios[j][i])
              
         for ratio in varBoundRatios:
-            if type(ratio) is float: ratioOfVar += ratio
+            if isinstance(ratio, float): ratioOfVar += ratio
             
         if ratioOfVar == 0: ratioOfVar='solved'
         boundRatiosOfVars.append(ratioOfVar)

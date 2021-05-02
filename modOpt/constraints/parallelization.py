@@ -195,8 +195,8 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
     started = numpy.zeros(len(model.xBounds))
     output["xSolved"]  = False * numpy.ones(len(model.xBounds), dtype=bool)
     output["xAlmostEqual"] = False * numpy.ones(len(model.xBounds), dtype=bool)   
-    
-    for k in range(0,len(model.xBounds)):  
+
+    for k in range(len(model.xBounds)):  
         p = Process(target=reduceBoxes_Worker, args=(k, model,
                                                                functions, dict_varId_fIds,
                                                                dict_options,
@@ -208,16 +208,20 @@ def reduceBoxes(model, functions, dict_varId_fIds, dict_options, sampling_option
     
     startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
     #if results.__contains__("tear_id"): dict_options["tear_id"] = results["tear_id"]
-
-    output["newXBounds"], output["xAlmostEqual"], output["xSolved"], tearVarIds, output["num_solved"]  = getReducedXBoundsResults(results, model, dict_options["maxBoxNo"])
+    
+    output["newXBounds"], output["xAlmostEqual"], output["xSolved"], tearVarIds, output["num_solved"], output["disconti"]  = getReducedXBoundsResults(results, model, dict_options["maxBoxNo"])
     
     if tearVarIds != []:
         for curId in tearVarIds:
             if curId != dict_options["tear_id"]:
                 dict_options["tear_id"] = curId
                 break
-  
-    if output["newXBounds"] == []:
+
+    if output["newXBounds"] == [] and output["xSolved"].all():
+        print("All solutions have been found. The last boxes before proof by Interval-Newton are returned.")
+        output["xSolved"] = numpy.array([True])    
+
+    elif output["newXBounds"] == []:
         output["noSolution"] = results["0"][1]
         output["newXBounds"] = model.xBounds
     else:
@@ -245,36 +249,57 @@ def reduceBoxes_Worker(k, model, functions, dict_varId_fIds, dict_options, resul
     Return:                     True if method finishes ordinary
                              
     """
+    
+    disconti = dict_options["disconti"][k]
+   
     allBoxes = []
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
     boxNo = len(model.xBounds)
     xBounds = model.xBounds[k]
     num_solved = False
-    
+    xAlmostEqual = dict_options["xAlmostEqual"][k]
+    xSolved = False
+
     if dict_options['newton_method'] in newtonMethods:
         newtonSystemDic = iNes_procedure.getNewtonIntervalSystem(xBounds, model, dict_options) 
     else:
         newtonSystemDic = {}
 
-    output = iNes_procedure.contractBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic)
+    if xAlmostEqual and not disconti:
+        output = {"xNewBounds": [xBounds],
+                  "xAlmostEqual": xAlmostEqual,
+                  "xSolved": xSolved,                      
+            }
+      
+        output = iNes_procedure.reduceConsistentBox(output, model, functions, dict_options, 
+                                     k, dict_varId_fIds, newtonSystemDic, boxNo,
+                                     newtonMethods)
+    else:  
+        output = iNes_procedure.contractBox(xBounds, model, functions, dict_varId_fIds, 
+                                        boxNo, dict_options, newtonSystemDic)
             
-    if output["xAlmostEqual"] and not output["xSolved"]: 
-        if not sampling_options ==None and not solv_options == None:
-
-            num_solved = iNes_procedure.lookForSolutionInBox(model, k, dict_options, sampling_options, solv_options)
-        output = iNes_procedure.reduceConsistentBox(output, model, functions, 
-                                                    dict_options, k, 
-                                                    dict_varId_fIds, 
-                                                    newtonSystemDic, boxNo)    
-   
+        if numpy.array(output["xAlmostEqual"]).all() and not output["xSolved"]: 
+            if not sampling_options ==None and not solv_options == None:
+                num_solved = iNes_procedure.lookForSolutionInBox(model, k, dict_options, 
+                                                  sampling_options, solv_options)
+         
     for box in output["xNewBounds"]:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
         
     if output.__contains__("noSolution"):
-        results['%d' %k] = ([], output["noSolution"],[],[])
-    else:
-                 
-        results['%d' %k] = (allBoxes, output["xAlmostEqual"], output["xSolved"],dict_options["tear_id"], num_solved)
+        results['%d' %k] = ([], output["noSolution"],[],[],[],[])
+        
+    elif output.__contains__("uniqueSolutionInBox"):
+        results['%d' %k] = ([], output["xAlmostEqual"], 
+                            True,
+                            dict_options["tear_id"], 
+                            num_solved,  len(output["xNewBounds"])*[output["disconti"]])        
+        
+    else:        
+        results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
+                            output["xSolved"],
+                            dict_options["tear_id"], 
+                            num_solved, len(output["xNewBounds"])*[output["disconti"]])
 
     return True
 
@@ -318,11 +343,12 @@ def getReducedXBoundsResults(results, model, maxBoxNo):
                                  
     """
     noOfxBounds = len(model.xBounds)
-    xAlmostEqual = False * numpy.ones(noOfxBounds, dtype=bool) 
+    xAlmostEqual = [False] * noOfxBounds 
     xSolved = False * numpy.ones(noOfxBounds, dtype=bool) 
     newXBounds = []
     tearVarIds = []
     num_solved = False
+    disconti = [False] * noOfxBounds 
     
     for k in range(0, noOfxBounds):
         if noOfxBounds < 1: return [], [], [], []             
@@ -335,17 +361,36 @@ def getReducedXBoundsResults(results, model, maxBoxNo):
                 xAlmostEqual[k] = (results['%d' %k][1])
                 xSolved[k] = (results['%d' %k][2])   
                 tearVarIds.append(results['%d' %k][3])
+                disconti[k] = results['%d' %k][5]
                 if results['%d' %k][4]==True: num_solved=True
             else:
                 newXBounds.append(model.xBounds[k])
                 xAlmostEqual[k] = (True)
-                xSolved[k] = (False)   
+                xSolved[k] = (False)
+                disconti[k] = results['%d' %k][5]
+        
+        elif xSolved[k] ==True:
+             noOfxBounds -= 1
+             xAlmostEqual[k] = (False)
+             xSolved[k] = (True) 
+             disconti[k] = [] 
+             if results['%d' %k][4]==True: num_solved=True
         else:
             noOfxBounds -= 1
             xAlmostEqual[k] = (False)
             xSolved[k] = (False) 
-            
-    return newXBounds, xAlmostEqual, xSolved, tearVarIds, num_solved
+            disconti[k] = []
+    disconti_cleaned = []
+    
+    for cb in disconti:
+            if isinstance(cb, list): # if interval splits
+                disconti_cleaned += cb
+            elif cb == []:
+                continue
+            else:
+                disconti_cleaned.append(cb)
+                    
+    return newXBounds, xAlmostEqual, xSolved, tearVarIds, num_solved, disconti_cleaned
     
 
 def reduceBox(xBounds, model, functions, dict_varId_fIds, boxNo, dict_options, newtonSystemDic): #boundsAlmostEqual):

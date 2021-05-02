@@ -194,10 +194,10 @@ class Function:
     
         if f.func.class_key()[2]=='Add':
                 
-            for i in range(0, len(allArguments)):
-                if x in allArguments[i].free_symbols:
-                    allArgumentsWithVariable.append(allArguments[i])
-                else: allArgumentsWithoutVariable.append(allArguments[i])
+            for arg in allArguments:
+                if x in arg.free_symbols:
+                    allArgumentsWithVariable.append(arg)
+                else: allArgumentsWithoutVariable.append(arg)
                  
             fvar = sympy.Add(*allArgumentsWithVariable)
             fWithoutVar = sympy.Add(*allArgumentsWithoutVariable)
@@ -290,7 +290,7 @@ class Function:
         return self.x_sym_tot[self.colPerm]
     
     def subscribeXwithIterVars(self, x):
-        xWithIterVars = copy.deepcopy(self.x_tot)
+        xWithIterVars = list(self.x_tot)#copy.deepcopy(self.x_tot)
         xWithIterVars[self.colPerm] = x
         return xWithIterVars
     
