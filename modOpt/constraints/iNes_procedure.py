@@ -212,7 +212,7 @@ def reduceConsistentBox(output, model, functions, dict_options, k, dict_varId_fI
             
     if dict_options["cut_Box"]: # if cut_Box is chosen,parts of the box are now tried to cut off 
         print("Now the box is cutted")
-        newBox, possibleCutOffs = cutOfBox_tear(model, newBox, dict_options)
+        newBox, possibleCutOffs = cutOfBox_tear(model, functions, newBox, dict_options)
         if possibleCutOffs:  # if cut_Box was successful,the box is now tried to be reduced again
             if dict_options['newton_method'] in newtonMethods:
                 newtonSystemDic = getNewtonIntervalSystem(numpy.array(newBox[0]), model, dict_options)
@@ -282,7 +282,7 @@ def splitBox(xNewBounds, model, functions, dict_options, k, dict_varId_fIds, new
     return xNewBounds
 
 
-def cutOfBox_tear(model, xBounds, dict_options):
+def cutOfBox_tear(model, functions, xBounds, dict_options):
     if model.tearVarsID == []: getTearVariables(model)
     xNewBounds = list(xBounds[0])
     #tear_box = list(xBounds[0][i] for i in model.tearVarsID)
@@ -298,7 +298,8 @@ def cutOfBox_tear(model, xBounds, dict_options):
                 cur_x = float(mpmath.mpf(xu.b)) - float(mpmath.mpf(xBounds[0][u].delta)*0.01*i)
                 CutBoxBounds[u] = mpmath.mpi(cur_x, xu.b) #define small box to cut
                 
-                if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options): #check,if small box is empty
+                #if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options): #check,if small box is empty
+                if not solutionInFunctionRange(functions, numpy.array(CutBoxBounds), dict_options):
                     xNewBounds[u] = mpmath.mpi(xu.a, cur_x)
                     cutOff = True
                     i+=1
@@ -315,7 +316,7 @@ def cutOfBox_tear(model, xBounds, dict_options):
                 cur_x = float(mpmath.mpf(xu.a)) + float(mpmath.mpf(xBounds[0][u].delta)*0.01*i)
                 CutBoxBounds[u] = mpmath.mpi(xu.a, cur_x)
                 
-                if not solutionInFunctionRangePyibex(model, numpy.array(CutBoxBounds), dict_options):
+                if not solutionInFunctionRange(functions, numpy.array(CutBoxBounds), dict_options):
                     xNewBounds[u] = mpmath.mpi(cur_x, xu.b)
                     cutOff = True
                     i=i+1
@@ -1917,7 +1918,7 @@ def reduceXIntervalByFunction(xBounds, f, i, dict_options):
     if gxInterval == [] or dgdxInterval == [] or bInterval == []: return [xBounds[i]]
     xUnchanged = checkXforEquality(gxInterval, [dgdxInterval*xBounds[i]], xUnchanged, dict_options)
     
-    if not f.x_sym[i] in f.dgdx_sym[i].free_symbols and xUnchanged : # Linear Case -> solving system directly
+    if f.deriv_is_constant[i] and xUnchanged : # Linear Case -> solving system directly f.x_sym[i] in f.dgdx_sym[i].free_symbols
         return getReducedIntervalOfLinearFunction(dgdxInterval, i, xBounds, bInterval)
              
     else: # Nonlinear Case -> solving system by interval nesting
@@ -2174,7 +2175,8 @@ def eval_fInterval(f, f_mpmath, box, f_aff=None):
     fInterval = f.eval_mpmath_function(box, f_mpmath)
     if f_aff != None:
         try: 
-            fInterval = ivIntersection(fInterval, f.eval_aff_function(box, f_aff))
+            newIv = ivIntersection(fInterval, f.eval_aff_function(box, f_aff))
+            if newIv != []: fInterval = newIv
         except:
             pass
     return fInterval
@@ -3766,7 +3768,8 @@ def checkUniqueness(new_x, old_x):
         if x.a > old_x.a and x.b < old_x.b:
             unique[new_x.index(x)] = True
         elif x.delta == 0:
-            unique[new_x.index(x)] = True           
+            unique[new_x.index(x)] = True      
+    print(unique)
     return all(unique)
 
 

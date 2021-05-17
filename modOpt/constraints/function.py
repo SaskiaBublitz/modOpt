@@ -58,6 +58,8 @@ class Function:
         self.glb_ID = self.get_glb_ID(x_symbolic)
         self.g_sym, self.b_sym = self.get_g_b_functions()
         self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions()
+        self.vars_of_deriv = self.get_vars_of_deriv()
+        self.deriv_is_constant = self.is_deriv_constant()
         self.f_mpmath = self.get_mpmath_functions(self.x_sym, [self.f_sym])
         self.g_mpmath = self.get_mpmath_functions(self.x_sym, self.g_sym)
         self.b_mpmath = self.get_mpmath_functions(self.x_sym, self.b_sym)
@@ -82,6 +84,22 @@ class Function:
         
     #def eval_mpmath_function_from_list(f_list, box, f_ID):
     #    return eval_mpmath_function(box, f_mpmath[f_ID])        
+    def is_deriv_constant(self):
+        deriv_is_constant = []
+        for i in range(len(self.x_sym)):
+            if not self.x_sym[i] in self.vars_of_deriv[i]:
+                deriv_is_constant.append(True)
+            else: 
+                deriv_is_constant.append(False)
+        return deriv_is_constant
+                
+                
+            
+    def get_vars_of_deriv(self):
+        vars_of_deriv = []
+        for cur_deriv in self.dgdx_sym:
+            vars_of_deriv.append(cur_deriv.free_symbols)
+        return vars_of_deriv
     
     
     def eval_aff_function(self, box, f_aff):
@@ -134,7 +152,7 @@ class Function:
         dgdx =[]
         dbdx = []
         
-        for i in range(0, len(self.g_sym)):
+        for i in range(len(self.g_sym)):
             dgdx.append(sympy.diff(self.g_sym[i], self.x_sym[i])) 
             
             dbdxi = [] 

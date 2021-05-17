@@ -14,7 +14,8 @@ analysis tools
 ***************************************************
 """
 
-__all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length']
+__all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
+           'calc_hypercubic_length']
 
 def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
@@ -124,6 +125,50 @@ def calcVolumeLength(box, dim, tol):
         else:
             length*=(tol)**(1.0/dim)
     return length
+
+
+def calc_vol_fraction(box, init_box, tol):
+    """ calculates box edge length assuming it as a hypercube
+    
+    Args:
+        :box:       list with variable bounds in mpmath.mpi logic
+        :dim:       box dimension as integer
+        :tol:       float with tolerance for interval width
+    
+    Returns:
+        :length:   box edge length as float
+    
+    """
+    
+    vol_frac = 1.0
+    
+    #solvedID, solvedVarsNo = getSolvedVars([box])
+    #dim =dim - solvedVarsNo[0]
+    
+    for i in range(len(box)):
+        if isinstance(box[i], mpmath.iv.mpf):
+            width = float(mpmath.mpf(box[i].delta))
+        else:
+            width = box[i][1] - box[i][0]
+        if isinstance(init_box[i], mpmath.iv.mpf):
+            width_0 = float(mpmath.mpf(init_box[i].delta))
+        else: 
+            width_0 = init_box[i][1] - init_box[i][0]
+                    
+        if width >= tol:
+            vol_frac*=(width/width_0)
+        else:
+            vol_frac*=(tol/width_0)
+    return vol_frac
+
+def calc_hypercubic_length(dict_options, init_box, boxes):
+    tol = dict_options["absTol"]
+    tot_vol_fraction = 0
+    
+    for box in boxes:
+        tot_vol_fraction += calc_vol_fraction(box, init_box[0], tol)
+    
+    return (tot_vol_fraction)**(1.0/len(init_box[0]))
 
 
 def calcVolume(box, tol):
