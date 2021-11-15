@@ -3,11 +3,11 @@
 Imported packages
 ***************************************************
 """
+import pyibex
 import mpmath
 import sympy
 import numpy
 import casadi
-import copy
 from modOpt.constraints import iNes_procedure, affineArithmetic
 
 """
@@ -37,7 +37,7 @@ class Function:
                             
     """
     
-    def __init__(self, f_sym, x_symbolic, aff=None):
+    def __init__(self, f_sym, x_symbolic, aff=None, numpy=None, casadi=None):
         """ Initialization method for class Block
         
         Args:
@@ -58,11 +58,19 @@ class Function:
         self.glb_ID = self.get_glb_ID(x_symbolic)
         self.g_sym, self.b_sym = self.get_g_b_functions()
         self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions()
+        self.vars_of_deriv = self.get_vars_of_deriv()
+        self.deriv_is_constant = self.is_deriv_constant()
         self.f_mpmath = self.get_mpmath_functions(self.x_sym, [self.f_sym])
         self.g_mpmath = self.get_mpmath_functions(self.x_sym, self.g_sym)
         self.b_mpmath = self.get_mpmath_functions(self.x_sym, self.b_sym)
         self.dgdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dgdx_sym)
         self.dbdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dbdx_sym)
+        self.f_pibex = self.get_pybex_function(self.x_sym, self.f_sym)
+        if casadi:
+            self.f_casadi = self.lambdify_to_casadi(self.x_sym, self.f_sym)
+        if numpy:
+            self.f_numpy = sympy.lambdify(self.x_sym, self.f_sym,'numpy')
+        
         if aff:
             self.f_aff = self.get_aff_functions(self.x_sym, [self.f_sym])
             self.g_aff = self.get_aff_functions(self.x_sym, self.g_sym)
@@ -76,12 +84,51 @@ class Function:
             self.dgdx_aff = [None] * len(self.dgdx_mpmath)
             self.dbdx_aff = [None] * len(self.dbdx_mpmath)
             
-       
-    #def eval_aff_function_from_list(f_list, box, f_ID):
-    #    return eval_aff_function(box, f_mpmath[f_ID])
+    def get_var_occurences(self, f_sym):      
+        return [f_sym.count(x) for x in self.f_sym.free_symbols]
+    
+    def lambdify_to_casadi(self, x_sym, f_sym):
+        """Converting operations of symoblic equation system f (simpy) to 
+        arithmetic interval functions (mpmath.iv)
+    
+        """
+    
+        toCasadi = {"exp" : casadi.SX.exp,
+                    "sin" : casadi.SX.sin,
+                    "cos" : casadi.SX.cos,
+                    "log" : casadi.SX.log,
+                    "abs":  casadi.SX.fabs,
+                    "sqrt": casadi.SX.sqrt,}   
+        return sympy.lambdify(x_sym,f_sym, toCasadi) 
+            
+    def get_pybex_function(self, x_sym, f_sym):
+        stringF = str(f_sym).replace('log(', 'ln(').replace('**', '^')
+        string_x = [str(s) for s in x_sym]
         
-    #def eval_mpmath_function_from_list(f_list, box, f_ID):
-    #    return eval_mpmath_function(box, f_mpmath[f_ID])        
+        
+        for s in tuple(sorted(string_x,key=len,reverse=True)):
+            stringF = stringF.replace(s, 'x['+str(string_x.index(s))+']')
+
+        pyibexFun = pyibex.Function('x['+str(len(x_sym))+']', stringF)
+        return pyibex.CtcFwdBwd(pyibexFun)
+    
+       
+    def is_deriv_constant(self):
+        deriv_is_constant = []
+
+        for i, x in enumerate(self.x_sym):
+            if not x in self.vars_of_deriv[i] and self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
+                # TODO: One could include the case self.dgdx_sym[i] * self.x_sym[i] != self.g_sym[i] 
+                # but then had to add the constant bit dgdx*x - dgdx to bInterval
+                deriv_is_constant.append(True)
+            else: deriv_is_constant.append(False)
+        return deriv_is_constant
+                
+                   
+    def get_vars_of_deriv(self):
+        vars_of_deriv = []
+        for cur_deriv in self.dgdx_sym: vars_of_deriv.append(cur_deriv.free_symbols)
+        return vars_of_deriv
     
     
     def eval_aff_function(self, box, f_aff):
@@ -94,16 +141,20 @@ class Function:
         except:
             return []
     
+
     def eval_mpmath_function(self, box, f_mpmath):
         if isinstance(f_mpmath, mpmath.ctx_iv.ivmpf): return f_mpmath    
         try:         
-            fInterval = f_mpmath(*box)#timeout(fMpmathIV, xBounds)
-            if fInterval == False: return mpmath.mpi('-inf','inf')
+            fInterval = mpmath.mpi(f_mpmath(*box))#timeout(fMpmathIV, xBounds)
+            if fInterval == []: return numpy.nan_to_num(numpy.inf)*mpmath.mpi(-1,1)
+            elif -numpy.inf in fInterval and numpy.inf in fInterval: return numpy.nan_to_num(numpy.inf)*mpmath.mpi(-1,1)
+            elif -numpy.inf in fInterval: return mpmath.mpi(-numpy.nan_to_num(numpy.inf), fInterval.b)
+            elif numpy.inf in fInterval: return mpmath.mpi(fInterval.a, numpy.nan_to_num(numpy.inf))
+            
             else: return fInterval
         
         except:
             return []
-
 
     def get_aff_functions(self, x, f_sym):
         f_aff = []
@@ -134,9 +185,8 @@ class Function:
         dgdx =[]
         dbdx = []
         
-        for i in range(0, len(self.g_sym)):
-            dgdx.append(sympy.diff(self.g_sym[i], self.x_sym[i])) 
-            
+        for i, g in enumerate(self.g_sym):
+            dgdx.append(sympy.diff(g, self.x_sym[i]))          
             dbdxi = [] 
             
             for x in self.x_sym:
@@ -189,15 +239,13 @@ class Function:
         allArgumentsWithoutVariable = []
         
         if f.func.class_key()[2] in ['Mul', 'sin', 'cos', 'exp', 'log', 'Pow'] :
-            #f = f + numpy.finfo(numpy.float).eps/2
             return f, 0.0
     
         if f.func.class_key()[2]=='Add':
-                
-            for i in range(0, len(allArguments)):
-                if x in allArguments[i].free_symbols:
-                    allArgumentsWithVariable.append(allArguments[i])
-                else: allArgumentsWithoutVariable.append(allArguments[i])
+            for arg in allArguments:
+                if x in arg.free_symbols:
+                    allArgumentsWithVariable.append(arg)
+                else: allArgumentsWithoutVariable.append(arg)
                  
             fvar = sympy.Add(*allArgumentsWithVariable)
             fWithoutVar = sympy.Add(*allArgumentsWithoutVariable)
@@ -290,7 +338,7 @@ class Function:
         return self.x_sym_tot[self.colPerm]
     
     def subscribeXwithIterVars(self, x):
-        xWithIterVars = copy.deepcopy(self.x_tot)
+        xWithIterVars = list(self.x_tot)#copy.deepcopy(self.x_tot)
         xWithIterVars[self.colPerm] = x
         return xWithIterVars
     

@@ -9,24 +9,24 @@ class Particle(tables.IsDescription):
 
 def bisectionReduction(model, noReductionSteps, boxSelectionMethod):
 
-	bounds = copy.deepcopy(model.xBounds)
+	bounds = list(model.xBounds)#copy.deepcopy(model.xBounds)
 	
 	for rs in range(noReductionSteps):
 		print('reduction Step No: '+str(rs))
 		results = []
-		for b in range(len(bounds)):
-			reducedBoxes = cutConstraintsInHalfWithBisection(bounds[b],
+		for bound in bounds:
+			reducedBoxes = cutConstraintsInHalfWithBisection(bound,
 								model.fSymbolic, model.xSymbolic, boxSelectionMethod)
 
-			if reducedBoxes != []:
-				for r in reducedBoxes:
-					results.append(r)
+			if reducedBoxes != []: results+= reducedBoxes
+				#for r in reducedBoxes:
+			#		results.append(r)
 
 		bounds = results
 
 	return bounds
 
-def cutConstraintsInHalfWithBisection(Bounds, fSymbolic, xSymbolic, selectionMethod):
+def cutConstraintsInHalfWithBisection(Bounds, model, selectionMethod):
 
 	reducedBoxes = []
 
@@ -39,7 +39,7 @@ def cutConstraintsInHalfWithBisection(Bounds, fSymbolic, xSymbolic, selectionMet
 
 	Notes = determineNotesOfBox(Bounds)
 
-	if checkForSignChange(Notes, fSymbolic, xSymbolic) == False:
+	if checkForSignChange(Notes, model) == False:
 		print('There seems to be no single solution in this Intervals')
 		return []
 
@@ -48,11 +48,11 @@ def cutConstraintsInHalfWithBisection(Bounds, fSymbolic, xSymbolic, selectionMet
 		print('new subBox')
 		for s in subBoxes:
 			notes = determineNotesOfBox(s)
-			if checkForSignChange(notes, fSymbolic, xSymbolic) == True:
+			if checkForSignChange(notes, model) == True:
 				if selectionMethod == 'save':
 					reducedBoxes.append(s)
 				elif selectionMethod == 'secant':
-					if checkBoxWithSecant(notes, fSymbolic, xSymbolic) == True:
+					if checkBoxWithSecant(notes, model) == True:
 						reducedBoxes.append(s)
 
 	return reducedBoxes
@@ -71,15 +71,15 @@ def determineNotesOfBox(Bounds):
 	return Notes.astype(numpy.float32)
 
 
-def checkForSignChange(Notes, fSymbolic, xSymbolic):
-	fLamb = sympy.lambdify(xSymbolic, fSymbolic, 'numpy')
+def checkForSignChange(Notes, model):
+	fLamb = model.fLamb #sympy.lambdify(xSymbolic, fSymbolic, 'numpy')
 	
-	notes_res = numpy.zeros((len(Notes), len(fSymbolic)))
+	notes_res = numpy.zeros((len(Notes), len(model.fSymbolic)))
 	for n, note in enumerate(Notes):
 		notes_res[n] = fLamb(*note)
 
 	signChange = []
-	for s in range(len(fSymbolic)):
+	for s in range(len(model.fSymbolic)):
 		if all(i>=0 for i in notes_res[:,s]) or all(i<=0 for i in notes_res[:,s]):
 			signChange.append(False)
 		else:
@@ -98,16 +98,16 @@ def splittBoxInMidpoint(Bounds):
 	#numpy.save('boxComData.npy',numpy.array(numpy.meshgrid(*ivSubBoxList)).T.reshape(-1,(len(Bounds))))
 
 
-def checkBoxWithSecant(Notes, fSymbolic, xSymbolic):
+def checkBoxWithSecant(Notes, model):
 	'''noch in Arbeit'''
-	fLamb = sympy.lambdify(xSymbolic, fSymbolic, 'numpy')
+	fLamb = model.fLamb#sympy.lambdify(xSymbolic, fSymbolic, 'numpy')
 	
-	notes_res = numpy.zeros((len(Notes), len(fSymbolic)))
+	notes_res = numpy.zeros((len(Notes), len(model.fSymbolic)))
 	for n, note in enumerate(Notes):
 		notes_res[n] = fLamb(*note)
 
 	interpolatedRoots = []
-	for s in range(len(fSymbolic)):
+	for s in range(len(model.fSymbolic)):
 		posSign = []
 		negSign = []
 		for n, note_res in enumerate(notes_res[:,s]):
@@ -130,7 +130,7 @@ def checkBoxWithSecant(Notes, fSymbolic, xSymbolic):
 	print(functionvaluesOfInterpolatedPoints)	
 
 	signChange = []
-	for s in range(len(fSymbolic)):
+	for s in range(len(model.fSymbolic)):
 		if (all(i>=0 for i in functionvaluesOfInterpolatedPoints[:,s]) or
 			 all(i<=0 for i in functionvaluesOfInterpolatedPoints[:,s])):
 			signChange.append(False)

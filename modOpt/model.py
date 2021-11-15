@@ -6,7 +6,7 @@ Imported packages
 import sympy
 import numpy
 import casadi
-
+from modOpt.solver import block
 """
 ***************************************************
 Model implementation
@@ -53,7 +53,8 @@ class Model:
                             
     """
     
-    def __init__(self, X, BOUNDS, XSYMBOLIC, FSYMBOLIC, PARAMS, JACOBIAN, FSYMCASADI = None, CONSTRAINTS = None):
+    def __init__(self, X, BOUNDS, XSYMBOLIC, FSYMBOLIC, PARAMS, JACOBIAN, 
+                 FSYMCASADI = None, CONSTRAINTS = None):
         """ Initialization method for class model
         
         Args:
@@ -86,7 +87,7 @@ class Model:
         self.colSca = numpy.ones(len(X))
         self.failed = False
         self.constraints = CONSTRAINTS
-        self.fLamb = []
+        self.fLamb = self.lambdifySympyFunctions()
         self.jacobianSympy = []
         self.jacobianLambNumpy = []
         self.jacobianLambMpmath = []
@@ -94,7 +95,19 @@ class Model:
         self.initialxBounds = [BOUNDS]
         self.VarFrequency = []
         self.FoundSolutions = []
-
+        self.reallyFoundSolutions = []
+        self.complete_parent_boxes = [] # [[reductionStep, box_id]]
+        self.cut = False
+        self.teared = False
+        self.fCounts = []
+        self.functions = []
+        self.dict_varId_fIds = {}
+        self.xInF = []
+        self.fWithX = []
+        self.all_blocks = []
+        self.interval_jac = None
+        self.jac_center = None
+ 
 
     def getBoundsOfPermutedModel(self, xBounds, xSymbolic, parameter):
         """ Calculates bounds of the Function residuals based on 
@@ -135,13 +148,7 @@ class Model:
     
     def getFunctionValues(self):
         """ Return: Function Values at current state variable values"""
-        functionValues = []
-        
-        for fun in self.fSymbolic:
-            fun = sympy.lambdify(self.xSymbolic, fun)
-            functionValues.append(fun(*self.stateVarValues[0]))
-        
-        return numpy.array(functionValues)
+        return self.fLamb(*self.stateVarValues[0])
     
     
     def getScaledFunctionValues(self):
@@ -259,8 +266,8 @@ class Model:
         certainXBounds = numpy.empty((len(certainVariables)), dtype=object)
         curXBounds = self.xBounds[intervalID]
         
-        for i in range(0, len(certainVariables)):
-            glbID = self.xSymbolic.index(certainVariables[i])
+        for i,val in enumerate(certainVariables):
+            glbID = self.xSymbolic.index(val)
             certainXBounds[i] = curXBounds[glbID]
    
         return certainXBounds
@@ -285,11 +292,29 @@ class Model:
             :blocks:        nested list indicating block structure referring
                             to permuted index, i.e. [[1,2], [3,4,5],...]
         
-        """        
-        
+        """           
         self.colPerm = colPerm
         self.rowPerm = rowPerm
         self.blocks =  createBlocks(blocks)
+        self.xInF = [f.glb_ID for f in self.functions]
+        for i in range(len(colPerm)):       
+            self.fWithX.append([ j for j,f in enumerate(self.functions) if i in f.glb_ID])
+        
+        for cur_block in self.blocks:
+            rBlocks = [rowPerm[i] for i in cur_block]
+            cBlocks = [colPerm[i] for i in cur_block]
+
+            self.all_blocks.append(block.Block(rBlocks, cBlocks, self.xInF, 
+                                                self.jacobian, self.fSymCasadi, 
+                                                self.stateVarValues[0], 
+                                                self.xBounds[0], self.parameter, 
+                                                self.constraints, self.xSymbolic, 
+                                                self.jacobianSympy, self.functions
+               ))
+        
+        
+        
+        
  
        
     def updateToScaling(self, res_scaling):
@@ -306,13 +331,21 @@ class Model:
         
         if "Variables" in res_scaling:
             self.colSca[self.colPerm] = res_scaling["Variables"]
-
+            
+            
+    def updateBlock(self,b):
+        self.all_blocks[b].x_tot = self.stateVarValues[0]
+        self.all_blocks[b].xBounds_tot = self.xBounds[0]
+        
                         
     def getModelDimension(self):
         "returns system dimension"
         return len(self.xSymbolic)
-
-            
+    
+    def lambdifySympyFunctions(self):     
+        return sympy.lambdify(self.xSymbolic, self.fSymbolic)
+                  
+    
 def createBlocks(blocks):
     """ creates blocks for permutation order 1 to n based on block border list
     from preordering algorithm
@@ -325,7 +358,8 @@ def createBlocks(blocks):
     """
     
     nestedBlocks = []
-    for i in range(1, len(blocks)):
+    if len(blocks)==1: return blocks
+    for i in range(1,len(blocks)):
         curBlock = range(blocks[i-1], blocks[i])
         nestedBlocks.append(curBlock)
         
@@ -343,8 +377,4 @@ def reorderList(myList, newOrder):
         
     """
     
-    newList = []
-
-    for i in newOrder:
-        newList.append(myList[i])
-    return newList
+    return [myList[i] for i in  newOrder]

@@ -3,6 +3,7 @@
 Import packages
 ***************************************************
 """
+
 import mpmath
 import modOpt.decomposition as mod
 import sympy
@@ -14,7 +15,9 @@ analysis tools
 ***************************************************
 """
 
-__all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length']
+__all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
+           'calc_hypercubic_length', 'calc_average_length', 'calc_residual']
+
 
 def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
@@ -115,7 +118,7 @@ def calcVolumeLength(box, dim, tol):
     #dim =dim - solvedVarsNo[0]
     
     for interval in box:
-        if type(interval) == mpmath.iv.mpf:
+        if isinstance(interval, mpmath.iv.mpf):
             width = float(mpmath.mpf(interval.delta))
         else:
             width = interval[1] - interval[0]
@@ -126,11 +129,82 @@ def calcVolumeLength(box, dim, tol):
     return length
 
 
+def calc_vol_fraction(box, init_box, tol):
+    """ calculates box edge length assuming it as a hypercube
+    
+    Args:
+        :box:       list with variable bounds in mpmath.mpi logic
+        :dim:       box dimension as integer
+        :tol:       float with tolerance for interval width
+    
+    Returns:
+        :length:   box edge length as float
+    
+    """
+    
+    vol_frac = 1.0
+    
+    #solvedID, solvedVarsNo = getSolvedVars([box])
+    #dim =dim - solvedVarsNo[0]
+    
+    for i, iv in enumerate(box):
+        if isinstance(iv, mpmath.iv.mpf):
+            width = float(mpmath.mpf(box[i].delta))
+        else:
+            width = iv[1] - iv[0]
+        if isinstance(init_box[i], mpmath.iv.mpf):
+            width_0 = float(mpmath.mpf(init_box[i].delta))
+        else: 
+            width_0 = init_box[i][1] - init_box[i][0]
+                    
+        if width >= tol:
+            vol_frac*=(width/width_0)
+        else:
+            vol_frac*=(tol/width_0)
+    return vol_frac
+
+def calc_residual(model): 
+    residual = []
+    if model.xBounds != []:
+        for i,box in  enumerate(model.xBounds):
+            x = []
+            for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
+            try: 
+                residual.append(sum([abs(fi) for fi in model.fLamb(*x)]))
+            except: 
+                residual.append(len(x) * [float('nan')])
+    return residual
+        
+        
+def calc_average_length(dict_options, init_box, boxes):
+    avLength = 0
+    avLength_0 = 0
+    
+    for i, iv in enumerate(boxes[0]):
+        for box in boxes:
+            avLength += (box[i][1] - box[i][0])
+            #else: avLength +=  tol
+    
+        avLength_0 +=  (init_box[0][i][1] - init_box[0][i][0]) 
+      
+    return avLength/len(boxes)/ avLength_0
+    
+
+def calc_hypercubic_length(dict_options, init_box, boxes):
+    tol = dict_options["absTol"]
+    tot_vol_fraction = 0
+    
+    for box in boxes:
+        tot_vol_fraction += calc_vol_fraction(box, init_box[0], tol)
+    
+    return (tot_vol_fraction)**(1.0/len(init_box[0]))
+
+
 def calcVolume(box, tol):
     volume = 1.0
     
     for interval in box:
-        if type(interval) == mpmath.iv.mpf:
+        if isinstance(interval, mpmath.iv.mpf):
             width = float(mpmath.mpf(interval.delta))
         else:
             width = interval[1] - interval[0]
@@ -140,14 +214,13 @@ def calcVolume(box, tol):
             volume*=tol
     return volume    
 
+
 def calc_length(boxes, tol):
     dim = len(boxes[0])
     volume = 0.0
     for box in boxes:
         volume += calcVolume(box, tol)
     return volume**(1.0/dim)
-    
-    
     
     
 def getSolvedVars(boxes):
@@ -231,8 +304,8 @@ def calcHypercubicLength(boxes, tol):
     """
     
     lengths = []
-    for i in range(0, len(boxes)):
-        lengths.append(calcVolumeLength(boxes[i], len(boxes[i]), tol))
+    for box in boxes:
+        lengths.append(calcVolumeLength(box, len(box), tol))
     return lengths
 
 
@@ -261,7 +334,7 @@ def getBoundRatiosOfVars(boundsRatios):
                 varBoundRatios.append(boundsRatios[j][i])
              
         for ratio in varBoundRatios:
-            if type(ratio) is float: ratioOfVar += ratio
+            if isinstance(ratio, float): ratioOfVar += ratio
             
         if ratioOfVar == 0: ratioOfVar='solved'
         boundRatiosOfVars.append(ratioOfVar)

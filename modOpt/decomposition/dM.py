@@ -12,7 +12,7 @@ Dulmage-Mendelsohn-Decomposition based on casadi package (python)
 *****************************************************************
 """
 
-__all__ =['getCasadiJandF','doDulmageMendelsohn']
+__all__ =['getCasadiJandF','doDulmageMendelsohn','convertSympyVariablesToCasadi']
 
 def doDulmageMendelsohn(A):
     """invokes Dulmage-Mendelsohn-Decomposition from Casadi's Package

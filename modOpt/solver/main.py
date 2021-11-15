@@ -7,19 +7,23 @@ Import packages
 """
 import numpy
 from modOpt.solver import (newton, results, scipyMinimization, 
-parallelization, block, matlabSolver)
+parallelization, block, matlabSolver, ipopt_casadi)
 import modOpt.storage as mostg
 import modOpt.scaling as mos
 import modOpt.initialization as moi
+from modOpt.initialization import arithmeticMean
+from modOpt.constraints.function import Function
 import copy
 import time
+import mpmath
 
 """
 ****************************************************
 Main that starts solving procedure in NLE's
 ****************************************************
 """
-__all__ = ['solveSamples', 'solveSystem_NLE', 'solveBoxes', 'solveBlocksSequence']
+__all__ = ['solveSamples', 'solveSystem_NLE', 'solveBoxes', 
+           'solveBlocksSequence', 'sample_tear_block','startSolver']
 
 
 def solveBoxes(model, dict_variables, dict_equations, dict_options, solv_options,sampling_options=None):
@@ -92,7 +96,8 @@ def solveOneBox(model, boxes, l, dict_variables, dict_equations, dict_options, s
     return solveBlocksSequence(model, solv_options, dict_options, sampling_options)
 
 
-def sample_multiple_solutions(model, b, rBlocks, cBlocks, xInF, sampling_options, dict_options, solv_options, res_blocks):
+def sample_multiple_solutions(model, b,  sampling_options, 
+                              dict_options, solv_options, res_blocks):
     """ samples and solves a model that contains multiple solutions in the already solved blocks.
     Hence, each solution needs to be sampled and solved for the current block separately.
     
@@ -116,21 +121,21 @@ def sample_multiple_solutions(model, b, rBlocks, cBlocks, xInF, sampling_options
 
     newSubSolutions = []
     
-    subSolutions = copy.deepcopy(model.stateVarValues)
+    subSolutions = list(model.stateVarValues)
     for x in subSolutions:
         model.stateVarValues= [x]
-        solved, res_blocks = sample_and_solve_one_block(model, b, rBlocks, cBlocks, xInF, 
-                                            sampling_options, dict_options, solv_options,
+        res_blocks,  solved = sample_and_solve_one_block(model, b, sampling_options, dict_options, solv_options,
                                             res_blocks)
         if solved: 
-            newSubSolutions.append(*model.stateVarValues)
+            newSubSolutions += model.stateVarValues
         
     if not newSubSolutions == []: model.stateVarValues = newSubSolutions
     else: model.failed == True
     return res_blocks
 
 
-def sample_and_solve_one_block(model, b, rBlocks, cBlocks, xInF, sampling_options, dict_options, solv_options, res_blocks):
+def sample_and_solve_one_block(model, b, sampling_options, 
+                               dict_options, solv_options, res_blocks):
     """ samples and solves one block for at a certain point of already solved variables.
     Note: There can be multiple solutions in a former block, so that this functions needs to
     be called for each of them. There is only one box used for sampling therefore the boxID
@@ -155,14 +160,24 @@ def sample_and_solve_one_block(model, b, rBlocks, cBlocks, xInF, sampling_option
     """
 
     samples = {}    
-    cur_block = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
-               model.fSymCasadi, model.stateVarValues[0], 
-               model.xBounds[0], model.parameter,
-               model.constraints, model.xSymbolic, model.jacobianSympy
-               )
+    cur_block = block.Block(model.all_blocks[b].rowPerm, model.all_blocks[b].colPerm, 
+                            model.xInF, model.jacobian, model.fSymCasadi, 
+                            model.stateVarValues[0], model.xBounds[0], model.parameter,
+                            model.constraints, model.xSymbolic, model.jacobianSympy, 
+                            model.functions
+                            )
     
-    moi.sample_box_in_block(cur_block, 0, sampling_options, dict_options, samples)
-    
+   # if sampling_options["init_method"] == "tear_sampling":
+   #     samples = moi.do_tear_sampling(model, cur_block, 0, sampling_options, 
+   #                                       dict_options, solv_options)        
+
+    if sampling_options["sampling method"]== "ax_optimization":
+       samples = [[moi.do_ax_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
+    else: 
+       moi.sample_box_in_block(cur_block, 0, sampling_options, dict_options, samples)
+       model.stateVarValues[0][cur_block.colPerm]=samples[0][0]
+       #print ("This is the residual of the whole system:", 
+#              numpy.linalg.norm(numpy.array(model.getFunctionValues())))  
     return solve_samples_block(model, cur_block, b, samples[0], solv_options, 
                                                                dict_options,
                                                                res_blocks)    
@@ -186,9 +201,9 @@ def solve_samples_block(model, block, b, samples, solv_options, dict_options, re
     """
     solved = False
 
-    for s in range(0, len(samples)):
-        block.x_tot[block.colPerm] = samples[s]
-        
+    for sample in samples:
+        block.x_tot[block.colPerm] = sample
+
         if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
                                 model, block)
         
@@ -216,7 +231,6 @@ def update_model_to_block_results(block, model):
         :model:         instance of class model
 
     """
-    
     model.stateVarValues = [model.stateVarValues[0]] * len(block.FoundSolutions)
     for s in range(0, len(block.FoundSolutions)):
         model.stateVarValues[s][block.colPerm] = block.FoundSolutions[s]    
@@ -267,10 +281,10 @@ def solutionInBounds(block):
         bounds = block.xBounds_tot[block.colPerm][i]
         x = block.x_tot[block.colPerm][i]
         if isinstance(bounds, list) or isinstance(bounds, numpy.ndarray):
-            if x< bounds[0] or x>bounds[1] :
+            if x< bounds[0]-1e-8 or x>bounds[1]+1e-8:
                 return False
         else:  
-            if not block.x_tot[block.colPerm][i] in block.xBounds_tot[block.colPerm][i]:
+            if not block.x_tot[block.colPerm][i] in (block.xBounds_tot[block.colPerm][i]+mpmath.mpi(-1e-8,1e-8)):
                 return False
     return True
 
@@ -326,7 +340,7 @@ def solveSamples(model, initValues, dict_equations, dict_variables, solv_options
     return res_multistart
 
       
-def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options):
+def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options,sampling_options=None):
     """ solve nonlinear algebraic equation system (NLE)
     
     Args:
@@ -343,23 +357,24 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
     """
     
     if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] == 'tot_init':
-        mos.scaleSystem(model, dict_equations, dict_variables, dict_options) 
+        mos.scaleSystem(model, dict_equations, dict_variables, dict_options, sampling_options) 
 
             
     if dict_options["decomp"] == 'DM' or dict_options["decomp"] == 'None': 
-        res_solver = solveBlocksSequence(model, solv_options, dict_options)
+        res_solver = solveBlocksSequence(model, solv_options, dict_options, sampling_options)
         updateToSolver(res_solver, dict_equations, dict_variables)
         return res_solver
     
     if dict_options["decomp"] == 'BBTF':
         i=0
         res_solver=[]
-
+        
         while not numpy.linalg.norm(model.getFunctionValues()) <= solv_options["FTOL"] and i <= solv_options["iterMax_tear"]:
-            res_solver = solveBlocksSequence(model, solv_options, dict_options)
-            updateToSolver(res_solver, dict_equations, dict_variables)
+            res_solver = solveBlocksSequence(model, solv_options, dict_options,sampling_options)
+            #updateToSolver(res_solver, dict_equations, dict_variables)
             model = res_solver["Model"] 
-            print (numpy.linalg.norm(model.getFunctionValues())) 
+            print ("This is the residual of iter-step ", i," :", 
+                   numpy.linalg.norm(model.getFunctionValues())) 
             i+=1
         return res_solver
     
@@ -402,23 +417,22 @@ def solveBlocksSequence(model, solv_options, dict_options,
         :res_solver:    dictionary with solver results
        
     """
-    # Initialization of known system quantities
-
-    rBlocks, cBlocks, xInF = getBlockInformation(model)
-
     #res_solver = createSolverResultDictionary(len(rBlocks))
     res_blocks = {}
+    
     # Block iteration:    
-    for b in range(len(rBlocks)): 
+    #for b in range(len(rBlocks)): 
+    for b, bl in enumerate(model.all_blocks):
+        if dict_options["Debug-Modus"]: print("Block ", b, " is processed.")
         if "sampling" in dict_options.keys():
+            #if b==0: and sampling_options["init_method"] == "tear_sampling":
+
             if len(model.stateVarValues) > 1: 
-                res_blocks = sample_multiple_solutions(model, b, rBlocks, cBlocks, 
-                                                       xInF, sampling_options, 
+                res_blocks = sample_multiple_solutions(model, b, sampling_options, 
                                                        dict_options, solv_options, 
                                                        res_blocks)
             else:      
-                res_blocks, solved = sample_and_solve_one_block(model, b, rBlocks, 
-                                                                cBlocks, xInF, 
+                res_blocks, solved = sample_and_solve_one_block(model, b, 
                                                                 sampling_options,
                                                                 dict_options,
                                                                 solv_options, 
@@ -430,25 +444,26 @@ def solveBlocksSequence(model, solv_options, dict_options,
                     return res_blocks
                                 
         else:
-            curBlock = block.Block(rBlocks[b], cBlocks[b], xInF, model.jacobian, 
-                    model.fSymCasadi, model.stateVarValues[0], 
-                    model.xBounds[0], model.parameter,
-                    model.constraints, model.xSymbolic, model.jacobianSympy
-                               )            
-            res_blocks[b] = startSolver(curBlock, b, solv_options, dict_options)
+            cur_block = block.Block(model.all_blocks[b].rowPerm, model.all_blocks[b].colPerm, 
+                            model.xInF, model.jacobian, model.fSymCasadi, 
+                            model.stateVarValues[0], model.xBounds[0], model.parameter,
+                            model.constraints, model.xSymbolic, model.jacobianSympy, 
+                            model.functions
+                            )
+            res_blocks[b] = startSolver(cur_block, b, solv_options, dict_options)
         #if isinstance(solv_options["solver"], list):
         #   TODO alternating solvers
         # TODO: Add other solvers, e.g. ipopt
+            
         
-            if res_blocks[b]["Exitflag"] < 1: 
+            if res_blocks[b]["Exitflag"] < 1:
                 model.failed = True
             
             # Update model    
-            model.stateVarValues[0] = curBlock.x_tot
+            model.stateVarValues[0] = cur_block.x_tot
     
     # Write Results:
     res_blocks["Model"] = model        
-    #putResultsInDict(model, res_solver)
 
     return res_blocks 
 
@@ -476,30 +491,11 @@ def startSolver(curBlock, b, solv_options, dict_options):
 
     if solv_options["solver"] == 'matlab-fsolve-mscript':
         doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, res_solver) 
+    if solv_options["solver"] == 'casadi-ipopt':
+        do_casadi_ipopt_minimize(curBlock, b, solv_options, dict_options, res_solver) 
         
     return res_solver           
         
-
-def getBlockInformation(model):
-    """ collects information available from block decomposition
-    
-    Args:
-        :model:         object of class model in modOpt.model that contains all
-
-    Return:
-        :rBlocks:      Nested list with blocks that contain global ID's of the 
-                       functions
-        :rBlocks:      Nested list with blocks that contain global ID's of the 
-                       iteration variables
-        :xInf:         Nested list with functions in global order that contains 
-                       global ID's of all variables that occur in this function
-                        
-    """
-    
-    rBlocks, cBlocks = getListsWithBlockMembersByGlbID(model)
-    xInF = getListWithFunctionMembersByGlbID(model) 
-    return rBlocks, cBlocks, xInF 
-    
 
 def createSolverResultDictionary(blockNo):
     """ sets up dictionary for solver results
@@ -650,7 +646,31 @@ def doipoptMinimize(curBlock, b, solv_options, dict_options, res_solver):
         res_solver["FRES"] = 'nan'
 
     
-
+def do_casadi_ipopt_minimize(curBlock, b, solv_options, dict_options, res_solver):
+    """ starts minimization procedure from casadi
+    
+    Args:
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        
+    """
+    
+    try:
+        from modOpt.solver import ipopt_casadi
+        exitflag, iterNo = ipopt_casadi.minimize(curBlock, solv_options, dict_options)
+        res_solver["IterNo"] = iterNo-1
+        res_solver["Exitflag"] = exitflag
+        res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["FRES"] = curBlock.getFunctionValues()
+    except: 
+        print ("Error in Block ", b)
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan'    
 
 def doMatlabSolver_mscript(curBlock, b, solv_options, dict_options, res_solver):
     """ starts matlab runner for externam matlab file with fsolve
@@ -786,4 +806,27 @@ def getListWithFunctionMembersByGlbID(model):
     
     return xInF
      
-     
+def sample_tear_block(model, dict_options, sampling_options, solv_options):
+    b = len(model.all_blocks)
+    res_blocks={}
+    res_blocks, solved = sample_and_solve_one_block(model, b, sampling_options, 
+                                                    dict_options, solv_options,
+                                                    res_blocks)             
+    
+def sort_fId_to_varIds(fId, varIds, dict_varId_fIds):
+    """ writes current function's global id to a dictionary whose keys equal
+    the global id's of the variables. Hence, all variables that occur in the 
+    current function get an additional value (fId).
+    
+    Args:
+        :fId:               integer with global id of current function
+        :varIds:            list with global id of variables that occur in the 
+                            current function
+        :dict_varId_fIds:   dictionary that stores global id of current function 
+                            (value) to global id of the variables (key(s))
+
+    """
+    
+    for varId in varIds:
+        if not varId in dict_varId_fIds: dict_varId_fIds[varId]=[fId]
+        else: dict_varId_fIds[varId].append(fId)    

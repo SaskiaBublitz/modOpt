@@ -5,7 +5,7 @@ Import packages
 """
 import scipy.optimize
 import numpy
-
+from modOpt.solver import newton
 """
 ****************************************************
 Minimization Procedures from scipy.optimization
@@ -84,7 +84,7 @@ def minimize(curBlock, solv_options, dict_options):
                                       args= args,
                                       jac = eval_grad_m,
                                       method= minMethod, #'trust-constr',
-                                      options = {'maxiter': iterMax, 'ftol': FTOL, 'disp': True},
+                                      options = {'maxiter': iterMax, 'ftol': 1.0e-20, 'disp': True},
                                       tol = None,
                                       bounds = xBounds,
                                       constraints = ())    
@@ -101,10 +101,16 @@ def minimize(curBlock, solv_options, dict_options):
     #print res.x
     for i in range(0, len(res.x)):
         curBlock.x_tot[curBlock.colPerm[i]]=res.x[i]
-
-    if not res.success: return 0, res.nit
     
-    else: return 1, res.nit   
+    print(res.status)
+    
+    if solv_options["FTOL"] < numpy.linalg.norm(curBlock.getScaledFunctionValues()):
+        return newton.doNewton(curBlock, solv_options, dict_options)
+    
+    if res.success: return 1, res.nit
+    elif (res.status == 9) and (numpy.linalg.norm(
+            curBlock.getFunctionValues()) < FTOL): return 1, res.nit
+    else: return 0, res.nit   
 
 
 def eval_m(x, *args): 

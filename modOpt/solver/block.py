@@ -34,7 +34,8 @@ class Block:
     """
     
     def __init__(self, rBlock, cBlock, xInF, J_sym, F_sym, x, xBounds, 
-                 parameter=None, constraints=None, xSymbolic=None, jacobianSympy =None):
+                 parameter=None, constraints=None, xSymbolic=None,
+                 jacobianSympy =None, functions=None):
         """ Initialization method for class Block
         
         Args:
@@ -63,13 +64,13 @@ class Block:
         self.allConstraints = constraints
         self.jacobianSympy = jacobianSympy
         self.FoundSolutions = []
-
+        if functions: self.functions_block = self.get_functions_block(functions)
         
     def getSubsystemVariableIDs(self, xInF):
         """ gets global id of all variables within a certain block
         
         Args:
-            :xInF:      list with global variable indices of all blocks
+            :xInF:      list with global variable indices of current blocks
        
         Return:         list with global variable indices of the block 
                         identified by self.rowPerm
@@ -98,10 +99,6 @@ class Block:
                 if item not in newList:
                     newList.append(item)
         return newList       
-        #self.J = J
-        #self.F = F
-        #self.x = x
-        #self.y = y
 
         
     def getPermutedJacobian(self):
@@ -131,6 +128,13 @@ class Block:
          return casadi.mtimes(casadi.mtimes(casadi.diag(1.0 / self.rowSca), self.getPermutedJacobian()), 
                              casadi.diag(self.colSca))
 
+    def get_functions_block(self, functions):
+        return [functions[i] for i in self.rowPerm]
+              
+        
+    def get_functions_values(self):
+        """ Return: block function values evaluated at x_tot """
+        return numpy.array([f.f_numpy(*self.x_tot[f.glb_ID]) for f in self.functions_block])
 
     def getFunctionValues(self):
         """ Return: block function values evaluated at x_tot """
@@ -145,6 +149,7 @@ class Block:
         
             return numpy.array(F_tot)[self.rowPerm]
 
+
     
     def getPermutedFunctionValues(self):
         """ Return: block function values evaluated at x_tot """
@@ -153,7 +158,7 @@ class Block:
 
     def getScaledFunctionValues(self):
         """ Return: scaled block function values evaluated at x_tot """
-        return numpy.dot(numpy.diag(1.0 / self.rowSca), self.getPermutedFunctionValues())
+        return numpy.dot(numpy.diag(1.0 / self.rowSca), self.get_functions_values())
 
 
     def getIterVarBoundValues(self):
@@ -212,3 +217,21 @@ class Block:
         
         if res_scaling.__contains__("Variables"):
             self.colSca = res_scaling["Variables"]
+            
+    def createBlocks(self,blocks):
+        """ creates blocks for permutation order 1 to n based on block border list
+        from preordering algorithm
+        
+        Args:
+            :blocks:         list with block border indices as integers
+    
+        Return:             list with block elements in sublist
+    
+        """
+    
+        nestedBlocks = []
+        for i in range(1,len(blocks)):
+            curBlock = range(blocks[i-1], blocks[i])
+            nestedBlocks.append(curBlock)
+            
+        return nestedBlocks

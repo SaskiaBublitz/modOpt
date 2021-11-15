@@ -5,6 +5,7 @@
 Import packages
 ***************************************************
 """
+from numba import jit
 from modOpt.decomposition import dM
 from modOpt.decomposition import MC33
 import numpy
@@ -15,7 +16,6 @@ Main that invokes decomposition methods
 ***************************************************
 """
 __all__ = ['decomposeSystem']
-
 
 def decomposeSystem(model, dict_eq, dict_var, dict_options):
     """ equation system is decomposed by user-defined input
@@ -63,7 +63,7 @@ def updateDictionariesToPermutation(model, dict_eq, dict_var):
     colPermId = getPermutationIndex(model.colPerm)   
     setValuesByGlobalId(dict_eq, 2, rowPermId)                                       
     setValuesByGlobalId(dict_var, 2, colPermId)
-    
+     
 
 def getPermutationIndex(permOrder):
     """ get new Index after permutation
@@ -73,11 +73,7 @@ def getPermutationIndex(permOrder):
     
     """
     
-    permID = numpy.zeros(len(permOrder), int)
-    
-    for glbID in range(0,len(permOrder)):
-        permID[glbID] = list(permOrder).index(glbID)
-    return permID
+    return numpy.array([list(permOrder).index(glbID) for glbID in range(len(permOrder))])
 
 
 def setValuesByGlobalId(dictionary, column, newValues):
