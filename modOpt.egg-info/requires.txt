@@ -3,4 +3,8 @@ sympy
 mpmath
 casadi
 matplotlib
+pyibex
+affapy
 pyDOE
+scipy
+table
