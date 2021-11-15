@@ -28,6 +28,7 @@ def ivRealPower():
 			lowerBound = min(lowerBoundPower.a, upperBoundPower.a)
 			upperBound = max(lowerBoundPower.b, upperBoundPower.b)
 			return mpmath.mpi(lowerBound, upperBound)
+        
 		else:
 			return floatPow(base, power)
 
@@ -36,7 +37,7 @@ def ivRealPower():
 		if power > 0:
 			return posPow(base, power)
 		elif power == 0:
-			return mpmath.mpi(0, 0)
+			return mpmath.mpi(1.0, 1.0)
 		else:
 			return 1/posPow(base, -power)
 

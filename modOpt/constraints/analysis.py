@@ -3,6 +3,7 @@
 Import packages
 ***************************************************
 """
+
 import mpmath
 import modOpt.decomposition as mod
 import sympy
@@ -15,7 +16,8 @@ analysis tools
 """
 
 __all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
-           'calc_hypercubic_length']
+           'calc_hypercubic_length', 'calc_average_length', 'calc_residual']
+
 
 def analyseResults(dict_options, initialModel, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
@@ -145,11 +147,11 @@ def calc_vol_fraction(box, init_box, tol):
     #solvedID, solvedVarsNo = getSolvedVars([box])
     #dim =dim - solvedVarsNo[0]
     
-    for i in range(len(box)):
-        if isinstance(box[i], mpmath.iv.mpf):
+    for i, iv in enumerate(box):
+        if isinstance(iv, mpmath.iv.mpf):
             width = float(mpmath.mpf(box[i].delta))
         else:
-            width = box[i][1] - box[i][0]
+            width = iv[1] - iv[0]
         if isinstance(init_box[i], mpmath.iv.mpf):
             width_0 = float(mpmath.mpf(init_box[i].delta))
         else: 
@@ -160,6 +162,33 @@ def calc_vol_fraction(box, init_box, tol):
         else:
             vol_frac*=(tol/width_0)
     return vol_frac
+
+def calc_residual(model): 
+    residual = []
+    if model.xBounds != []:
+        for i,box in  enumerate(model.xBounds):
+            x = []
+            for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
+            try: 
+                residual.append(sum([abs(fi) for fi in model.fLamb(*x)]))
+            except: 
+                residual.append(len(x) * [float('nan')])
+    return residual
+        
+        
+def calc_average_length(dict_options, init_box, boxes):
+    avLength = 0
+    avLength_0 = 0
+    
+    for i, iv in enumerate(boxes[0]):
+        for box in boxes:
+            avLength += (box[i][1] - box[i][0])
+            #else: avLength +=  tol
+    
+        avLength_0 +=  (init_box[0][i][1] - init_box[0][i][0]) 
+      
+    return avLength/len(boxes)/ avLength_0
+    
 
 def calc_hypercubic_length(dict_options, init_box, boxes):
     tol = dict_options["absTol"]
@@ -185,14 +214,13 @@ def calcVolume(box, tol):
             volume*=tol
     return volume    
 
+
 def calc_length(boxes, tol):
     dim = len(boxes[0])
     volume = 0.0
     for box in boxes:
         volume += calcVolume(box, tol)
     return volume**(1.0/dim)
-    
-    
     
     
 def getSolvedVars(boxes):

@@ -15,19 +15,21 @@ Output
 
 __all__ = ['writeInitialSettings', 'writeResults', 'writeResultsAnalytics', 
            'write_successfulResults', 'write_results_with_bounds',
-           'write_initial_values_with_bounds', 'write_analytics', 'write_successful_results']
+           'write_initial_values_with_bounds', 'write_analytics', 
+           'write_successful_results', 'write_solution']
 
 def write_successful_results(res_boxes, dict_options, sampling_options, solv_options):
     """ writes out results from sampling and solving procedure blockwise. 
     
     Args:
-        :res_boxes:         dictionary with solver results sorted by variable boxes
-        :dict_options:      dictionary with user-specified box reduction, model structure settings
+        :res_boxes:         dictionary with solver results sorted by variable 
+                            boxes
+        :dict_options:      dictionary with user-specified box reduction, model 
+                            structure settings
         :sampling_options:  dictionary with user-specified sampling settings
         :solv_options:      dictionary with user-specified solver settings
     
-    """
-    
+    """    
     if res_boxes == {}: return True
 
     for box in res_boxes.keys():
@@ -51,14 +53,15 @@ def write_block_analysis(res_box, solution, model, dict_options, solv_options):
     
     Args:
         :res_box:           dictionary with results from one box sorted by blocks
-        :dict_options:      dictionary with user-specified box reduction, model structure settings
-        :sampling_options:  dictionary with user-specified sampling settings
+        :dict_options:      dictionary with user-specified box reduction, model 
+                            structure settings
         :solv_options:      dictionary with user-specified solver settings
         
     """
-    
-    fileName = getFileName(dict_options, solv_options)
-    res_file = open(''.join([fileName, "_analysis.txt"]), "w")
+    fileName = dict_options["fileName"]
+    sol_id = solv_options["sol_id"]
+    #fileName = getFileName(dict_options, solv_options)
+    res_file = open(''.join([fileName, "_analysis_", str(sol_id),".txt"]), "w")
     res_file.write(" ****************** Analysis File ****************** \n\n") 
     writeSolverSettings(res_file, solv_options)
     writeRestructuringSettings(res_file, dict_options)
@@ -69,9 +72,11 @@ def write_block_analysis(res_box, solution, model, dict_options, solv_options):
     for block in res_box.keys():
         if block == "Model": continue
         res_block = res_box[block]
-        colPerm = res_block["colPerm"]
+        colPerm = model.all_blocks[block].colPerm
+        res_block["rowPerm"] = model.all_blocks[block].rowPerm
         sol_id = get_id_block_solution(solution[colPerm], res_block["FoundSolutions"])
         wirte_block_analysis_table(res_file, res_block, block, sol_id)
+
 
 def wirte_block_analysis_table(res_file, res_block, block, sol_id):
     """ writes out table with blockwise results for blockwise sampling and solving 
@@ -84,14 +89,11 @@ def wirte_block_analysis_table(res_file, res_block, block, sol_id):
         :sol_id:            integer with index of current solution in block
         
     """    
-
     exitflag = res_block["Exitflag"][sol_id]
     iterNo = res_block["IterNo"][sol_id]
     condNo = res_block["CondNo"][sol_id]
     FRES = res_block["FRES"][sol_id]
     rowPerm = res_block["rowPerm"]
-
-
 
     for i in range(0,len(rowPerm)):
         res_file.write("%s  %s  %s  %s  %s  %s\n"%(block, 
@@ -102,26 +104,21 @@ def wirte_block_analysis_table(res_file, res_block, block, sol_id):
                                                  FRES[i]))    
     
     
-    
-
-
-def write_solution(xSymbolic, solution, bounds, dict_options, solv_options):
-    """ writes out file wit solution and current bounds with blockwise sampling and solving 
-    procedure . 
+def write_solution(xSymbolic, solution, bounds, dict_options, solv_options=None):
+    """ writes out file wit solution and current bounds with blockwise sampling 
+    and solving procedure. 
     
     Args:
         :xSymbolic:         list with symbolic variables
         :solution:          numpy array with current variable bounds
-        :dict_options:      dictionary with user-specified box reduction, model structure settings
+        :dict_options:      dictionary with user-specified box reduction, model 
+                            structure settings
         :solv_options:      dictionary with user-specified solver settings
         
     """
-    if not "sol_count" in dict_options.keys(): dict_options["sol_count"] = 1
-    else: dict_options["sol_count"] +=1
-    
-    fileName = getFileName(dict_options, solv_options)
-    res_file = open(''.join([fileName, "_", str(dict_options["sol_count"]),"_results.txt"]), "w")
-    
+    fileName = dict_options["fileName"]
+    res_file = open(''.join([fileName, "_results_", str(solv_options["sol_id"]),
+                             ".txt"]), "w")   
     res_file.write(" ****************** Iteration Variable Values ****************** \n\n") 
     if isinstance(bounds[0], list) or isinstance(bounds[0], numpy.ndarray):
         for i in range(0, len(xSymbolic)):
@@ -148,14 +145,12 @@ def get_id_block_solution(solution_block, foundSolutions):
         :sol_id:                id of current solution in block
 
     """
-    
     for sol_id in range(0, len(foundSolutions)):
-        if(solution_block == foundSolutions[sol_id]).all():
-            return sol_id
+        if(solution_block == foundSolutions[sol_id]).all(): return sol_id
     
     
-
-def write_successfulResults(res_solver, mainfilename, k, l, initial_model, solv_options, dict_options):
+def write_successfulResults(res_solver, mainfilename, k, l, initial_model, 
+                            solv_options, dict_options):
     """ method writes successful sample into a text file 
     
     Args:
@@ -225,8 +220,7 @@ def write_initial_values_with_bounds(res_solver, dict_options):
         :res_solver:        dictionary with instance of initial model
         :dict_options:      dictionary with sample_ID, box_ID and fileName
 
-    """
-    
+    """    
     box_ID = dict_options["box_ID"]
     sample_ID = dict_options["sample_ID"]
     fileName = dict_options["fileName"] + "_" + str(box_ID) + "_" + str(sample_ID)
@@ -236,8 +230,14 @@ def write_initial_values_with_bounds(res_solver, dict_options):
     writeIterVarValues(res_file,  res_solver["initial_model"])
 
 
-
 def write_results_with_bounds(res_solver, dict_options):
+    """ writes out converged iteration variable values in feasible bounds   
+
+    Args:
+        :res_solver:        dictionary with instance of current model
+        :dict_options:      dictionary with sample_ID, box_ID and fileName
+
+    """ 
     box_ID = dict_options["box_ID"]
     sample_ID = dict_options["sample_ID"]
     fileName = dict_options["fileName"] + "_" + str(box_ID) + "_" + str(sample_ID)
@@ -247,22 +247,20 @@ def write_results_with_bounds(res_solver, dict_options):
     writeIterVarValues(res_file,  res_solver["Model"])
 
 
-
-
-def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options, solv_options):
+def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options, 
+                               solv_options):
     """ writes variable values and results of converged samples into files
     
     Args:
-        :sample:            instance of class Model with sample iteration variable 
-                            values
+        :sample:            instance of class Model with sample iteration 
+                            variable values
         :i:                 number of converged sample as integer
         :dict_options:      dictionary with user specified settings
         :res_solver:        dictionary with solver output
         :sampling_options:  dictionary with sampling options
         :solv_options:      dictionary with user specified solver settings
         
-    """
-    
+    """    
     fileName = getFileName(dict_options, solv_options)
     sample_file = open(''.join([fileName, 
                                 "_sample_minf_", str(i), "_",
@@ -272,12 +270,13 @@ def writeSampleWIthMinResidual(sample, i, dict_options, sampling_options, solv_o
     writeIterVarValues(sample_file,  sample)
 
     
-def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options, solv_options):
+def writeConvergedSample(sample, i, dict_options, res_solver, sampling_options, 
+                         solv_options):
     """ writes variable values and results of converged samples into files
     
     Args:
-        :sample:            instance of class Model with sample iteration variable 
-                            values
+        :sample:            instance of class Model with sample iteration 
+                            variable values
         :i:                 number of converged sample as integer
         :dict_options:      dictionary with user specified settings
         :solv_options:      dictionary with user specified solver settings
@@ -316,13 +315,15 @@ def write_analytics(res_solver, dict_options):
         res_solver["Exitflag"] *= numpy.ones(len(res_solver["Model"].blocks))
         writeFunctionTable(res_file, res_solver)
 
+
 def writeResultsAnalytics(dict_options, res_solver, solv_options):
     """ writes additional iteration information to file res_file
     
     Args:
         :dict_options:          dictionary with user specified settings
-        :solv_options:          dictionary with user specified solver settings
         :res_solver:            dictionary with solver output
+        :solv_options:          dictionary with user specified solver settings
+        
         
     """
     if res_solver != []:
@@ -357,6 +358,7 @@ def writeSolverSettings(res_file, solv_options):
         :solv_options:      dictionary with solver settings
     
     Return:         None.  
+    
     """
     res_file.write(" ****************** Solver Settings ****************** \n\n")
     res_file.write("Solver: %s\n"%(solv_options["solver"]))
@@ -372,8 +374,8 @@ def writeIterVarValues(res_file, model):
         :model:             object of class Model
     
     Return:         None.  
-    """
     
+    """
     res_file.write(" ****************** Iteration Variable Values ****************** \n\n")    
     for i in range(0, len(model.xSymbolic)):
         res_file.write("%s    %s    %s    %s\n"%(model.xSymbolic[i], 
@@ -384,15 +386,16 @@ def writeIterVarValues(res_file, model):
 
         
 def writeFunctionLegend(res_file, model):
-    """ writes symbolic functions of model and their global indices to file res_file
+    """ writes symbolic functions of model and their global indices to file 
+    res_file
     
     Args:
         :res_file:          text document
         :model:             object of class Model
     
     Return:         None.  
-    """
     
+    """ 
     res_file.write(" ****************** Legend of functions ****************** \n\n") 
     res_file.write("Global ID:    Function Expression\n") 
     
@@ -412,8 +415,8 @@ def writeFunctionTable(res_file, res_solver):
         :res_solver:        dictionary with solver output
     
     Return:         None.  
-    """
     
+    """
     model = res_solver["Model"]
     blockID = model.getBlockID()    
     exitflag = getQuantityForFunction(res_solver["Exitflag"], blockID)
@@ -443,8 +446,7 @@ def getQuantityForFunction(blockList, blockID):
     Return:
         :functionList:      list with function quantities in global order
     
-    """
-    
+    """ 
     functionList = []
     for b in blockID:
         functionList.append(blockList[b])
