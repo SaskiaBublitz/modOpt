@@ -101,6 +101,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     update_complete_parent_boxes(model, 0)
         
     createNewtonSystem(model)
+    print(npzFileName)
     storage.store_newBoxes(npzFileName, model, 0) 
     
     model.xBounds[0] = numpy.array(

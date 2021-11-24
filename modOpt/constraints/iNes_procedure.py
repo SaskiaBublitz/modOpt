@@ -1295,6 +1295,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
     x_old = list(xBounds)
     xUnchanged = True
     xSolved = True
+    
     dict_options_temp = dict_options.copy()
     newtonMethods = {'newton', 'detNewton', '3PNewton', 'mJNewton'}
     hc_methods = {'HC4'}
