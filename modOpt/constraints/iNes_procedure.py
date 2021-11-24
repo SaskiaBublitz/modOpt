@@ -484,8 +484,8 @@ def cutOffBox(model, xBounds, dict_options):
             while i<100: #number of cutt offs are limited to 100
                 CutBoxBounds = list(list(xNewBounds))
                 xu = CutBoxBounds[u]
-                if (mpmath.mpf(xu.delta) < 
-                    mpmath.mpf(xBounds[0][u].delta)*0.02*i): break #if total box is to small for further cutt offs
+                if (mpmath.mpf(xu.delta) <= 
+                    mpmath.mpf(xBounds[0][u].delta)*0.02*i): break #if total bounds is too small for further cut offs
                 cur_x = (float(mpmath.mpf(xu.b)) - 
                          float(mpmath.mpf(xBounds[0][u].delta)*0.01*i))
                 CutBoxBounds[u] = mpmath.mpi(cur_x, xu.b) #define small box to cut
@@ -505,7 +505,7 @@ def cutOffBox(model, xBounds, dict_options):
             while i<100:
                 CutBoxBounds = list(list(xNewBounds))
                 xu = CutBoxBounds[u]
-                if (mpmath.mpf(xu.delta) < 
+                if (mpmath.mpf(xu.delta) <= 
                     mpmath.mpf(xBounds[0][u].delta)*0.02*i): break
                 cur_x = (float(mpmath.mpf(xu.a)) + 
                          float(mpmath.mpf(xBounds[0][u].delta)*0.01*i))
@@ -521,7 +521,6 @@ def cutOffBox(model, xBounds, dict_options):
                 else:
                     break
             if not xChanged[u] and not i ==1: xChanged[u]=True
-                
     return [tuple(xNewBounds)], cutOff
 
 
