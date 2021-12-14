@@ -124,7 +124,8 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                 
             results["complete_parent_boxes"] += (len(output["xNewBounds"]) * 
                                                  [ model.complete_parent_boxes[k]])
-            if output["xSolved"][0] and len(output["xNewBounds"]) == 1:
+            if (output["xSolved"][0] and len(output["xNewBounds"]) == 1 
+                and dict_options["hybrid_approach"]):
                 if not "FoundSolutions" in dict_options.keys():  
                      model.xBounds[k] = output["xNewBounds"][0]
                      num_solved = lookForSolutionInBox(model, k, dict_options, 
@@ -138,7 +139,8 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                 if not num_solved: 
                     output["xSolved"][0] = False
                                                                                                               
-            elif all(output["xAlmostEqual"]) and not all(output["xSolved"]):  
+            elif (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
+                  and dict_options["hybrid_approach"]):  
 
                 if not sampling_options ==None and not solv_options == None:
                     num_solved = lookForSolutionInBox(model, k, dict_options, 
