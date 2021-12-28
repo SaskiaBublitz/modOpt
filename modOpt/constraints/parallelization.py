@@ -67,7 +67,8 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
      output["disconti"], 
      output["complete_parent_boxes"], 
      output["complete_boxes"]) = getReducedXBoundsResults(results, model, 
-                                                          dict_options["maxBoxNo"])
+                                                          dict_options["maxBoxNo"],
+                                                          dict_options["FoundSolutions"])
     if tearVarIds != []:
         for curId in tearVarIds:
             if curId != dict_options["tear_id"]:
@@ -110,6 +111,8 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
     Return:                     True if method finishes ordinary
                              
     """
+    solNo = len(dict_options["FoundSolutions"])
+    newSol = []
     model.interval_jac = None  
     model.jac_center = None
     disconti = dict_options["disconti"][k]
@@ -174,13 +177,14 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
                                            [ model.complete_parent_boxes[k]])   
         
         if output["xSolved"][0] and len(output["xNewBounds"]) == 1:
-            if not "FoundSolutions" in dict_options.keys():  
-                 model.xBounds[k] = output["xNewBounds"][0]
-                 num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
+            #if not "FoundSolutions" in dict_options.keys():  
+            model.xBounds[k] = output["xNewBounds"][0]
+            num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
                                                                   dict_options, 
                                                                   sampling_options, 
                                                                   solv_options) 
-            else: num_solved = True
+            #else: num_solved = True
+            print(dict_options["FoundSolutions"])
             if num_solved:    
                 if not iNes_procedure.test_for_root_inclusion(output["xNewBounds"][0], 
                                         dict_options["FoundSolutions"], 
@@ -195,11 +199,16 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
                 num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
                                                                  dict_options, 
                                                                  sampling_options, 
-                                                                 solv_options)      
+                                                                 solv_options) 
+                if len(dict_options["FoundSolutions"]) > solNo:
+                    newSol = [dict_options["FoundSolutions"][i] 
+                              for i in range(solNo, len(dict_options["FoundSolutions"]))] 
+                    
+                
     for box in output["xNewBounds"]:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
     if output.__contains__("noSolution"):
-        results['%d' %k] = ([], output["noSolution"],[],[],[],[],[], False)
+        results['%d' %k] = ([], output["noSolution"],[],[],[],[],[], False, [])
         
     elif output.__contains__("uniqueSolutionInBox"):
         results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
@@ -207,7 +216,7 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
                             dict_options["tear_id"], 
                             num_solved,  
                             len(output["xNewBounds"])*[output["disconti"]],
-                            output["complete_parent_boxes"], model.cut )        
+                            output["complete_parent_boxes"], model.cut, newSol)        
         
     else:        
         results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
@@ -215,8 +224,7 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
                             dict_options["tear_id"], 
                             num_solved, 
                             len(output["xNewBounds"])*[output["disconti"]],
-                            output["complete_parent_boxes"], model.cut )
-
+                            output["complete_parent_boxes"], model.cut, newSol)
     return True
 
 
@@ -241,7 +249,7 @@ def startAndDeleteJobs(jobs, started, done, jobNo, CPU_count):
             actNum = deleteFinishedJobs(actNum, jobs, started, done, jobId)
 
 
-def getReducedXBoundsResults(results, model, maxBoxNo):
+def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions):
     """ extracts quantities from multiprocessing results
     
     Args:
@@ -269,7 +277,14 @@ def getReducedXBoundsResults(results, model, maxBoxNo):
     cut = []
 
     for k in range(noOfxBounds):
-        
+        if results['%d' %k][8] != []:
+            for new_sol in results['%d' %k][8]:
+                for old_sol in foundSolutions:
+                    if (new_sol == old_sol).all(): break
+                else:
+                  foundSolutions.append(new_sol)  
+                  print(foundSolutions)
+                       
         if noOfxBounds < 1: return [], [], [], []             
         if results['%d' %k][0] != []: 
             curNewXBounds = results['%d' %k][0] # [[[a1], [b1], [c1]], [[a2], [b2], [c2]]]

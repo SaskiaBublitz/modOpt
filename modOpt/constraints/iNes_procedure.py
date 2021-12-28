@@ -641,7 +641,7 @@ def getBestTearSplit(xBounds,model, boxNo, dict_options, w_max_ids=None):
         # find best overall boxredution
         if avrSide<smallestAvrSide:
             smallestAvrSide = avrSide
-            print("variable ", model.xSymbolic[i], " is splitted")
+            print("variable ", model.xSymbolic[value], " is splitted")
             xNewBounds = [output0["xNewBounds"][0], output1["xNewBounds"][0]]
             
     return xNewBounds
@@ -3910,9 +3910,11 @@ def split_least_changed_variable(box_new, model, k, dict_options):
                                             r, allow_pickle=True)[box_ID]
     
     for i in range(0, len(box_new[0])):
-      w_ratio.append(float(mpmath.mpf(box_new[0][i].delta))/ (box_old[i][1] - 
-                                                              box_old[i][0])) 
-    
+        if (mpmath.mpf(box_new[0][i].delta)>= dict_options["absTol"]):
+                                   w_ratio.append(
+                                       float(mpmath.mpf(box_new[0][i].delta))
+                                       / (box_old[i][1] - box_old[i][0])) 
+        else: w_ratio.append(0.0) 
     w_max_ids = [i for i, j in enumerate(w_ratio) if j == max(w_ratio)]
     if model.fCounts == []: model.fCounts = [len(model.dict_varId_fIds[i]) 
                                              for i in range(0, len(box_new[0]))]

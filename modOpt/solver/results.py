@@ -117,6 +117,7 @@ def write_solution(xSymbolic, solution, bounds, dict_options, solv_options=None)
         
     """
     fileName = dict_options["fileName"]
+    if solv_options == None: solv_options = {"sol_id": ""}
     res_file = open(''.join([fileName, "_results_", str(solv_options["sol_id"]),
                              ".txt"]), "w")   
     res_file.write(" ****************** Iteration Variable Values ****************** \n\n") 
