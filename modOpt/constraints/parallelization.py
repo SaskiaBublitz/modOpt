@@ -93,7 +93,8 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     return output
 
 
-def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, solv_options=None):
+def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, 
+                       solv_options=None):
     """ contains work that can be done in parallel during the reduction of multiple 
     solution interval sets stored in xBounds. The package multiprocessing is used 
     for parallelization.
@@ -143,7 +144,7 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
                                      k, boxNo,
                                      newtonMethods)
         model.cut = output["cut"]
-        print(model.cut)
+        #print(model.cut)
         if model.teared: 
             output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
                                                [[dict_options["iterNo"]-1, k]])
@@ -184,7 +185,6 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
                                                                   sampling_options, 
                                                                   solv_options) 
             #else: num_solved = True
-            print(dict_options["FoundSolutions"])
             if num_solved:    
                 if not iNes_procedure.test_for_root_inclusion(output["xNewBounds"][0], 
                                         dict_options["FoundSolutions"], 
@@ -202,7 +202,8 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, s
                                                                  solv_options) 
                 if len(dict_options["FoundSolutions"]) > solNo:
                     newSol = [dict_options["FoundSolutions"][i] 
-                              for i in range(solNo, len(dict_options["FoundSolutions"]))] 
+                              for i in range(solNo, 
+                                             len(dict_options["FoundSolutions"]))] 
                     
                 
     for box in output["xNewBounds"]:
@@ -283,7 +284,6 @@ def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions):
                     if (new_sol == old_sol).all(): break
                 else:
                   foundSolutions.append(new_sol)  
-                  print(foundSolutions)
                        
         if noOfxBounds < 1: return [], [], [], []             
         if results['%d' %k][0] != []: 
@@ -291,7 +291,8 @@ def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions):
             boxNo = len(newXBounds) + len(curNewXBounds) + (noOfxBounds - (k+1))
             if boxNo <= maxBoxNo:
                 for curNewXBound in curNewXBounds:
-                    newXBounds.append(numpy.array(convertListToMpi(curNewXBound), dtype=object))
+                    newXBounds.append(numpy.array(convertListToMpi(curNewXBound), 
+                                                  dtype=object))
                 xAlmostEqual[k] = (results['%d' %k][1])
                 xSolved[k] = (results['%d' %k][2])   
                 tearVarIds.append(results['%d' %k][3])
