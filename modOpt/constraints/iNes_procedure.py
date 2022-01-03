@@ -3538,7 +3538,7 @@ def newton_step(r_i, G_i, x_c, box, i, dict_options):
     """             
     
     iv_sum = sum([G_i[j] * (box[j] - x_c[j]) for j in range(len(G_i)) if j!=i])
-     
+    if numpy.isinf(r_i) or numpy.isnan(r_i): return [box[i]]  
     try:
         quotient = ivDivision(mpmath.mpi(r_i + iv_sum), G_i[i])
         #N = [x_c[i] - l for l in quotient] 
