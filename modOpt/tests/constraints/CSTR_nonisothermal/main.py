@@ -27,7 +27,6 @@ Output:
     
 @author: sassibub
 """
-import copy
 import os
 import mpmath
 from modOpt.constraints import results
@@ -42,7 +41,7 @@ def main():
         'modus': "all",                # "all" := testing all cases, "single" :=testing a specific case     
         }
     dict_options_all = {
-                    'fileName': ["VanDerWaals"],   # requires python module with this name                  
+                    'fileName': ["CSTR_nonisothermal"],   # requires python module with this name                  
                     'tol': [1e-9],
                     'redStepMax': [100],
                     'resolution': [8],
@@ -62,7 +61,7 @@ def main():
 }
 
     dict_options_ref = {
-                    'fileName': "VanDerWaals",   # requires python module with this name
+                    'fileName': "CSTR_nonisothermal",   # requires python module with this name
                     'tol': 1e-9,
                     'redStepMax': 100,
                     'resolution': 8,

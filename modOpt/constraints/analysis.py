@@ -172,7 +172,7 @@ def calc_residual(model):
             try: 
                 residual.append(sum([abs(fi) for fi in model.fLamb(*x)]))
             except: 
-                residual.append(len(x) * [float('nan')])
+                residual.append(float('nan'))
     return residual
         
         

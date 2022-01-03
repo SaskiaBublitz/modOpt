@@ -27,7 +27,6 @@ Output:
     
 @author: sassibub
 """
-import copy
 import os
 import mpmath
 from modOpt.constraints import results
@@ -42,9 +41,9 @@ def main():
         'modus': "all",                # "all" := testing all cases, "single" :=testing a specific case     
         }
     dict_options_all = {
-                    'fileName': ["VanDerWaals"],   # requires python module with this name                  
+                    'fileName': ["Col_MethanolWater"],   # requires python module with this name                  
                     'tol': [1e-9],
-                    'redStepMax': [100],
+                    'redStepMax': [22],
                     'resolution': [8],
                     'Parallel Branches': [0,1],
                     'bc_method': ["None", "bnormal"],
@@ -62,9 +61,9 @@ def main():
 }
 
     dict_options_ref = {
-                    'fileName': "VanDerWaals",   # requires python module with this name
+                    'fileName': "Col_MethanolWater",   # requires python module with this name
                     'tol': 1e-9,
-                    'redStepMax': 100,
+                    'redStepMax': 22,
                     'resolution': 8,
                     'Parallel Branches': 1,
                     'bc_method': "bnormal",

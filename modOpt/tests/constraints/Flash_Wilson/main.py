@@ -42,9 +42,9 @@ def main():
         'modus': "all",                # "all" := testing all cases, "single" :=testing a specific case     
         }
     dict_options_all = {
-                    'fileName': ["VanDerWaals"],   # requires python module with this name                  
+                    'fileName': ["Flash_Wilson_MP"],   # requires python module with this name                  
                     'tol': [1e-9],
-                    'redStepMax': [100],
+                    'redStepMax': [320],
                     'resolution': [8],
                     'Parallel Branches': [0,1],
                     'bc_method': ["None", "bnormal"],
@@ -62,9 +62,9 @@ def main():
 }
 
     dict_options_ref = {
-                    'fileName': "VanDerWaals",   # requires python module with this name
+                    'fileName': "Flash_Wilson_MP",   # requires python module with this name
                     'tol': 1e-9,
-                    'redStepMax': 100,
+                    'redStepMax': 320,
                     'resolution': 8,
                     'Parallel Branches': 1,
                     'bc_method': "bnormal",

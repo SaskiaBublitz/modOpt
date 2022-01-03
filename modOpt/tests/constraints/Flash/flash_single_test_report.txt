@@ -1,6 +1,0 @@
-Test report from module: flash
-
-Tolerance:	 1e-10
-
-Case	 Status	 CPU in s	 Comparison with seq. process
-HC4_HC4/flash_aa_both_forecast_cut	 Ok	 23.22539258003235	 -
