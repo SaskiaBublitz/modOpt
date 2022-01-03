@@ -38,6 +38,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
             
     """
     output = {}
+    foundSolutions = []
     CPU_count = dict_options["CPU count Branches"]
     jobs = []
     manager = Manager()
@@ -68,8 +69,11 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
      output["complete_parent_boxes"], 
      output["complete_boxes"]) = getReducedXBoundsResults(results, model, 
                                                           dict_options["maxBoxNo"],
-                                                          dict_options["FoundSolutions"])
-    if tearVarIds != []:
+                                                          foundSolutions)
+                                                          
+    if foundSolutions != []:  dict_options["FoundSolutions"] = foundSolutions        
+                                             
+    if tearVarIds != []: 
         for curId in tearVarIds:
             if curId != dict_options["tear_id"]:
                 dict_options["tear_id"] = curId
@@ -112,7 +116,10 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None,
     Return:                     True if method finishes ordinary
                              
     """
-    solNo = len(dict_options["FoundSolutions"])
+
+    if "FoundSolutions" in dict_options.keys(): 
+        solNo = len(dict_options["FoundSolutions"])
+    else: solNo = 0
     newSol = []
     model.interval_jac = None  
     model.jac_center = None
@@ -178,20 +185,20 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None,
                                            [ model.complete_parent_boxes[k]])   
         
         if output["xSolved"][0] and len(output["xNewBounds"]) == 1:
-            #if not "FoundSolutions" in dict_options.keys():  
             model.xBounds[k] = output["xNewBounds"][0]
+
             num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
                                                                   dict_options, 
                                                                   sampling_options, 
                                                                   solv_options) 
-            #else: num_solved = True
+            
             if num_solved:    
                 if not iNes_procedure.test_for_root_inclusion(output["xNewBounds"][0], 
                                         dict_options["FoundSolutions"], 
                                         dict_options["absTol"]):
                     num_solved = False
-            if not num_solved: 
-                output["xSolved"][0] = False
+            #if not num_solved: 
+            #    output["xSolved"][0] = False
                 #model.cut = True
         elif all(output["xAlmostEqual"]) and not all(output["xSolved"]): 
 
@@ -200,12 +207,12 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None,
                                                                  dict_options, 
                                                                  sampling_options, 
                                                                  solv_options) 
-                if len(dict_options["FoundSolutions"]) > solNo:
-                    newSol = [dict_options["FoundSolutions"][i] 
-                              for i in range(solNo, 
-                                             len(dict_options["FoundSolutions"]))] 
+                if "FoundSolutions" in dict_options.keys():
+                    if len(dict_options["FoundSolutions"]) > solNo:
+                        newSol = [dict_options["FoundSolutions"][i] 
+                                  for i in range(solNo, 
+                                                 len(dict_options["FoundSolutions"]))] 
                     
-                
     for box in output["xNewBounds"]:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
     if output.__contains__("noSolution"):
@@ -250,7 +257,7 @@ def startAndDeleteJobs(jobs, started, done, jobNo, CPU_count):
             actNum = deleteFinishedJobs(actNum, jobs, started, done, jobId)
 
 
-def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions):
+def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions=None):
     """ extracts quantities from multiprocessing results
     
     Args:
@@ -279,11 +286,14 @@ def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions):
 
     for k in range(noOfxBounds):
         if results['%d' %k][8] != []:
-            for new_sol in results['%d' %k][8]:
-                for old_sol in foundSolutions:
-                    if (new_sol == old_sol).all(): break
-                else:
-                  foundSolutions.append(new_sol)  
+            if not foundSolutions:
+                foundSolutions = results['%d' %k][8]            
+            else:
+                for new_sol in results['%d' %k][8]:
+                    for old_sol in foundSolutions:
+                        if (new_sol == old_sol).all(): break
+                    else:
+                        foundSolutions.append(new_sol)  
                        
         if noOfxBounds < 1: return [], [], [], []             
         if results['%d' %k][0] != []: 

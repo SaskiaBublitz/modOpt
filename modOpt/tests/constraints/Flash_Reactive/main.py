@@ -42,9 +42,9 @@ def main():
         'modus': "all",                # "all" := testing all cases, "single" :=testing a specific case     
         }
     dict_options_all = {
-                    'fileName': ["VanDerWaals"],   # requires python module with this name                  
+                    'fileName': ["Flash_Reactive"],   # requires python module with this name                  
                     'tol': [1e-9],
-                    'redStepMax': [100],
+                    'redStepMax': [125],
                     'resolution': [8],
                     'Parallel Branches': [0,1],
                     'bc_method': ["None", "bnormal"],
@@ -58,13 +58,13 @@ def main():
                     "consider_disconti": [0],
                     'cut_Box': ["tear", "all"],
                     "decomp": ['DM'],
-                    "CPU count Branches": [2],
+                    "CPU count Branches": [4],
 }
 
     dict_options_ref = {
-                    'fileName': "VanDerWaals",   # requires python module with this name
+                    'fileName': "Flash_Reactive",   # requires python module with this name
                     'tol': 1e-9,
-                    'redStepMax': 100,
+                    'redStepMax': 125,
                     'resolution': 8,
                     'Parallel Branches': 1,
                     'bc_method': "bnormal",
@@ -78,7 +78,7 @@ def main():
                     "consider_disconti": 0,
                     'cut_Box': "tear",
                     "decomp": 'DM',
-                    "CPU count Branches": 2,
+                    "CPU count Branches": 4,
 }
 
     if dict_file['modus'] == "single": testMethods(dict_options_ref, dict_file)

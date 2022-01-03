@@ -22,26 +22,24 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     
     filename = dict_options["fileName"]
     
-    if dict_options["combined_algorithm"] == "hc4bc": filename += "_hc4bc"
-    else:
-        # contraction methods:
-        if dict_options["bc_method"] == "bnormal": filename += "_bc"
-        if dict_options["hc_method"] == "HC4": filename += "_hc4"        
-        if dict_options["newton_method"] == "newton": 
-            filename += "_n"
-            # interval newton preconditioning:
-            if dict_options["newton_point"] == "center": filename += "c"
-            elif dict_options["newton_point"] == "3P": filename +="3P"
-            elif dict_options["newton_point"] == "condJ": filename +="cJ"
-            
-            if dict_options["preconditioning"] == "all_functions": 
-                filename += "af"
-            elif dict_options["preconditioning"] == "inverse_centered": 
-                filename +="ic"
-            elif dict_options["preconditioning"] == "inverse_point": 
-                filename +="ip"        
-            elif dict_options["preconditioning"] == "diag_inverse_centered": 
-                filename +="dic" 
+    # contraction methods:
+    if dict_options["bc_method"] == "bnormal": filename += "_bc"
+    if dict_options["hc_method"] == "HC4": filename += "_hc4"        
+    if dict_options["newton_method"] == "newton": 
+        filename += "_n"
+        # interval newton preconditioning:
+        if dict_options["newton_point"] == "center": filename += "c"
+        elif dict_options["newton_point"] == "3P": filename +="3P"
+        elif dict_options["newton_point"] == "condJ": filename +="cJ"
+        
+        if dict_options["preconditioning"] == "all_functions": 
+            filename += "af"
+        elif dict_options["preconditioning"] == "inverse_centered": 
+            filename +="ic"
+        elif dict_options["preconditioning"] == "inverse_point": 
+            filename +="ip"        
+        elif dict_options["preconditioning"] == "diag_inverse_centered": 
+            filename +="dic" 
                 
     # tightening bounds:                     
     if dict_options["Affine_arithmetic"]: filename += "_aff"
@@ -55,7 +53,7 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     
     # cutting methods:
     if dict_options["cut_Box"]== "tear": filename += "_cbtv"
-    if dict_options["cut_Box"]== "all" or dict_options["cut_Box"]: 
+    if dict_options["cut_Box"]== "all": 
         filename += "_cba"
     
     # considering gaps in splitting:    
@@ -71,8 +69,8 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     filename += "_r" + str(dict_options["redStepMax"])
     if dict_options["Parallel Branches"]:
         filename += "_pb" + str(dict_options["CPU count Branches"])
-    if dict_options["Parallel Variables"]:
-        filename += "_pb" + str(dict_options["CPU count Variables"])
+    #if dict_options["Parallel Variables"]:
+    #    filename += "_pb" + str(dict_options["CPU count Variables"])
         
     # sampling methods and settings:    
     if sampling_options != None and sampling_options["number of samples"] != 0: 

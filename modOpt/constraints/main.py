@@ -6,6 +6,7 @@ Import packages
 ***************************************************
 """
 import os
+import operator
 import time
 import copy
 import sympy
@@ -109,6 +110,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
          for x in model.xBounds[0]])
          
     for iterNo in range(1, dict_options["redStepMax"]+1): 
+    
         dict_options["iterNo"] = iterNo
         print(f'Red. Step {iterNo}')
         
@@ -208,10 +210,12 @@ def change_order_of_boxes_residual(model, output, dict_options):
         :dict_options:     dicionary with user settings for box reduction
             
     """
-    sorted_residual = list(dict_options["mean_residual"])
-    sorted_residual.sort()
-    order_all = [dict_options["mean_residual"].index(residual) for 
-                 residual in sorted_residual]
+    sorted_residual = enumerate(list(dict_options["mean_residual"]))
+    sorted_index_value = sorted(sorted_residual, key=operator.itemgetter(1))
+    order_all = [index for index, value in sorted_index_value]
+    #sorted_residual.sort()
+    #order_all = [dict_options["mean_residual"].index(residual) for 
+    #             residual in sorted_residual]
     model.xBounds = [model.xBounds[new_pos] for new_pos in order_all]
     dict_options["disconti"] = [output["disconti"][new_pos] 
                                 for new_pos in order_all]

@@ -88,10 +88,9 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                       "xAlmostEqual": [xAlmostEqual[k]],
                       "xSolved": [xSolved[k]],                      
                 }
-            
             output = reduceConsistentBox(output, model, dict_options, k, 
                                          dict_options["boxNo"],
-                                         newtonMethods)          
+                                         newtonMethods)  
             cut += [output["cut"]]
             if model.teared: 
                 results["complete_parent_boxes"] += (len(output["xNewBounds"]) 
@@ -116,7 +115,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                 
                 dict_options["boxNo"] = dict_options["maxBoxNo"]
                 output = contractBox(xBounds, model, dict_options["boxNo"] , 
-                                     dict_options)
+                                     dict_options)     
                 dict_options["boxNo"]  = store_boxNo             
             else:                                
                 output = contractBox(xBounds, model, dict_options["boxNo"] , 
@@ -136,8 +135,8 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                                             dict_options["FoundSolutions"], 
                                             dict_options["absTol"]):
                         num_solved = False
-                if not num_solved: 
-                    output["xSolved"][0] = False
+                #if not num_solved: 
+                #    output["xSolved"][0] = False
                                                                                                               
             elif (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
                   and dict_options["hybrid_approach"]):  
@@ -380,7 +379,7 @@ def splitBox(consistentBox, model, dict_options, k, boxNo_split):
     elif dict_options["split_Box"]=="LeastChanged":  
         xNewBounds = split_least_changed_variable(consistentBox, model, k, 
                                                   dict_options)
-         
+                
     elif (dict_options["split_Box"]=="forecastSplit" or 
           dict_options["split_Box"]=="forecast_HC4" or 
           dict_options["split_Box"]=="forecast_newton"):  
@@ -617,6 +616,7 @@ def getBestTearSplit(xBounds,model, boxNo, dict_options, w_max_ids=None):
         splittedBox = separateBox(BoundsToSplit, [value])
         
         #reduce both boxes
+
         output0, output1 = reduceHC4_orNewton(splittedBox, model, boxNo, 
                                               dict_options)
 
@@ -711,15 +711,16 @@ def reduceHC4_orNewton(splittedBox, model, boxNo, dict_options):
         :output0:    reduced box 1
         :output1:    reduced box 2
     '''    
-    dict_options_temp=dict_options.copy()
+    dict_options_temp = dict_options.copy()
     
     #if newton for split
     if (dict_options["split_Box"] =="forecast_newton" or 
         dict_options["split_Box"] =="forecastSplit"or 
         dict_options["split_Box"]=="forecastTear" or 
         dict_options["split_Box"]=="LeastChanged"):
-        dict_options_temp.update({"hc_method":'HC4', "bc_method":'None',
-                                  "newton_method":'newton',
+        dict_options_temp.update({"hc_method":dict_options["hc_method"], 
+                                  "bc_method":'None',
+                                  "newton_method": dict_options["newton_method"],
                                   "InverseOrHybrid": 'none', 
                                   "Affine_arithmetic": False})       
         output0 = reduceBox(numpy.array(splittedBox[0]), model, boxNo, dict_options_temp)
@@ -1296,14 +1297,13 @@ def reduceBox(xBounds, model, boxNo, dict_options):
     x_old = list(xBounds)
     xUnchanged = True
     xSolved = True
-    
     dict_options_temp = dict_options.copy()
     newtonMethods = {'newton', 'detNewton', '3PNewton', 'mJNewton'}
     hc_methods = {'HC4'}
     u_solution_newton, u_solution_hc = set_unique_solution_true(dict_options, 
                                                                 newtonMethods, 
                                                                 hc_methods)
-    
+
     # if HC4 is active
     if dict_options['hc_method']=='HC4':
         output, empty = doHC4(model, xBounds, xNewBounds, output, dict_options)
@@ -1363,6 +1363,13 @@ def reduceBox(xBounds, model, boxNo, dict_options):
         xSolved, xUnchanged, subBoxNo = update_quantities(y, i, subBoxNo, xNewBounds, 
                                                           x_old, xUnchanged, xSolved, 
                                                           dict_options, dict_options_temp)
+    # for i, x_new in enumerate(xNewBounds):
+    #     if len(x_new) > 1: break
+    #     else:
+    #         if not checkUniqueness([x_new[0]], xBounds[i], dict_options["relTol"],
+    #                                dict_options["absTol"]): 
+    #             u_solution_bc = False
+    #             break
         
     # Uniqueness test of solution:
     xNewBounds = list(itertools.product(*xNewBounds))
@@ -1471,6 +1478,8 @@ def set_unique_solution_true(dict_options, newtonMethods, hc_methods):
     else: unique_solution_newton = False
     if dict_options['hc_method'] in hc_methods: unique_solution_hc = True
     else: unique_solution_hc = False
+    #if dict_options['bc_method'] == "bnormal": unique_solution_bc = True
+    #else: unique_solution_bc = False    
     return unique_solution_newton, unique_solution_hc
 
 
@@ -2391,6 +2400,7 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
                                   eval_fInterval(f, f.dgdx_mpmath[i], xBounds))
             curInterval = x - quotient[-1]
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
+    #if curInterval.b < x_old[i].a: x_low = x_old[i].a
     else: x_low = max(curInterval.a, x_old[i].a)   
     fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i])
     curInterval = x_old[i]
@@ -2413,7 +2423,10 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
         if x_low == x_old[i].mid: return []
         else: return mpmath.mpi(x_low, x_old[i].mid)
-    else: return mpmath.mpi(x_low, min(curInterval.b, x_old[i].b))
+    #if curInterval.a > x_old[i].b:
+    #    return mpmath.mpi(x_low, x_old[i].b)
+    else: 
+        return mpmath.mpi(x_low, min(curInterval.b, x_old[i].b))
 
 
 def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
@@ -2457,6 +2470,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
             curInterval = x - quotient[-1]
             
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
+    #if curInterval.b < x_old[i].a: x_low = x_old[i].a
     else: x_low = max(curInterval.a, x_old[i].a)       
     fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i])
     curInterval = x_old[i]
@@ -2479,7 +2493,8 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
         if x_low == x_old[i].mid: return []
         else: return mpmath.mpi(x_low, x_old[i].mid)   
-        
+    #if curInterval.a > x_old[i].b:
+    #    return mpmath.mpi(x_low, x_old[i].b)    
     else: return mpmath.mpi(x_low, min(curInterval.b, x_old[i].b))
 
     
@@ -3526,7 +3541,8 @@ def newton_step(r_i, G_i, x_c, box, i, dict_options):
      
     try:
         quotient = ivDivision(mpmath.mpi(r_i + iv_sum), G_i[i])
-        N = [x_c[i] - l for l in quotient] 
+        #N = [x_c[i] - l for l in quotient] 
+        N = [x_c[i]*(1 - l/x_c[i]) for l in quotient] # because of round off errors
         y_new = setOfIvSetIntersection([N, [box[i]]])
     except: return [box[i]]
     

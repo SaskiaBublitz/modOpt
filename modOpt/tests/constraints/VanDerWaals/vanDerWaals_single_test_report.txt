@@ -1,7 +1,0 @@
-Test report from module: vanDerWaals
-
-Tolerance:	 1e-22
-
-Case	 Status	 CPU in s	 Comparison with seq. process
-b_normal_newton/vanDerWaals	 Ok	 0.5227653980255127	 -
-b_normal_newton/vanDerWaals_par_b	 Ok	 0.49604344367980957	 Ok

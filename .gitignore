@@ -58,8 +58,8 @@ spyder_crash.log
 .idea/
 .cache
 .coverage*
-Results_*/
-Tests/
+results/
+#Tests/
 /modopt/tests/constraints/**/**/
 # git .orig files
 *.orig
