@@ -2386,11 +2386,15 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
     curInterval = xBounds[i]    
     fIntervalxLow, fIntervalxUp = getFIntervalsFromXBounds(f, curInterval, xBounds, i)
     if fIntervalxLow.b < bi.a:
-        while (not numpy.isclose(float(mpmath.mpf(fxInterval.a)), 
-                                 float(mpmath.mpf(fxInterval.b)),relEpsX, absEpsX) 
-               and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
-                                     float(mpmath.mpf(curInterval.b)),relEpsX, 
-                                     absEpsX)):
+        while (not check_bound_and_interval_accuracy(
+                convertIntervalBoundsToFloatValues(curInterval),
+                [convert_mpi_float(fxInterval.b), convert_mpi_float(bi.a)],
+                relEpsX, absEpsX)):
+       # while (not numpy.isclose(float(mpmath.mpf(bi.a)), 
+       #                          float(mpmath.mpf(fxInterval.b)),relEpsX, absEpsX) 
+       #        and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
+       #                              float(mpmath.mpf(curInterval.b)),relEpsX, 
+       #                              absEpsX)):
             x = curInterval.a + curInterval.delta/2.0
             xBounds[i] = mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
@@ -2406,11 +2410,15 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
     curInterval = x_old[i]
     
     if fIntervalxUp.a > bi.b:
-        while (not numpy.isclose(float(mpmath.mpf(fxInterval.a)), 
-                                 float(mpmath.mpf(fxInterval.b)),relEpsX, absEpsX) 
-               and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
-                                     float(mpmath.mpf(curInterval.b)),relEpsX, 
-                                     absEpsX)): 
+        while (not check_bound_and_interval_accuracy(
+                convertIntervalBoundsToFloatValues(curInterval),
+                [convert_mpi_float(bi.b), convert_mpi_float(fxInterval.a)],
+                relEpsX, absEpsX)):               
+        #while (not numpy.isclose(float(mpmath.mpf(fxInterval.a)), 
+        #                         float(mpmath.mpf(bi.b)),relEpsX, absEpsX) 
+        #       and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
+        #                             float(mpmath.mpf(curInterval.b)),relEpsX, 
+        #                             absEpsX)): 
 
             x = curInterval.b - curInterval.delta/2.0
             xBounds[i] = mpmath.mpi(x)
@@ -2455,11 +2463,16 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
     fIntervalxLow, fIntervalxUp = getFIntervalsFromXBounds(f, curInterval, 
                                                            xBounds, i)
     if fIntervalxLow.a > bi.b:
-        while (not numpy.isclose(float(mpmath.mpf(fxInterval.a)), 
-                                 float(mpmath.mpf(fxInterval.b)),relEpsX, absEpsX) 
-               and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
-                                     float(mpmath.mpf(curInterval.b)),relEpsX, 
-                                     absEpsX)):
+        while (not check_bound_and_interval_accuracy(
+                convertIntervalBoundsToFloatValues(curInterval),
+                [convert_mpi_float(bi.b), convert_mpi_float(fxInterval.a)],
+                relEpsX, absEpsX)):        
+        
+        #while (not numpy.isclose(float(mpmath.mpf(fxInterval.a)), 
+        #                         float(mpmath.mpf(bi.b)),relEpsX, absEpsX) 
+        #       and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
+        #                             float(mpmath.mpf(curInterval.b)),relEpsX, 
+        #                             absEpsX)):
             x = curInterval.a + curInterval.delta/2.0
             xBounds[i]=mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
@@ -2476,27 +2489,44 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
     curInterval = x_old[i]
     
     if fIntervalxUp.b < bi.a:
-        while (not numpy.isclose(float(mpmath.mpf(fxInterval.a)), 
-                                 float(mpmath.mpf(fxInterval.b)),relEpsX, absEpsX) 
-               and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
-                                     float(mpmath.mpf(curInterval.b)),relEpsX, 
-                                     absEpsX)): 
+        while (not check_bound_and_interval_accuracy(
+                convertIntervalBoundsToFloatValues(curInterval),
+                [convert_mpi_float(fxInterval.b), convert_mpi_float(bi.a)],
+                relEpsX, absEpsX)):
+        #while (not numpy.isclose(float(mpmath.mpf(bi.a)), 
+        #                         float(mpmath.mpf(fxInterval.b)),relEpsX, absEpsX) 
+        #       and not numpy.isclose(float(mpmath.mpf(curInterval.a)), 
+        #                             float(mpmath.mpf(curInterval.b)),relEpsX, 
+        #                             absEpsX)): 
 
             x = curInterval.b - curInterval.delta/2.0
             xBounds[i]=mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
                                         f.g_aff[i]).b - bi.a
             xBounds[i] = curInterval
-            curInterval = x - ivDivision(fxInterval, 
+            curInterval = ivIntersection(curInterval, x - ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds))[0] 
+                                                        xBounds))[0] )
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
         if x_low == x_old[i].mid: return []
         else: return mpmath.mpi(x_low, x_old[i].mid)   
     #if curInterval.a > x_old[i].b:
     #    return mpmath.mpi(x_low, x_old[i].b)    
     else: return mpmath.mpi(x_low, min(curInterval.b, x_old[i].b))
+    
+def convert_mpi_float(mpi):
+    return float(mpmath.mpf(mpi))
 
+    
+def check_bound_and_interval_accuracy(x, val, relEpsX, absEpsX):
+    
+    if val[0] <= val[1] and numpy.isclose(val[0], val[1], relEpsX, absEpsX):
+        return True
+    elif numpy.isclose(x[0], x[1], relEpsX, absEpsX):
+        return True
+    else:
+        return False
+    
     
 def monotoneIncreasingIntervalNesting(f, xBounds, i, bi, dict_options):
     """ reduces variable intervals of monotone increasing functions fx
@@ -3238,16 +3268,20 @@ def iv_newton(model, box, i, dict_options):
     elif dict_options["newton_point"]=="condJ":
         x_all = [[float(mpmath.mpf(iv.a)) for iv in box],
                  [float(mpmath.mpf(iv.mid)) for iv in box],
-                 [float(mpmath.mpf(iv.b)) for iv in box]]       
-        condNo = [numpy.linalg.cond(model.jacobianLambNumpy(*x)) for x in x_all]
+                 [float(mpmath.mpf(iv.b)) for iv in box]]    
+        condNo = []
+        for x in x_all:
+            try: condNo.append(numpy.linalg.cond(model.jacobianLambNumpy(*x))) 
+            except: condNo.append(numpy.inf)
+        #condNo = [numpy.linalg.cond(model.jacobianLambNumpy(*x)) for x in x_all]
         x_c = x_all[condNo.index(min(condNo))]
               
     if dict_options["preconditioning"] == "inverse_centered":
-        G_i, r_i, x_c, n_box, n_i = get_precondition_centered(model, box, i, x_c)
+        G_i, r_i, n_x_c, n_box, n_i = get_precondition_centered(model, box, i, x_c)
     elif dict_options["preconditioning"] == "inverse_point":
-        G_i, r_i, x_c, n_box, n_i = get_precondition_point(model, box, i, x_c)
+        G_i, r_i, n_x_c, n_box, n_i = get_precondition_point(model, box, i, x_c)
     elif dict_options["preconditioning"] == "diag_inverse_centered":
-        G_i, r_i, x_c, n_box, n_i = get_diag_precondition_centered(model, 
+        G_i, r_i, n_x_c, n_box, n_i = get_diag_precondition_centered(model, 
                                                                    box, i, x_c)   
     elif dict_options["preconditioning"] == "all_functions":
         y_old = box[i]
@@ -3308,8 +3342,8 @@ def get_best_from_all_functions(model, box, i, dict_options, x_c=None):
 
 def get_diag_precondition_centered(model, box, i, x_c):
     """ preconditions the i-th jacobian row and the i-th resiudal vector entry
-    only with the center point of the interval j_ii. If m(j_ii) the entry is 
-    set to 1 and no preconditioning is used
+    only with the center point of the interval j_ii. If m(j_ii) is 0 the entry 
+    is set to 1 and no preconditioning is used
      
     Args:
         :model:         instance of model class
@@ -3330,14 +3364,14 @@ def get_diag_precondition_centered(model, box, i, x_c):
     box_sub = [box[k] for k in model.functions[j].glb_ID] 
     x_c_sub = [x_c[i] for i in function.glb_ID]   
     G_i_row = numpy.zeros(len(function.glb_ID),dtype=object)
-    Y = get_function_value_as_iv(function.dgdx_mpmath[function.glb_ID.index(i)], 
+    Y = get_function_value_as_iv(function, function.dgdx_mpmath[function.glb_ID.index(i)], 
                                  box_sub)  
     Y = float(mpmath.mpf(Y.mid))
     if Y == 0: Y = 1.0
     r_i = function.f_numpy(*x_c_sub) / Y
     
     for k in range(len(box_sub)):
-        G_i_row[k] = get_function_value_as_iv(function.dgdx_mpmath[k], 
+        G_i_row[k] = get_function_value_as_iv(function, function.dgdx_mpmath[k], 
                                               box_sub) / Y
                         
     return G_i_row, r_i, x_c_sub, box_sub, function.glb_ID.index(i)

@@ -37,7 +37,7 @@ class Function:
                             
     """
     
-    def __init__(self, f_sym, x_symbolic, aff=None, numpy=None, casadi=None):
+    def __init__(self, f_sym, x_symbolic, aff=None, numpy=None, casadi=None, dfdx=None):
         """ Initialization method for class Block
         
         Args:
@@ -57,7 +57,7 @@ class Function:
         self.x_sym = list(f_sym.free_symbols)
         self.glb_ID = self.get_glb_ID(x_symbolic)
         self.g_sym, self.b_sym = self.get_g_b_functions()
-        self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions()
+        self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions(dfdx)
         self.vars_of_deriv = self.get_vars_of_deriv()
         self.deriv_is_constant = self.is_deriv_constant()
         self.f_mpmath = self.get_mpmath_functions(self.x_sym, [self.f_sym])
@@ -181,12 +181,13 @@ class Function:
         return glb_ID
     
     
-    def get_deriv_functions(self):
+    def get_deriv_functions(self, dfdx=None):
         dgdx =[]
         dbdx = []
+        if dfdx: dgdx = [dfdx[i] for i in self.glb_ID]
         
         for i, g in enumerate(self.g_sym):
-            dgdx.append(sympy.diff(g, self.x_sym[i]))          
+            if not dfdx: dgdx.append(sympy.diff(g, self.x_sym[i]))          
             dbdxi = [] 
             
             for x in self.x_sym:
