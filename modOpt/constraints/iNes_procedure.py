@@ -2402,7 +2402,9 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                   eval_fInterval(f, f.dgdx_mpmath[i], xBounds))
-            curInterval = x - quotient[-1]
+            curInterval = ivIntersection(curInterval, x - quotient[-1])
+            if curInterval == []: return [
+                    ]
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
     #if curInterval.b < x_old[i].a: x_low = x_old[i].a
     else: x_low = max(curInterval.a, x_old[i].a)   
@@ -2425,9 +2427,11 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
                                         f.g_aff[i]).a - bi.b
             xBounds[i] = curInterval
-            curInterval = x - ivDivision(fxInterval, 
+            curInterval = ivIntersection(curInterval, x - ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds))[0]
+                                                        xBounds))[0])
+            if curInterval == []: return []
+            
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
         if x_low == x_old[i].mid: return []
         else: return mpmath.mpi(x_low, x_old[i].mid)
@@ -2480,8 +2484,9 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                   eval_fInterval(f, f.dgdx_mpmath[i], xBounds))
-            curInterval = x - quotient[-1]
-            
+            curInterval =  ivIntersection(curInterval, x - quotient[-1])
+            if curInterval == []: return []
+           
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
     #if curInterval.b < x_old[i].a: x_low = x_old[i].a
     else: x_low = max(curInterval.a, x_old[i].a)       
@@ -2507,6 +2512,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
             curInterval = ivIntersection(curInterval, x - ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
                                                         xBounds))[0] )
+            if curInterval == []: return []
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
         if x_low == x_old[i].mid: return []
         else: return mpmath.mpi(x_low, x_old[i].mid)   
