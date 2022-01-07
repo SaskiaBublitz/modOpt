@@ -1937,34 +1937,40 @@ def calculateCurrentBounds(f, i, xBounds, dict_options):
     try:
         if dict_options["Affine_arithmetic"]:
             bInterval = eval_fInterval(f, f.b_mpmath[i], xBounds, f.b_aff[i],
-                                       dict_options["tight_bounds"])
+                                       dict_options["tight_bounds"],
+                                       dict_options["resolution"])
         else: 
             bInterval = eval_fInterval(f, f.b_mpmath[i], xBounds, False, 
-                                       dict_options["tight_bounds"])
+                                       dict_options["tight_bounds"],
+                                       dict_options["resolution"])
 
     except: return [], [], []
     try:
         if dict_options["Affine_arithmetic"]:
             gxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i],
-                                        dict_options["tight_bounds"])
+                                        dict_options["tight_bounds"],
+                                        dict_options["resolution"])
         else: 
             gxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, False, 
-                                        dict_options["tight_bounds"])
+                                        dict_options["tight_bounds"],
+                                        dict_options["resolution"])
 
     except: return [], [], []
     try:
         if dict_options["Affine_arithmetic"]:
             dgdxInterval = eval_fInterval(f, f.dgdx_mpmath[i], xBounds, f.dgdx_aff[i],
-                                          dict_options["tight_bounds"])
+                                          dict_options["tight_bounds"],
+                                          dict_options["resolution"])
         else: 
             dgdxInterval = eval_fInterval(f, f.dgdx_mpmath[i], xBounds, False,
-                                          dict_options["tight_bounds"])
+                                          dict_options["tight_bounds"],
+                                          dict_options["resolution"])
     except: return [], [], []
    
     return gxInterval, dgdxInterval, bInterval  
    
          
-def eval_function_tight_mpmath(f, fInterval, f_mpmath, f_sym, box):
+def eval_function_tight_mpmath(f, fInterval, f_mpmath, f_sym, box, resolution):
     """ evaluate mpmath function with discretized intervals of box to reduce
     interval dependency issues
     
@@ -1983,10 +1989,11 @@ def eval_function_tight_mpmath(f, fInterval, f_mpmath, f_sym, box):
 
     for j, var in enumerate(y_sym):
         k = f.x_sym.index(var)
-        if f_sym.count(var) > 1 and box[k].delta > 1.0e-15: 
+        #f_sym.count(var)
+        if f.var_count[k] > 1 and box[k].delta > 1.0e-15: 
             #print("Before: ", fInterval)
             iv = convertIntervalBoundsToFloatValues(box[k])
-            ivs = numpy.linspace(iv[0], iv[1], 8)
+            ivs = numpy.linspace(iv[0], iv[1], int(resolution)+1)
             f_low, f_up = getFunctionValuesIntervalsOfXList(ivs, f_mpmath, 
                                                             list(box), k)
             f_new = [min(f_low), max(f_up)]
@@ -1997,7 +2004,7 @@ def eval_function_tight_mpmath(f, fInterval, f_mpmath, f_sym, box):
     return fInterval            
             
     
-def eval_fInterval(f, f_mpmath, box, f_aff=None, f_tight=None):
+def eval_fInterval(f, f_mpmath, box, f_aff=None, f_tight=None, resolution=None):
     """ evaluate mpmath function f_mpmath in list box with mpmath.mpi intervals
     
     Args:
@@ -2021,7 +2028,7 @@ def eval_fInterval(f, f_mpmath, box, f_aff=None, f_tight=None):
     if f_tight:
         try: 
             newIv = eval_function_tight_mpmath(f, fInterval, f_mpmath, 
-                                               f.f_sym, box)  
+                                               f.f_sym, box, resolution)  
             if newIv != []: fInterval = newIv
         except: pass      
         
@@ -2374,7 +2381,9 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
         reduced interval in mpmath.mpi formate
         
     """
-    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], False)
+    tb = dict_options["tight_bounds"]
+    reso = dict_options["resolution"]
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
     # first check if xBounds can be further reduced:
     if fxInterval in bi: return xBounds[i]
     if ivIntersection(fxInterval, bi)==[]: return []
@@ -2398,22 +2407,27 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
             x = curInterval.a + curInterval.delta/2.0
             xBounds[i] = mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
-                                        f.g_aff[i]).b - bi.a
+                                        f.g_aff[i], tb, reso).b - bi.a
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds))
+                                                        xBounds,False, tb,reso))
             if len(quotient)==1: curInterval = ivIntersection(curInterval, x - quotient[0])
             else: 
-                curInterval = mpmath.mpi([min(
+                newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
+                intersection = ivIntersection(curInterval, newInterval)
+                if intersection == curInterval:
+                    break
+                else:
+                   curInterval = intersection 
             if curInterval == []: return []
             
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
     #if curInterval.b < x_old[i].a: x_low = x_old[i].a
     else: x_low = max(curInterval.a, x_old[i].a)   
-    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i])
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i], tb, reso)
     curInterval = x_old[i]
     
     if fIntervalxUp.a > bi.b:
@@ -2437,11 +2451,14 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
                                                         xBounds))
             if len(quotient)==1: curInterval = ivIntersection(curInterval, x - quotient[0])
             else: 
-                curInterval = mpmath.mpi([min(
+                newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
-                
-                curInterval = ivIntersection(curInterval, x - quotient[0].a,)
+                intersection = ivIntersection(curInterval, newInterval)
+                if intersection == curInterval:
+                    break
+                else:
+                   curInterval = intersection 
             if curInterval == []: return []
             
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
@@ -2466,7 +2483,9 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
         reduced interval in mpmath.mpi formate
         
     """
-    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i])
+    tb = dict_options["tight_bounds"]
+    reso = dict_options["resolution"]    
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
     # first check if xBounds can be further reduced:
     if fxInterval in bi: return xBounds[i]
     if ivIntersection(fxInterval, bi)==[]: return []
@@ -2492,23 +2511,28 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
             x = curInterval.a + curInterval.delta/2.0
             xBounds[i]=mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
-                                        f.g_aff[i]).a - bi.b
+                                        f.g_aff[i], tb, reso).a - bi.b
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds))
+                                                        xBounds, False, tb, reso))
             if len(quotient)==1: 
                 curInterval = ivIntersection(curInterval, x - quotient[0])
             else: 
-                curInterval = mpmath.mpi([min(
+                newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
+                intersection = ivIntersection(curInterval, newInterval)
+                if intersection == curInterval:
+                    break
+                else:
+                   curInterval = intersection 
             if curInterval == []: return []
            
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
     #if curInterval.b < x_old[i].a: x_low = x_old[i].a
     else: x_low = max(curInterval.a, x_old[i].a)       
-    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i])
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i], tb, reso)
     curInterval = x_old[i]
     
     if fIntervalxUp.b < bi.a:
@@ -2525,17 +2549,22 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
             x = curInterval.b - curInterval.delta/2.0
             xBounds[i]=mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
-                                        f.g_aff[i]).b - bi.a
+                                        f.g_aff[i], tb, reso).b - bi.a
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds))
+                                                        xBounds,tb,reso))
             if len(quotient)==1: 
                 curInterval = ivIntersection(curInterval, x - quotient[0])
             else: 
-                curInterval = mpmath.mpi([min(
+                newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
+                intersection = ivIntersection(curInterval, newInterval)
+                if intersection == curInterval:
+                    break
+                else:
+                   curInterval = intersection 
             if curInterval == []: return []
             
     if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
@@ -3079,6 +3108,57 @@ def addIntervalToNonMonotoneZone(newIntervals, curIntervals):
 
 def reduceNonMonotoneIntervals(args):
     """ reduces non monotone intervals by simply calculating function values for
+    interval segments of a discretized variable interval and keeps the hull of those 
+    segments that intersect with bi. The discretization resolution is defined in dict_options.
+
+    Args:
+        :nonMonotoneZone:    list with non monotone variable intervals
+        :reducedIntervals:   lits with reduced non monotone variable intervals
+        :f:                  object of type Function
+        :i:                  integer with current iteration variable index
+        :xBounds:            numpy array with set of variable bounds
+        :bi:                 current function residual bounds
+        :dict_options:       for function and variable interval tolerances in the 
+                             used algorithms and resolution of the discretization
+
+    Return:                  reduced x-Interval(s) and list of monotone x-intervals
+        
+ """   
+    nonMonotoneZone = args["0"]
+    reducedIntervals = args["1"]
+    f = args["2"]
+    i = args["3"]
+    xBounds = args["4"]
+    bi = args["5"]
+    dict_options = args["6"]
+    
+    relEpsX = dict_options["relTol"]
+    precision = getPrecision(xBounds)
+    resolution = dict_options["resolution"]
+
+    for curNonMonZone in nonMonotoneZone:
+        curInterval = convertIntervalBoundsToFloatValues(curNonMonZone)
+        x = numpy.linspace(curInterval[0], curInterval[1], int(resolution)+1)
+        x_low = None
+        x_up = None
+        fLowValues, fUpValues = getFunctionValuesIntervalsOfXList(x, f.g_mpmath[i], 
+                                                                  xBounds, i)       
+        for k, fLow_val in enumerate(fLowValues):
+            if ivIntersection(mpmath.mpi(fLow_val, fUpValues[k]), bi):
+                x_low = x[k]
+                #reducedIntervals.append(mpmath.mpi(x[k], x[k+1]))
+                break
+        for k, fLow_val in enumerate(reversed(fLowValues)):
+            k_up = len(fLowValues)-1-k
+            if ivIntersection(mpmath.mpi(fLow_val, fUpValues[k_up]), bi):
+                x_up = x[k_up+1]
+                break
+        if x_low and x_up:  reducedIntervals.append(mpmath.mpi(x_low,x_up))   
+    return joinIntervalSet(reducedIntervals, relEpsX, precision)
+
+
+def reduceNonMonotoneIntervalsOld(args):
+    """ reduces non monotone intervals by simply calculating function values for
     interval segments of a discretized variable interval and keeps those segments
     that intersect with bi. The discretization resolution is defined in dict_options.
 
@@ -3109,7 +3189,7 @@ def reduceNonMonotoneIntervals(args):
 
     for curNonMonZone in nonMonotoneZone:
         curInterval = convertIntervalBoundsToFloatValues(curNonMonZone)
-        x = numpy.linspace(curInterval[0], curInterval[1], int(resolution))
+        x = numpy.linspace(curInterval[0], curInterval[1], int(resolution)+1)
 
         fLowValues, fUpValues = getFunctionValuesIntervalsOfXList(x, f.g_mpmath[i], 
                                                                   xBounds, i)       
@@ -3702,7 +3782,8 @@ def identify_function_with_no_solution(output, functions, xBounds, dict_options)
     """
     for f in functions:
         if not 0 in eval_fInterval(f, f.f_mpmath[0], xBounds, f.f_aff[0],
-                                   dict_options["tight_bounds"]):         
+                                   dict_options["tight_bounds"],
+                                   dict_options["resolution"]):         
             output["noSolution"] = FailedSystem(f.f_sym, f.x_sym[0])
             output["xAlmostEqual"] = False 
             output["xSolved"] = False
@@ -3728,10 +3809,12 @@ def solutionInFunctionRange(functions, xBounds, dict_options):
         
         if dict_options["Affine_arithmetic"]: 
             fInterval = eval_fInterval(f, f.f_mpmath[0], [xBounds[i] for i in f.glb_ID], f.f_aff[0],
-                                       dict_options["tight_bounds"])
+                                       dict_options["tight_bounds"],
+                                       dict_options["resolution"])
         else:
             fInterval = eval_fInterval(f, f.f_mpmath[0], [xBounds[i] for i in f.glb_ID],False, 
-                                       dict_options["tight_bounds"])
+                                       dict_options["tight_bounds"],
+                                       dict_options["resolution"])
 
         if not(fInterval.a<=0+absTol and fInterval.b>=0-absTol):
             return False

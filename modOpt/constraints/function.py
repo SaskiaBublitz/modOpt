@@ -55,6 +55,7 @@ class Function:
         
         self.f_sym = f_sym
         self.x_sym = list(f_sym.free_symbols)
+        self.var_count = [self.f_sym.count(x) for x in self.x_sym]
         self.glb_ID = self.get_glb_ID(x_symbolic)
         self.g_sym, self.b_sym = self.get_g_b_functions()
         self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions(dfdx)
