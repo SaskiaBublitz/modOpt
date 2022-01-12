@@ -85,6 +85,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     dict_options["tear_id"] = 0
     dict_options["splitvar_id"] = -1
     dict_options["disconti"] = [False] * len(model.xBounds)
+    #dict_options["solvedByUniqueRootTest"] = [False] * len(model.xBounds)
     dict_options["xAlmostEqual"] = [False] * len(model.xBounds)
     dict_options["xSolved"] = [False] * len(model.xBounds)
     os.makedirs(dict_options["save_path"], exist_ok=True)
@@ -123,13 +124,13 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
                                                 sampling_options, solv_options)
         
         if len(model.xBounds) > 1: 
-            dict_options["mean_residual"] = analysis.calc_residual(model)
+            dict_options["mean_residual"] = analysis.calc_residual(model) 
         dict_options["xAlmostEqual"]  = [item for sublist in output["xAlmostEqual"] 
                                          if sublist != [] 
                                          for item in sublist if item != []]
         dict_options["xSolved"]  = [item for sublist in output["xSolved"] 
                                     if sublist != [] 
-                                    for item in sublist if item != []]              
+                                    for item in sublist if item != []]             
         timeMeasure.append(time.time() - tic)
         num_solved.append(output["num_solved"])
              
@@ -158,8 +159,21 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
                                                   dict_options["xSolved"])            
             model.complete_parent_boxes = output["complete_parent_boxes"]
         
-        if len(model.xBounds) > 1: change_order_of_boxes_residual(model, output, 
-                                                                  dict_options) 
+        if len(model.xBounds) > 1: 
+            change_order_of_boxes_residual(model, output, dict_options) 
+            # validBounds = [iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options) for x in model.xBounds]
+            # if not all(validBounds):
+                
+            #     for i,val in enumerate(validBounds):
+            #         if not val: 
+            #             model.xBounds.pop(i)
+            #             dict_options["xAlmostEqual"].pop(i)
+            #             dict_options["disconti"].pop(i)
+            #             dict_options["xSolved"].pop(i)
+            #             dict_options["mean_residual"].pop(i)
+            #             model.complete_parent_boxes.pop(i)
+                    
+            # print(model.xBounds)
         dict_options["disconti"] = output["disconti"]        
         continue
                 
@@ -175,8 +189,11 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
                                                                        model.xBounds[0], 
                                                                        dict_options)
     else:
+      if all(dict_options["xSolved"]): 
+          validXBounds, res_solver["unified"] = iNes_procedure.unify_boxes(validXBounds)
       newModel.setXBounds(validXBounds)
       res_solver["Model"] = newModel
+      
     storage.store_time(npzFileName, timeMeasure, iterNo)
     storage.store_solved(npzFileName, num_solved, iterNo+1) 
     res_solver["iterNo"] = iterNo
@@ -213,9 +230,6 @@ def change_order_of_boxes_residual(model, output, dict_options):
     sorted_residual = enumerate(list(dict_options["mean_residual"]))
     sorted_index_value = sorted(sorted_residual, key=operator.itemgetter(1))
     order_all = [index for index, value in sorted_index_value]
-    #sorted_residual.sort()
-    #order_all = [dict_options["mean_residual"].index(residual) for 
-    #             residual in sorted_residual]
     model.xBounds = [model.xBounds[new_pos] for new_pos in order_all]
     dict_options["disconti"] = [output["disconti"][new_pos] 
                                 for new_pos in order_all]

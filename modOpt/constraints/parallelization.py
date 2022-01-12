@@ -139,7 +139,8 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None,
                   "xAlmostEqual": [xAlmostEqual],
                   "xSolved": [xSolved],
                   "disconti": disconti,
-                  "complete_parent_boxes":[model.complete_parent_boxes[k]]
+                  "complete_parent_boxes":[model.complete_parent_boxes[k]],
+                  "uniqueSolutionInBox": True
             }
         model.cut = False
     elif xAlmostEqual and not disconti:    
@@ -181,26 +182,45 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None,
             output = iNes_procedure.contractBox(xBounds, model, 
                                         boxNo, dict_options)
         
-        output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
+            output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
                                            [ model.complete_parent_boxes[k]])   
         
-        if output["xSolved"][0] and len(output["xNewBounds"]) == 1:
-            model.xBounds[k] = output["xNewBounds"][0]
+        # if (True in output["xSolved"] and len(output["xNewBounds"]) == 1 
+        #     and dict_options["hybrid_approach"] and output.__contains__("box_has_unique_solution")):
+        #     #if not "FoundSolutions" in dict_options.keys():  
+        #     model.xBounds[k] = output["xNewBounds"][0]
+        #     num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
+        #                                                       dict_options, 
+        #                                                       sampling_options, 
+        #                                                       solv_options)        
+        
+        #     if num_solved:    
+        #          if not iNes_procedure.test_for_root_inclusion(output["xNewBounds"][0], 
+        #                                  dict_options["FoundSolutions"], 
+        #                                  dict_options["absTol"]):
+        #              output["uniqueSolutionInBox"]= True
+        
+        # if (True in output["xSolved"] and len(output["xNewBounds"]) == 1 
+        #     and dict_options["hybrid_approach"]):
+        #     model.xBounds[k] = output["xNewBounds"][0]
 
-            num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
-                                                                  dict_options, 
-                                                                  sampling_options, 
-                                                                  solv_options) 
-            
-            if num_solved:    
-                if not iNes_procedure.test_for_root_inclusion(output["xNewBounds"][0], 
-                                        dict_options["FoundSolutions"], 
-                                        dict_options["absTol"]):
-                    num_solved = False
+        #     num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
+        #                                                      dict_options, 
+        #                                                      sampling_options, 
+        #                                                      solv_options) 
+        # elif (True in output["xSolved"] and len(output["xNewBounds"]) == 1 and 
+        #         not output.__contains__("box_has_unique_solution")):
+        #         output["xSolved"][0]=False
+            # if num_solved:    
+            #     if not iNes_procedure.test_for_root_inclusion(output["xNewBounds"][0], 
+            #                             dict_options["FoundSolutions"], 
+            #                             dict_options["absTol"]):
+            #         output["xSolved"][0] = False
             #if not num_solved: 
             #    output["xSolved"][0] = False
                 #model.cut = True
-        elif all(output["xAlmostEqual"]) and not all(output["xSolved"]): 
+        if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) and 
+            dict_options["hybrid_approach"]): 
 
             if not sampling_options ==None and not solv_options == None:
                 num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
@@ -212,6 +232,7 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None,
                         newSol = [dict_options["FoundSolutions"][i] 
                                   for i in range(solNo, 
                                                  len(dict_options["FoundSolutions"]))] 
+
                     
     for box in output["xNewBounds"]:
         allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
@@ -219,14 +240,21 @@ def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None,
         results['%d' %k] = ([], output["noSolution"],[],[],[],[],[], False, [])
         
     elif output.__contains__("uniqueSolutionInBox"):
-        results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
+        results['%d' %k] = (allBoxes, [True], 
                             [True],
                             dict_options["tear_id"], 
                             num_solved,  
                             len(output["xNewBounds"])*[output["disconti"]],
                             output["complete_parent_boxes"], model.cut, newSol)        
         
-    else:        
+    # elif (not output.__contains__("box_has_unique_solution") and True in output["xSolved"] ):
+    #     results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
+    #                         [False],
+    #                         dict_options["tear_id"], 
+    #                         num_solved, 
+    #                         len(output["xNewBounds"])*[output["disconti"]],
+    #                         output["complete_parent_boxes"], model.cut, newSol)
+    else:
         results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
                             output["xSolved"],
                             dict_options["tear_id"], 
@@ -579,12 +607,11 @@ def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
    
     nl = max(0, min(len(not_solved_but_complete), maxBoxNo - len(xAlmostEqual)))
     
-    
     for i in range(nl): ready_for_reduction[not_solved_but_complete[i]] = True
     for i in incomplete: ready_for_reduction[i] = True
     
     return ready_for_reduction
-    
+
 
 def convertListToMpi(listWithIntervalBounds):
     """ converts list with intervals lists into lists with intervals in the

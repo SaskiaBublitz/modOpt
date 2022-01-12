@@ -112,7 +112,9 @@ def writeResults(dict_options, dict_variables, res_solver):
     t = res_solver["time"]
     iterNo = res_solver["iterNo"]
     fileName = dict_options["fileName"] 
-    
+    if "unified" in res_solver.keys(): 
+        k=0
+        res_unified = res_solver["unified"]
     if dict_variables[list(dict_variables)[0]][0] != []:
         initKey = list(dict_variables)[0]
     
@@ -120,7 +122,19 @@ def writeResults(dict_options, dict_variables, res_solver):
         for i in range(0, len(dict_variables[initKey][0])):
             res_file = open(''.join([fileName,"_", str(i+1),".txt"]), "w") 
             
-            res_file.write("***** %s th Set of Initial Values and Bounds*****\n\n"%(i+1))
+            res_file.write("***** %s th Set of Reduced Bounds*****\n\n"%(i+1))
+            if "unified" in res_solver.keys():
+                if res_unified["boxes_unified"][i]:
+                    res_file.write("Boxes have been unified, as each subbox solved the system in the set tolerances:\n")                   
+                    epsilon_uni = res_unified["epsilon_uni"][k]
+                    variable = res_solver["Model"].xSymbolic[res_unified["var_id"][k]]
+                    res_file.write("relTol = %s \nabsTol = %s \n"%(dict_options["relTol"], 
+                                                                  dict_options["absTol"]))
+                    res_file.write("But variable %s only fulfills:\ntol = %s \n"%(variable, epsilon_uni))
+                    res_file.write("for tol = relTol = absTol = w(interval(%s)/(1+|interval(%s)|)\n\n"%(variable,
+                                                                                                variable))
+                    
+                    k+=1
             if res_solver["Model"].failed:
                 res_file.write("!!! Caution: Variable Reduction failed !!! \n Output equals the last reducable interval set.\n\n")
                 

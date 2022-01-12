@@ -9,8 +9,7 @@ import sympy
 import mpmath
 import pyibex
 import itertools
-from modOpt.constraints import affineArithmetic
-from modOpt.constraints import parallelization
+from modOpt.constraints import affineArithmetic,parallelization
 #from modOpt.constraints import function
 from modOpt.constraints.FailedSystem import FailedSystem
 from modOpt.decomposition import MC33
@@ -60,9 +59,8 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     xAlmostEqual = dict_options["xAlmostEqual"]
     disconti = dict_options["disconti"]
     xSolved = dict_options["xSolved"]
-
     cut = []
-    dict_options["boxNo"] = len(model.xBounds)
+    dict_options["boxNo"] = len(model.xBounds) 
     #boxNo = len(model.xBounds)
     nl = len(model.xBounds)
     dict_options["ready_for_reduction"] = get_index_of_boxes_for_reduction(xSolved, 
@@ -76,6 +74,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
         if xSolved[k]: 
             output = {}
             xSolved[k] = [True]
+            #dict_options["solvedByUniqueRootTest"][k]=[dict_options["solvedByUniqueRootTest"][k]]
             xAlmostEqual[k] = [True]
             allBoxes.append(xBounds)
             results["disconti"] += [disconti[k]]
@@ -106,6 +105,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
             results["disconti"] += [disconti[k]] 
             results["complete_parent_boxes"]  += [model.complete_parent_boxes[k]]
             cut += [False]
+            #dict_options["solvedByUniqueRootTest"][k]=[dict_options["solvedByUniqueRootTest"][k]]
             continue
 
         else:
@@ -123,39 +123,63 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                 
             results["complete_parent_boxes"] += (len(output["xNewBounds"]) * 
                                                  [ model.complete_parent_boxes[k]])
-            if (output["xSolved"][0] and len(output["xNewBounds"]) == 1 
-                and dict_options["hybrid_approach"]):
-                if not "FoundSolutions" in dict_options.keys():  
-                     model.xBounds[k] = output["xNewBounds"][0]
-                     num_solved = lookForSolutionInBox(model, k, dict_options, 
-                                                      sampling_options, solv_options)
-                else: num_solved = True
-                if num_solved:    
-                    if not test_for_root_inclusion(output["xNewBounds"][0], 
-                                            dict_options["FoundSolutions"], 
-                                            dict_options["absTol"]):
-                        num_solved = False
+                
+            # if (True in output["xSolved"] and len(output["xNewBounds"]) == 1 
+            #     and dict_options["hybrid_approach"] and output.__contains__("box_has_unique_solution")):
+            #     #if not "FoundSolutions" in dict_options.keys():  
+            #     model.xBounds[k] = output["xNewBounds"][0]
+            #     results["num_solved"] = lookForSolutionInBox(model, k, 
+            #                                                       dict_options, 
+            #                                                       sampling_options, 
+            #                                                       solv_options)
+            #     #else: num_solved = True
+            #     if results["num_solved"]:    
+            #          if not test_for_root_inclusion(output["xNewBounds"][0], 
+            #                                  dict_options["FoundSolutions"], 
+            #                                  dict_options["absTol"]):
+            #              output["uniqueSolutionInBox"]= True
                 #if not num_solved: 
                 #    output["xSolved"][0] = False
-                                                                                                              
-            elif (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
+            #elif(output["xSolved"][0] and len(output["xNewBounds"]) == 1):
+                #     if not test_for_root_inclusion(output["xNewBounds"][0], 
+                #                             dict_options["FoundSolutions"], 
+                #                             dict_options["absTol"]):
+                #         output["xSolved"][0]  = False                                                                                                          
+
+
+            if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
                   and dict_options["hybrid_approach"]):  
 
                 if not sampling_options ==None and not solv_options == None:
-                    num_solved = lookForSolutionInBox(model, k, dict_options, 
-                                                      sampling_options, solv_options)
-                    if num_solved: results["num_solved"] = True
-                                
+                    results["num_solved"] = lookForSolutionInBox(model, k, 
+                                                                 dict_options, 
+                                                                 sampling_options, 
+                                                                 solv_options)
+                    #if num_solved: results["num_solved"] = True
+        
+        # if (True in output["xSolved"] and len(output["xNewBounds"]) == 1 and 
+        #         not output.__contains__("box_has_unique_solution") and not
+        #         output.__contains__("uniqueSolutionInBox") ):
+        #         output["xSolved"][0]=False                                
         if output.__contains__("noSolution") :
             saveFailedIntervalSet = output["noSolution"]
             dict_options["boxNo"] = len(allBoxes) + (nl - (k+1))
+            #dict_options["solvedByUniqueRootTest"][k] = []
             xAlmostEqual[k]=[]
             xSolved[k]=[]
             continue
         
-        if output.__contains__("uniqueSolutionInBox"):
-            xSolved[k] = output["xSolved"]
-    
+        if output.__contains__("uniqueSolutionInBox"):   # Successful unique solution test + solution numerically found
+            xSolved[k] = True#output["xSolved"][0]
+        
+        # elif not (output.__contains__("box_has_unique_solution")): # Unique solution test must be fulfilled before box is tagged as solved
+        #     xSolved[k] = False * len(output["xNewBounds"])
+        else: 
+            xSolved[k] = output["xSolved"][0]
+        
+        
+        #else: dict_options["solvedByUniqueRootTest"][k] = [False] * len(output["xNewBounds"])
+        
         dict_options["boxNo"] = (len(allBoxes) + len(output["xNewBounds"]) + 
                                  (nl - (k+1)))          
         updateSetOfBoxes(model, allBoxes, xBounds, output, dict_options["boxNo"], 
@@ -218,7 +242,7 @@ def updateSetOfBoxes(model, allBoxes, xBounds, output, boxNo, k, dict_options, r
         for box in output["xNewBounds"]: allBoxes.append(numpy.array(box, 
                                                                      dtype=object))
         results["disconti"] += len(output["xNewBounds"])*[output["disconti"]]
-      
+        
  
     else:# boxNo > dict_options["maxBoxNo"]:
         print("Warning: Algorithm stops the current box reduction because the current number of boxes is ",
@@ -364,8 +388,9 @@ def splitBox(consistentBox, model, dict_options, k, boxNo_split):
         xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
                            numpy.array(consistentBox[0]), boxNo_split, 
                            dict_options)
-        if numpy.isclose(float(mpmath.mpf(xNewBounds[0][model.tearVarsID[dict_options["tear_id"]-1]].a)),
+        if isclose_ordered(float(mpmath.mpf(xNewBounds[0][model.tearVarsID[dict_options["tear_id"]-1]].a)),
                            float(mpmath.mpf(xNewBounds[0][model.tearVarsID[dict_options["tear_id"]-1]].b)), 
+                           0.0,
                            dict_options["absTol"]):
             dict_options["split_Box"] ="forecastSplit"
             xNewBounds = getBestSplit(consistentBox, model, k, dict_options)
@@ -1292,28 +1317,26 @@ def reduceBox(xBounds, model, boxNo, dict_options):
     """  
     subBoxNo = 1
     output = {}
-    output["disconti"] = False          
+    output["disconti"] = False         
     xNewBounds = list(xBounds)
-    x_old = list(xBounds)
     xUnchanged = True
     xSolved = True
     dict_options_temp = dict_options.copy()
     newtonMethods = {'newton', 'detNewton', '3PNewton', 'mJNewton'}
     hc_methods = {'HC4'}
-    u_solution_newton, u_solution_hc = set_unique_solution_true(dict_options, 
+    bc_methods = {'bnormal'}
+    dict_options_temp["x_old"] = list(xBounds)
+    (dict_options_temp["unique_nwt"], 
+     dict_options_temp["unique_hc"], 
+     dict_options_temp["unique_bc"]) = set_unique_solution_true(dict_options, 
                                                                 newtonMethods, 
-                                                                hc_methods)
-
+                                                                hc_methods, 
+                                                                bc_methods)
+                                               
     # if HC4 is active
     if dict_options['hc_method']=='HC4':
-        output, empty = doHC4(model, xBounds, xNewBounds, output, dict_options)
-        
-        for i, x_new in enumerate(xNewBounds):
-            if not checkUniqueness([x_new], x_old[i], dict_options["relTol"],
-                                  dict_options["absTol"]):
-                u_solution_hc = False
-                break
-        
+        (output, empty) = doHC4(model, xBounds, xNewBounds, 
+                                             output, dict_options_temp)        
         if empty: return output
         xBounds = list(xNewBounds)
                  
@@ -1325,9 +1348,9 @@ def reduceBox(xBounds, model, boxNo, dict_options):
    
         # if any newton method is active       
         if not variableSolved(y, dict_options_temp) and dict_options['newton_method'] in newtonMethods:
-            y, unique = iv_newton(model, xBounds, i, dict_options_temp)
-            if not unique: 
-                u_solution_newton = False
+            y = iv_newton(model, xBounds, i, dict_options_temp)
+            #if not unique: 
+            #    dict_options_temp["unique_nwt"] = False
                
             if len(y) > 1: 
                 y = prove_list_for_root_inclusion(y, xBounds, i, model.functions, 
@@ -1339,10 +1362,20 @@ def reduceBox(xBounds, model, boxNo, dict_options):
             
         # if bnormal is active
         if not variableSolved(y, dict_options_temp) and dict_options['bc_method']=='bnormal':
+            if dict_options_temp["unique_bc"]: unique_test_bc = True
+            else: unique_test_bc = False            
+            f_for_unique_test_bc = False
+            
             for j in model.dict_varId_fIds[i]:
                 
                 y = do_bnormal(model.functions[j], xBounds, y, i, 
                                    dict_options_temp)
+                if unique_test_bc:
+                    (f_for_unique_test_bc, 
+                     dict_options_temp["unique_bc"]) = update_for_unique_test(j, 
+                                                                              model.dict_varId_fIds[i][-1],
+                                                                              f_for_unique_test_bc,
+                                                                              dict_options_temp["unique_bc"])
                 if "disconti_iv" in dict_options_temp.keys() and dict_options["consider_disconti"]:
                     output["disconti"] = True
                     del dict_options_temp["disconti_iv"]  
@@ -1354,51 +1387,34 @@ def reduceBox(xBounds, model, boxNo, dict_options):
                     return output
                 elif len(y)==1 and y[0]!=xBounds[i]: xBounds[i] = y[0]
                 
-                if variableSolved(y, dict_options_temp): break
+                if variableSolved(y, dict_options_temp): 
+                    if f_for_unique_test_bc: dict_options_temp["unique_bc"] = True
+                    break
+            if f_for_unique_test_bc: 
+                dict_options_temp["unique_bc"] = True
+                #f_for_unique_test_bc = False
 
         if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:
             y = [mpmath.mpi(min([yi.a for yi in y]),max([yi.b for yi in y]))]
             output["disconti"]=True
         # Update quantities
         xSolved, xUnchanged, subBoxNo = update_quantities(y, i, subBoxNo, xNewBounds, 
-                                                          x_old, xUnchanged, xSolved, 
+                                                          xUnchanged, xSolved, 
                                                           dict_options, dict_options_temp)
-    # for i, x_new in enumerate(xNewBounds):
-    #     if len(x_new) > 1: break
-    #     else:
-    #         if not checkUniqueness([x_new[0]], xBounds[i], dict_options["relTol"],
-    #                                dict_options["absTol"]): 
-    #             u_solution_bc = False
-    #             break
-        
     # Uniqueness test of solution:
     xNewBounds = list(itertools.product(*xNewBounds))
-    if (u_solution_newton or u_solution_hc) and "FoundSolutions" in dict_options.keys(): 
+    if (dict_options_temp["unique_nwt"] or dict_options_temp["unique_hc"] or 
+        dict_options_temp["unique_bc"]) and "FoundSolutions" in dict_options.keys(): 
         if test_for_root_inclusion(xNewBounds[0], dict_options["FoundSolutions"], 
                                    dict_options_temp["absTol"]):
             output["uniqueSolutionInBox"] = True
             xSolved = True
             xUnchanged = True
+        else: output["box_has_unique_solution"] = True
+    elif (dict_options_temp["unique_nwt"] or dict_options_temp["unique_hc"] or 
+          dict_options_temp["unique_bc"]):# and not xUnchanged:
+        output["box_has_unique_solution"] = True
 
-        # for solution in dict_options["FoundSolutions"]:
-        #     xFound = numpy.array([False]*len(solution))
-        #     for i in range(len(solution)):
-        #         if solution[i] in xNewBounds[0][i]: xFound[i] = True
-        #         elif (numpy.isclose(float(mpmath.mpf(xNewBounds[0][i].a)),
-        #                                  solution[i], dict_options["absTol"])
-        #                    or numpy.isclose(float(mpmath.mpf(xNewBounds[0][i].b)),
-        #                                  solution[i], dict_options["absTol"])):
-        #             xFound[i] = True
-        #             print("Warning: Inaccuracy possible.")
-        #         else: break
-
-        #     if xFound.all():    
-        #         print("Successful Root Inclusion test")                
-        #         output["uniqueSolutionInBox"] = True
-        #         xSolved = True
-        #         xUnchanged = True
-        #         break       
-    # Prepare output dictionary for return
     return prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged)
 
 
@@ -1421,15 +1437,15 @@ def test_for_root_inclusion(box, solutions, absTol):
         solved = True
         for i, x in enumerate(solution):
             if x in box[i]: continue
-            elif (numpy.isclose(float(mpmath.mpf(box[i].a)),x, absTol) or
-                  numpy.isclose(float(mpmath.mpf(box[i].b)),x, absTol) ):
+            elif (isclose_ordered(float(mpmath.mpf(box[i].a)),x, 0.0, absTol) or
+                  isclose_ordered(float(mpmath.mpf(box[i].b)),x, 0.0, absTol) ):
                 print("Warning: Inaccuracy possible.")
                 continue
             else: 
                 solved = False 
                 break
         if solved: 
-            print("Successful Root Inclusion test")
+            print("Successful Root Inclusion test by numerical iteration")
             return True
     return False
     
@@ -1459,7 +1475,7 @@ def prove_list_for_root_inclusion(interval_list, box, i, functions, dict_options
     return interval_list
 
 
-def set_unique_solution_true(dict_options, newtonMethods, hc_methods):
+def set_unique_solution_true(dict_options, newtonMethods, hc_methods, bc_methods):
     """ initializes the parameter unique_solution for root inclusion tests in
     a box. It is set to False if it is not used in the user-specified run.
     
@@ -1467,6 +1483,7 @@ def set_unique_solution_true(dict_options, newtonMethods, hc_methods):
         :dict_options:      dictionary with chosed reduction algorithms
         :newtonMethods:     dictionary with all possible I-Newton methods
         :hc_methods:        dictionary with all possible HC-methods
+        :hc_methods:        dictionary with all possible BC-methods
         
     Returns:
         :unique_solution_newton: boolean if root inclusion test in I-Newton
@@ -1478,9 +1495,9 @@ def set_unique_solution_true(dict_options, newtonMethods, hc_methods):
     else: unique_solution_newton = False
     if dict_options['hc_method'] in hc_methods: unique_solution_hc = True
     else: unique_solution_hc = False
-    #if dict_options['bc_method'] == "bnormal": unique_solution_bc = True
-    #else: unique_solution_bc = False    
-    return unique_solution_newton, unique_solution_hc
+    if dict_options['bc_method'] in bc_methods: unique_solution_bc = True
+    else: unique_solution_bc = False    
+    return unique_solution_newton, unique_solution_hc, unique_solution_bc
 
 
 def prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged):   
@@ -1509,7 +1526,7 @@ def prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged):
     return output
 
 
-def update_quantities(y, i, subBoxNo, xNewBounds, xBounds, xUnchanged, xSolved,
+def update_quantities(y, i, subBoxNo, xNewBounds, xUnchanged, xSolved,
                       dict_options, dict_options_temp):
     """ updates all quantities after box reductions
     
@@ -1518,7 +1535,6 @@ def update_quantities(y, i, subBoxNo, xNewBounds, xBounds, xUnchanged, xSolved,
         :i:                 id of currently reduced variable as int
         :subBoxNo:          current number of sub-boxes as int
         :xNewBounds:        list with already reduced variable bounds
-        :xBounds:           list with former box bounds
         :xUnchanged:        list with boolean if box intervals still change
         :xSolved:           list with boolean if box intervals are solved
         :dict_options:      dictionary with box reduction settings
@@ -1535,8 +1551,10 @@ def update_quantities(y, i, subBoxNo, xNewBounds, xBounds, xUnchanged, xSolved,
     subBoxNo = subBoxNo * len(y) 
     xNewBounds[i] = y
     if not variableSolved(y, dict_options): xSolved = False
-    if xUnchanged: xUnchanged = checkXforEquality(xBounds[i], y, xUnchanged, 
-                                   {"absTol":0.001, 'relTol':0.001})  
+    if xUnchanged: xUnchanged = checkXforEquality(dict_options_temp["x_old"][i], 
+                                                  y, xUnchanged, 
+                                   {"absTol":dict_options["absTol"], 
+                                    'relTol':dict_options["relTol"]})  
     
     dict_options_temp["relTol"] = dict_options["relTol"]
     dict_options_temp["absTol"] = dict_options["absTol"]  
@@ -1559,9 +1577,8 @@ def do_bnormal(f, xBounds, y, i, dict_options):
 
     """
     box = [xBounds[j] for j in f.glb_ID]
-    y = setOfIvSetIntersection([y, reduceXIntervalByFunction(box, f,
-                                                          f.glb_ID.index(i),
-                                                          dict_options)])         
+    x_new = reduceXIntervalByFunction(box, f,f.glb_ID.index(i), dict_options)
+    y = setOfIvSetIntersection([y, x_new])         
     return y
 
 
@@ -1596,10 +1613,10 @@ def doHC4(model, xBounds, xNewBounds, output, dict_options):
             y = ivIntersection(xBounds[i], HC4IV_mpmath)
             if y == [] or y == [[]]:
 
-                if (numpy.isclose(float(mpmath.mpf(xBounds[i].b)), 
-                                 HC4_IvV[i][0], dict_options["absTol"]) or 
-                    numpy.isclose(float(mpmath.mpf(xBounds[i].a)), 
-                                  HC4_IvV[i][1], dict_options["absTol"])):    
+                if (isclose_ordered(float(mpmath.mpf(xBounds[i].b)), 
+                                 HC4_IvV[i][0],0.0, dict_options["absTol"]) or 
+                    isclose_ordered(float(mpmath.mpf(xBounds[i].a)), 
+                                  HC4_IvV[i][1], 0.0, dict_options["absTol"])):    
                     y = mpmath.mpi(min(xBounds[i].a,HC4IV_mpmath.a), 
                                    max(xBounds[i].b,HC4IV_mpmath.b))                                      
             xNewBounds[i] = y
@@ -1641,13 +1658,22 @@ def checkIntervalAccuracy(xNewBounds, i, dict_options):
         notdegenerate = xNewBounds[i].delta > 1.0e-15
         if accurate and notdegenerate:
             if isinstance(xNewBounds[i], mpmath.ctx_iv.ivmpf):
-                dict_options["relTol"] = 0.1 * xNewBounds[i].delta
-                dict_options["absTol"] = min(abs(0.1 * float(mpmath.mpf(xNewBounds[i].a))), 
-                                             dict_options["absTol"])
+                dict_options["relTol"] = min(0.1 * xNewBounds[i].delta/
+                                             (1.0+float(mpmath.mpf(
+                                                 abs(xNewBounds[i]).b))),
+                                             0.1*dict_options["relTol"])
+                dict_options["absTol"] = min(0.1 * float(mpmath.mpf(
+                    xNewBounds[i].delta)), 
+                                             0.1*dict_options["absTol"])
             else:  
-                dict_options["relTol"] = 0.1 * (xNewBounds[i][1] - xNewBounds[i][0])
-                dict_options["absTol"] = min(0.1 * abs(xNewBounds[i][0]), 
-                                                  dict_options["absTol"])   
+                dict_options["relTol"] = min(0.1 * (xNewBounds[i][1] - 
+                                                    xNewBounds[i][0])/
+                                             (1+max(abs(xNewBounds[i][0]), 
+                                                    abs(xNewBounds[i][1]))),
+                                             0.1*dict_options["relTol"])
+                dict_options["absTol"] = min(0.1 * abs(xNewBounds[i][1]- 
+                                                       xNewBounds[i][0]), 
+                                                  0.1*dict_options["absTol"])   
                 
         if isinstance(dict_options["relTol"], mpmath.ctx_iv.ivmpf):
             dict_options["relTol"] = float(mpmath.mpf(dict_options["relTol"].a))
@@ -1691,9 +1717,9 @@ def checkXforEquality(xBound, xNewBound, xUnchanged, dict_options):
     """
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]
-    lb = numpy.isclose(float(mpmath.mpf(xNewBound[0].a)), 
+    lb = isclose_ordered(float(mpmath.mpf(xNewBound[0].a)), 
                        float(mpmath.mpf(xBound.a)), relEpsX, absEpsX)
-    ub = numpy.isclose(float(mpmath.mpf(xNewBound[0].b)), 
+    ub = isclose_ordered(float(mpmath.mpf(xNewBound[0].b)), 
                        float(mpmath.mpf(xBound.b)), relEpsX, absEpsX)
         
     if not lb or not ub and xUnchanged: xUnchanged = False   
@@ -1750,9 +1776,10 @@ def checkVariableBound(newXInterval, dict_options):
 
     """
     absEpsX = dict_options["absTol"]
-    relEpsX = dict_options["relTol"]    
-    if numpy.isclose(float(mpmath.mpf(newXInterval.a)), 
-                     float(mpmath.mpf(newXInterval.b)), relEpsX, absEpsX):
+    relEpsX = dict_options["relTol"]   
+    iv = convertIntervalBoundsToFloatValues(newXInterval)
+
+    if isclose_ordered(iv[0], iv[1], relEpsX, absEpsX):
         return True
 
     
@@ -1776,19 +1803,42 @@ def reduceXIntervalByFunction(xBounds, f, i, dict_options):
     gxInterval, dgdxInterval, bInterval = calculateCurrentBounds(f, i, xBounds, 
                                                                  dict_options)
     if (gxInterval == [] or dgdxInterval == [] or 
-        bInterval == [] or gxInterval in bInterval): return [xBounds[i]]
+        bInterval == [] or gxInterval in bInterval): 
+        dict_options["unique_bc"] = False
+        return [xBounds[i]]
     xUnchanged = checkXforEquality(gxInterval, [dgdxInterval*xBounds[i]], 
                                    xUnchanged, dict_options)
     
     if f.deriv_is_constant[i] and xUnchanged : # Linear Case -> solving system directly f.x_sym[i] in f.dgdx_sym[i].free_symbols
-        return getReducedIntervalOfLinearFunction(dgdxInterval, i, xBounds, 
+        x_new = getReducedIntervalOfLinearFunction(dgdxInterval, i, xBounds, 
                                                   bInterval)
              
     else: # Nonlinear Case -> solving system by interval nesting
-        return getReducedIntervalOfNonlinearFunction(f, dgdxInterval, i, 
+        x_new = getReducedIntervalOfNonlinearFunction(f, dgdxInterval, i, 
                                                      xBounds, bInterval, 
                                                      dict_options)
+        
+    if dict_options["unique_bc"]:
+        if len(x_new)== 1 and x_new != [[]]:
+            unique = checkUniqueness(x_new, dict_options["x_old"][i],
+                                     dict_options["relTol"],
+                                     dict_options["absTol"])
+            dict_options["unique_bc"] = unique
+        else: 
+            dict_options["unique_bc"] = False
+            
+    return x_new
 
+def check_uniqueness_bnormal(x_new, box, i, f, dict_options):
+    if len(x_new) != 1 or x_new == [[]]: return False
+    elif x_new[0] == box[i]: return False
+    else:
+        box[i] = x_new[0]
+        dgdx = eval_fInterval(f, f.dgdx_mpmath[i], box, False,
+                                          dict_options["tight_bounds"],
+                                          dict_options["resolution"])
+        if dgdx >= 0 or dgdx < 0: return True
+        else: return False
 
 def lambdifyToAffapyAffine(x, f):
     """Converting operations of symoblic equation system f (simpy) to
@@ -2048,23 +2098,8 @@ def checkIntervalWidth(intervals, absEpsX, relEpsX):
     Return: list of intervals with a higher width than absEpsX and relEpsX
     
     """
-    return [iv for iv in intervals if not (numpy.isclose(float(mpmath.mpf(iv.a)), 
+    return [iv for iv in intervals if not (isclose_ordered(float(mpmath.mpf(iv.a)), 
                             float(mpmath.mpf(iv.b)), relEpsX, absEpsX))]
-
-
-def checkAbsoluteTolerance(intervals, absEpsX):
-    """ checks if width of intervals is smaller than a given absolute tolerance 
-    absEpsX
-
-    Args:
-        :intervals:           set of intervals in mpmath.mpi-logic
-        :absEpsX:             absolute x tolerance
-
-    Return:
-        :reducedInterval:    list of intervals with a higher width than absEps
-
-    """
-    return [iv for iv in intervals if iv.delta > absEpsX]
 
 
 def getReducedIntervalOfLinearFunction(a, i, xBounds, bi):
@@ -2278,7 +2313,6 @@ def getReducedIntervalOfNonlinearFunction(f, dgdXInterval, i, xBounds, bi, dict_
             return orgXiBounds
     #reducedIntervals = joinIntervalSet(reducedIntervals, relEpsX, absEpsX)
     reducedIntervals = setOfIvSetIntersection([reducedIntervals, orgXiBounds])
-    
     return reducedIntervals
 
 
@@ -2580,12 +2614,21 @@ def convert_mpi_float(mpi):
     
 def check_bound_and_interval_accuracy(x, val, relEpsX, absEpsX):
     
-    if val[0] <= val[1] and numpy.isclose(val[0], val[1], relEpsX, absEpsX):
+    if val[0] <= val[1] and isclose_ordered(val[0], val[1], relEpsX, absEpsX):
         return True
-    elif numpy.isclose(x[0], x[1], relEpsX, absEpsX):
+    elif isclose_ordered(x[0], x[1], relEpsX, absEpsX):
         return True
     else:
         return False
+
+
+def isclose_ordered(a, b, relTol, absTol):
+    if abs(a) < abs(b): 
+        return numpy.isclose(a, b, relTol, absTol)
+    else:
+        return numpy.isclose(b, a, relTol, absTol)
+    
+
     
     
 def monotoneIncreasingIntervalNesting(f, xBounds, i, bi, dict_options):
@@ -3153,7 +3196,7 @@ def reduceNonMonotoneIntervals(args):
             if ivIntersection(mpmath.mpi(fLow_val, fUpValues[k_up]), bi):
                 x_up = x[k_up+1]
                 break
-        if x_low and x_up:  reducedIntervals.append(mpmath.mpi(x_low,x_up))   
+        if x_low!=None and x_up!=None:  reducedIntervals.append(mpmath.mpi(x_low,x_up))   
     return joinIntervalSet(reducedIntervals, relEpsX, precision)
 
 
@@ -3351,7 +3394,7 @@ def checkWidths(X, relEps, absEps):
     almostEqual = False * numpy.ones(len(X), dtype = bool)
     
     for i, x in enumerate(X):    
-         if numpy.isclose(float(mpmath.mpf(x.a)), float(mpmath.mpf(x.b)),
+         if isclose_ordered(float(mpmath.mpf(x.a)), float(mpmath.mpf(x.b)),
                           relEps, absEps): almostEqual[i] = True
 
     return almostEqual.all()
@@ -3394,11 +3437,9 @@ def iv_newton(model, box, i, dict_options):
     elif dict_options["preconditioning"] == "diag_inverse_centered":
         G_i, r_i, n_x_c, n_box, n_i = get_diag_precondition_centered(model, 
                                                                    box, i, x_c)   
-    elif dict_options["preconditioning"] == "all_functions":
-        y_old = box[i]
+    elif dict_options["preconditioning"] == "all_functions":     
         y_new = get_best_from_all_functions(model, box, i, dict_options, x_c)
-        return y_new, checkUniqueness(y_new, y_old, dict_options["relTol"],
-                                  dict_options["absTol"])
+        return y_new
     else:
         j = model.rowPerm[model.colPerm.index(i)]
         G_i, r_i, n_x_c, n_box, n_i = get_org_newton_system(model, box, i, j, x_c)
@@ -3410,8 +3451,7 @@ def iv_newton(model, box, i, dict_options):
     else:
         y_new = newton_step(r_i, G_i, n_x_c, n_box, n_i, dict_options)
         
-    return y_new, checkUniqueness(y_new, box[i],dict_options["relTol"],
-                                  dict_options["absTol"])
+    return y_new
 
 
 def get_best_from_all_functions(model, box, i, dict_options, x_c=None):
@@ -3430,26 +3470,69 @@ def get_best_from_all_functions(model, box, i, dict_options, x_c=None):
         :y_new:         list with reduced interval(s) of variable i
         
     """ 
-    y_new = [box[i]]
+    if dict_options["unique_nwt"]:
+        unique_test = True
+    else: unique_test = False
+    f_for_unique_test = False
+    
+    y_old = [box[i]]
     for j in model.fWithX[i]:           
         G_i, r_i, n_x_c, n_box, n_i = get_org_newton_system(model, box, i, j, x_c,
                                                             dict_options["newton_point"])      
         if dict_options["newton_point"] == "3P":
-            x_low = newton_step(r_i[0], G_i, n_x_c[0], n_box, n_i, dict_options)
-            x_up = newton_step(r_i[1], G_i, n_x_c[1], n_box, n_i, dict_options)
+            x_low, unique = newton_step(r_i[0], G_i, n_x_c[0], n_box, n_i, dict_options)
+            x_up, unique = newton_step(r_i[1], G_i, n_x_c[1], n_box, n_i, dict_options)
             if x_low == [] or x_up == []:
                 y_new = []
                 break
             y_new = setOfIvSetIntersection([[mpmath.mpi(x_low[0].a, x_up[0].b)], 
                                             y_new])
-        else:    
-            y_new = setOfIvSetIntersection([newton_step(r_i, G_i, n_x_c, n_box, 
-                                                     n_i, dict_options), y_new])
+        else:
+            y_new = newton_step(r_i, G_i, n_x_c, n_box, 
+                                                     n_i, dict_options)
+            
+            if unique_test:
+                (f_for_unique_test, 
+                 dict_options["unique_nwt"]) = update_for_unique_test(j, model.fWithX[i][-1],
+                                                                      f_for_unique_test,
+                                                                      dict_options["unique_nwt"])
+            
+            y_new = setOfIvSetIntersection([y_new, y_old])
+        #if not unique and unique_all: unique_all = False
         if y_new == []: break
         elif len(y_new)==1: box[i] = y_new[0]
-        
+        if f_for_unique_test: dict_options["unique_nwt"] = True
     return y_new
         
+
+def update_for_unique_test(j, nj, f_for_unique_test, unique):
+    """ this method turns the unique parameter to true in functions 
+    so that all functions' reduction steps will be investigated for fulfilling 
+    the unqiue solution criterion
+    
+    Args:
+        :j:                 index of currently reduced function
+        :nj:                index of last function that is used for variable 
+                            reduction
+        :f_for_unique_test: boolean that is true if a for the current variable
+                            a function for a successful unqiue solution test 
+                            has already been found, to save work unique is
+                            then turned False
+        :unique:            unique paramter that determines
+                            if uniqueness check shall be done in reduction step
+                            or not
+        
+    Reutrn:
+        :f_for_unique_test: updated boolean
+        :unqiue:            updated boolean
+        
+    """
+    if (not unique and not j==nj and not f_for_unique_test):
+                unique = True
+    elif unique:
+                f_for_unique_test = True
+                unique = False
+    return f_for_unique_test,unique
 
 def get_diag_precondition_centered(model, box, i, x_c):
     """ preconditions the i-th jacobian row and the i-th resiudal vector entry
@@ -3681,17 +3764,25 @@ def newton_step(r_i, G_i, x_c, box, i, dict_options):
         :y_new:         list with interval(s) after reduction of current 
                         variable                  
     """             
-    
     iv_sum = sum([G_i[j] * (box[j] - x_c[j]) for j in range(len(G_i)) if j!=i])
-    if numpy.isinf(r_i) or numpy.isnan(r_i): return [box[i]]  
+    if numpy.isinf(r_i) or numpy.isnan(r_i) or r_i == []: 
+        dict_options["unique_nwt"] = False
+        return [box[i]]
     try:
         quotient = ivDivision(mpmath.mpi(r_i + iv_sum), G_i[i])
         #N = [x_c[i] - l for l in quotient] 
         N = [x_c[i]*(1 - l/x_c[i]) for l in quotient] # because of round off errors
+        if dict_options["unique_nwt"]:
+            dict_options["unique_nwt"] = checkUniqueness(N, dict_options["x_old"][i], 
+                                                         dict_options["relTol"],
+                                                         dict_options["absTol"])
+        
         y_new = setOfIvSetIntersection([N, [box[i]]])
-    except: return [box[i]]
+    except: 
+        dict_options["unique_nwt"] = False
+        return [box[i]]
     
-    if y_new == []: return check_accuracy_newton_step(box[i], N, dict_options) 
+    if y_new == []: return check_accuracy_newton_step(box[i], N, dict_options)
     
     return y_new
 
@@ -3711,10 +3802,10 @@ def check_accuracy_newton_step(old_iv, new_iv, dict_options):
     """      
     if (isinstance(old_iv, mpmath.ctx_iv.ivmpf) and 
         isinstance(new_iv, mpmath.ctx_iv.ivmpf)):    
-        if(numpy.isclose(float(mpmath.mpf(old_iv.b)), 
-                         float(mpmath.mpf(new_iv.a)), dict_options["absTol"]) or
-           numpy.isclose(float(mpmath.mpf(old_iv.a)), 
-                         float(mpmath.mpf(new_iv.b)), dict_options["absTol"])):   
+        if(isclose_ordered(float(mpmath.mpf(old_iv.b)), 
+                         float(mpmath.mpf(new_iv.a)), 0.0, dict_options["absTol"]) or
+           isclose_ordered(float(mpmath.mpf(old_iv.a)), 
+                         float(mpmath.mpf(new_iv.b)), 0.0, dict_options["absTol"])):   
             return [mpmath.mpi(min(old_iv.a, new_iv.a), max(old_iv.b, 
                                                             new_iv.b))] 
     return []
@@ -3882,6 +3973,8 @@ def HC4(functions, xBounds, dict_options):
         
     """  
     x_HC4 = []
+    unique_x = [False]*len(xBounds)
+    
     for x in xBounds:
         if x.delta < dict_options["absTol"]: tol = dict_options["absTol"]
         else: tol = 0.0
@@ -3891,17 +3984,41 @@ def HC4(functions, xBounds, dict_options):
 
     for f in functions:
         sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])
+        
         currentIntervalVector = pyibex.IntervalVector(sub_box)
         f.f_pibex.contract(currentIntervalVector)
+        #cur_IV_mpi = [mpmath.mpi(iv) for iv in currentIntervalVector]
+        if (dict_options.__contains__("unique_hc") and 
+            dict_options.__contains__("x_old") and not all(unique_x)):
+            sub_box_old = [convertIntervalBoundsToFloatValues(
+                dict_options["x_old"][i]) for i in f.glb_ID]
+                
+            checkUniqueness_HC4(currentIntervalVector,sub_box_old, 
+                                         f.glb_ID,
+                                         unique_x,
+                                         dict_options["relTol"],
+                                         dict_options["absTol"])
+  
         sub_box = sub_box & currentIntervalVector
         if sub_box.is_empty(): # TODO: store currentIntervalVector and f in dict_options for error analysis
             dict_options["failed_subbox"] = pyibex.IntervalVector([x_HC4[i] for 
                                                                    i in f.glb_ID])
             dict_options["failed_function"] = f
+            dict_options["unique_hc"] = all(unique_x)
             return sub_box
         else:
             for i,val in enumerate(f.glb_ID): x_HC4[val] =  list(sub_box[i])
-    return pyibex.IntervalVector(x_HC4) 
+    dict_options["unique_hc"] = all(unique_x)
+    return pyibex.IntervalVector(x_HC4)
+
+def checkUniqueness_HC4(new_x, old_x, glb_ID,  unique_x, relEpsX,absEpsX):
+    for i,x in enumerate(new_x):
+        if x[0] > old_x[i][0] and x[1] < old_x[i][1] and not unique_x[glb_ID[i]]:
+            unique_x[glb_ID[i]] = True
+        elif isclose_ordered(x[0], x[1], relEpsX,absEpsX) and not unique_x[glb_ID[i]]:
+            unique_x[glb_ID[i]] = True
+    return True
+
         
 
 def checkUniqueness(new_x, old_x,relEpsX,absEpsX):
@@ -3922,7 +4039,7 @@ def checkUniqueness(new_x, old_x,relEpsX,absEpsX):
     for i,x in enumerate(new_x):
         if x.a > old_x.a and x.b < old_x.b:
             continue
-        elif numpy.isclose(float(mpmath.mpf(x.a)), float(mpmath.mpf(x.b)), 
+        elif isclose_ordered(float(mpmath.mpf(x.a)), float(mpmath.mpf(x.b)), 
                            relEpsX, absEpsX):
             continue
         else: return False
@@ -4127,3 +4244,59 @@ def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
     for i in incomplete: ready_for_reduction[i] = True
     
     return ready_for_reduction
+
+
+def unify_boxes(boxes):
+    results = {
+        "boxes_unified": len(boxes) * [False],
+        "epsilon_uni": [],
+        "var_id": []
+        }
+    
+    boxes_to_check = list(boxes) 
+    len_old = len(boxes)
+    #boxes_unified = len(boxes) * [False]
+    while boxes_to_check:   
+        #l = 0
+        for k,box in enumerate(boxes_to_check):
+            for j,box_2 in enumerate(boxes):
+                if list(box) == list(box_2): continue
+            
+                elif all([box[i] in box_2[i] for i in range(len(box))]):
+                    continue
+                else:
+                    identical=[box[i]==box_2[i] for i in range(len(box))]
+                    if identical.count(False)==1:
+                        i = identical.index(False)
+                        if box[i].a == box_2[i].b: 
+                            index = [l for l, cur_box in enumerate(boxes) 
+                                     if list(cur_box) == list(box)]
+                            boxes[j][i]=mpmath.mpi(box_2[i].a, box[i].b)
+                            results["boxes_unified"][j] = True
+                            if index: results["boxes_unified"].pop(index[0])
+                            if index: boxes.pop(index[0])
+                            #boxes.pop(k - l)
+                            #if k l += 1
+                        elif box[i].b == box_2[i].a: 
+                            index = [l for l, cur_box in enumerate(boxes) 
+                                     if list(cur_box) == list(box)]
+                            boxes[j][i]=mpmath.mpi(box[i].a, box_2[i].b) 
+                            results["boxes_unified"][j] = True
+                            if index: results["boxes_unified"].pop(index[0])
+
+                            #results["boxes_unified"].pop(k - l)
+                            if index: boxes.pop(index[0])
+                            #boxes.pop(k - l)
+                            #l += 1                            
+
+        if len(boxes) != len_old: 
+            boxes_to_check = list(boxes)
+            len_old = len(boxes)
+        else: boxes_to_check = []
+    unified_boxes = [boxes[i] for i, box_unified in enumerate(results["boxes_unified"]) if box_unified]    
+    for box in unified_boxes:
+        epsilon_uni = [iv.delta/(1+abs(iv).b) for iv in box]
+        results["epsilon_uni"].append(convert_mpi_float(max(epsilon_uni).b))
+        results["var_id"].append(epsilon_uni.index(max(epsilon_uni)))
+      
+    return boxes, results              

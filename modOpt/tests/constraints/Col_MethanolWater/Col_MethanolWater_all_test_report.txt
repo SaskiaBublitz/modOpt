@@ -3,12 +3,12 @@ Test report from module: Col_MethanolWater
 Tolerance:	 1e-09
 
 Case	 Status	 CPU in s	 Hypercubic Length
-Col_MethanolWater_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 97.7203369140625	 0.014288628917206767
-Col_MethanolWater_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r22	 Ok	 100.89726161956787	 Identical to reference
-Col_MethanolWater_hc4_ncaf_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 52.792237281799316	 0.014478945448642568
-Col_MethanolWater_bc_hc4_ncaf_lc_cbtv_dm_rs8_r22_pb2	 Ok	 67.59538865089417	 0.014478945448642568
-Col_MethanolWater_bc_hc4_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 85.27709770202637	 0.014253852764980403
-Col_MethanolWater_bc_ncaf_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 95.9510407447815	 0.41073335343240913
-Col_MethanolWater_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r22_pb2	 Ok	 97.17648148536682	 0.014324753275615687
-Col_MethanolWater_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r22_pb2	 Ok	 207.79539132118225	 0.014089011945513848
-Col_MethanolWater_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r22_pb2	 Ok	 314.40391397476196	 0.011742504231866955
+Col_MethanolWater_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 95.5609872341156	 0.014281188385297081
+Col_MethanolWater_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r22	 Ok	 102.83586072921753	 Identical to reference
+Col_MethanolWater_hc4_ncaf_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 64.30066895484924	 0.014573285253441492
+Col_MethanolWater_bc_hc4_ncaf_lc_cbtv_dm_rs8_r22_pb2	 Ok	 83.58089256286621	 0.014573285253441492
+Col_MethanolWater_bc_hc4_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 95.43385291099548	 0.014281187811662925
+Col_MethanolWater_bc_ncaf_tb_lc_cbtv_dm_rs8_r22_pb2	 Ok	 110.27754426002502	 0.4136295826719758
+Col_MethanolWater_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r22_pb2	 Ok	 108.56243443489075	 0.014399016225628766
+Col_MethanolWater_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r22_pb2	 Ok	 248.34805250167847	 0.01415883841425641
+Col_MethanolWater_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r22_pb2	 Ok	 351.2513189315796	 0.011798550898132034
