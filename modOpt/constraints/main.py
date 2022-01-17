@@ -49,20 +49,7 @@ def reduceVariableBounds(model, dict_options, sampling_options=None,
     res_solver["time"] = toc - tic
     
     return res_solver
-
-
-# def getSymbolicVarsandFunsOfBlock(model, rBlocks, cBlocks):
-    
-#     xSymbolic = []
-#     fSymbolic = []
-    
-#     for c in cBlocks:
-#         xSymbolic.append(model.xSymbolic[c])
-#     for r in rBlocks:
-#         fSymbolic.append(model.fSymbolic[r])
-        
-#     return model.stateVarValues[0][cBlocks], xSymbolic, fSymbolic
-    
+  
       
 def doIntervalNesting(res_solver, dict_options, sampling_options=None, 
                       solv_options=None):
@@ -85,7 +72,6 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     dict_options["tear_id"] = 0
     dict_options["splitvar_id"] = -1
     dict_options["disconti"] = [False] * len(model.xBounds)
-    #dict_options["solvedByUniqueRootTest"] = [False] * len(model.xBounds)
     dict_options["xAlmostEqual"] = [False] * len(model.xBounds)
     dict_options["xSolved"] = [False] * len(model.xBounds)
     os.makedirs(dict_options["save_path"], exist_ok=True)
@@ -111,7 +97,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
          for x in model.xBounds[0]])
          
     for iterNo in range(1, dict_options["redStepMax"]+1): 
-    
+
         dict_options["iterNo"] = iterNo
         print(f'Red. Step {iterNo}')
         
@@ -125,15 +111,20 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
         
         if len(model.xBounds) > 1: 
             dict_options["mean_residual"] = analysis.calc_residual(model) 
-        dict_options["xAlmostEqual"]  = [item for sublist in output["xAlmostEqual"] 
-                                         if sublist != [] 
-                                         for item in sublist if item != []]
-        dict_options["xSolved"]  = [item for sublist in output["xSolved"] 
-                                    if sublist != [] 
-                                    for item in sublist if item != []]             
+        dict_options["xAlmostEqual"]= output["xAlmostEqual"]
+        dict_options["xSolved"] = output["xSolved"]
+        dict_options["disconti"] = output["disconti"] 
+        dict_options["cut"] = output["cut"] 
+        #dict_options["tear_id"] = output["tear_id"] 
+        #dict_options["xAlmostEqual"]  = [item for sublist in output["xAlmostEqual"] 
+        #                                 if sublist != [] 
+        #                                 for item in sublist if item != []]
+        #dict_options["xSolved"]  = [item for sublist in output["xSolved"] 
+        #                            if sublist != [] 
+        #                            for item in sublist if item != []]             
         timeMeasure.append(time.time() - tic)
-        num_solved.append(output["num_solved"])
-             
+        #num_solved.append(any(output["num_solved"]))
+        num_solved.append(output["num_solved"])     
         if output.__contains__("noSolution"):
             newModel.failed = True
             res_solver["noSolution"] = output["noSolution"]
@@ -174,7 +165,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
             #             model.complete_parent_boxes.pop(i)
                     
             # print(model.xBounds)
-        dict_options["disconti"] = output["disconti"]        
+               
         continue
                 
     # Updating model:    
@@ -190,10 +181,9 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
                                                                        dict_options)
     else:
       if all(dict_options["xSolved"]): 
-          validXBounds, res_solver["unified"] = iNes_procedure.unify_boxes(validXBounds)
+          validXBounds, res_solver["unified"] = iNes_procedure.unify_boxes(validXBounds)       
       newModel.setXBounds(validXBounds)
       res_solver["Model"] = newModel
-      
     storage.store_time(npzFileName, timeMeasure, iterNo)
     storage.store_solved(npzFileName, num_solved, iterNo+1) 
     res_solver["iterNo"] = iterNo
@@ -227,11 +217,12 @@ def change_order_of_boxes_residual(model, output, dict_options):
         :dict_options:     dicionary with user settings for box reduction
             
     """
+    #print(output)
     sorted_residual = enumerate(list(dict_options["mean_residual"]))
     sorted_index_value = sorted(sorted_residual, key=operator.itemgetter(1))
     order_all = [index for index, value in sorted_index_value]
     model.xBounds = [model.xBounds[new_pos] for new_pos in order_all]
-    dict_options["disconti"] = [output["disconti"][new_pos] 
+    dict_options["disconti"] = [dict_options["disconti"][new_pos] 
                                 for new_pos in order_all]
     model.complete_parent_boxes = [output["complete_parent_boxes"][new_pos] 
                                    for new_pos in order_all]
@@ -239,7 +230,8 @@ def change_order_of_boxes_residual(model, output, dict_options):
                                     for new_pos in order_all]
     dict_options["xSolved"] = [dict_options["xSolved"][new_pos] 
                                for new_pos in order_all]    
-
+    dict_options["cut"] = [dict_options["cut"][new_pos] 
+                               for new_pos in order_all]   
 
 def change_order_of_boxes(model, output, dict_options):
     """ changes boxes order so that discontinuous boxes come first because their
