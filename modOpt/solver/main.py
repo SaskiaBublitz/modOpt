@@ -356,7 +356,7 @@ def solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_op
     """
     
     if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] == 'tot_init':
-        mos.scaleSystem(model, dict_equations, dict_variables, dict_options, sampling_options) 
+        mos.scaleSystem(model, dict_options) 
 
             
     if dict_options["decomp"] == 'DM' or dict_options["decomp"] == 'None': 
@@ -436,6 +436,7 @@ def solveBlocksSequence(model, solv_options, dict_options,
                                                                 dict_options,
                                                                 solv_options, 
                                                                 res_blocks)
+                
                 
                 if not solved: 
                     model.failed = True

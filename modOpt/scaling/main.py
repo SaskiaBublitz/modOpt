@@ -29,8 +29,8 @@ def scaleSystem(model, dict_options):
     """
     
     jacobian = model.getPermutedJacobian()
+    #F = [model.getFunctionValues()[i] for i in model.rowPerm]
     F = model.getPermutedFunctionValues()
-    
 
     if dict_options["scaling"] == 'MC77':
         res_scaling = MC77.doMC77(jacobian, F)

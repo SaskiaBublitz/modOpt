@@ -4076,7 +4076,7 @@ def checkUniqueness(new_x, old_x,relEpsX,absEpsX):
     return True
 
 
-def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_options):
+def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_options,plot=None):
     """Uses Matlab File and tries to find Solution with initial points in the box samples by HSS.
      Writes Results in File, if one is found: 
     
@@ -4102,7 +4102,7 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     
     model.xBounds = ConvertMpiBoundsToList(model.xBounds,boxID)
     results = mos.solveBlocksSequence(model, solv_options, dict_options, 
-                                      sampling_options)
+                                      sampling_options,plot)
     
     if results != {} and not results["Model"].failed:
         if not "FoundSolutions" in dict_options.keys():  

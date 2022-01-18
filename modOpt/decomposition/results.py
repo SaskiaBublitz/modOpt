@@ -7,6 +7,7 @@ Import packages
 #if platform.system() != 'Windows': 
 #    import matplotlib
 #    matplotlib.use('Agg')
+import os
 import matplotlib.pyplot as plt
 import matplotlib.colors as cl
 import numpy
@@ -21,7 +22,7 @@ Output
 __all__ = ['writeResults', 'plotIncidence', 'plotColoredIncidence']
 
 
-def writeResults(dict_equations, dict_variables, dict_options, solv_options, res_conditionNumber = None):
+def writeResults(dict_equations, dict_variables, dict_options, solv_options=None, res_conditionNumber = None):
     """  write results from dictionaries into text files
     
     Args:
@@ -57,7 +58,7 @@ def writeUserSepcResults(res_file, dict_options, dict_eq, dict_var, res_condNo=N
     # Decomposition
     if dict_options["decomp"]=='None':
         res_file.write("*****Original system*****\n\n")
-        
+        writePermutation(res_file, dict_eq, dict_var)
     if dict_options["decomp"]=='DM':
         res_file.write("*****Dulmage-Mendelsohn decomposed System*****\n\n")
         writePermutation(res_file, dict_eq, dict_var)
@@ -99,7 +100,7 @@ def writeUserSepcResults(res_file, dict_options, dict_eq, dict_var, res_condNo=N
         writeCondNo(res_file, res_condNo, dict_options)
 
 
-def getFileName(dict_options, solv_options):
+def getFileName(dict_options, solv_options=None):
     """ returns file name as string due to the chosen restructuring methods
         by the user stored in dict_options.
     
@@ -123,11 +124,12 @@ def getFileName(dict_options, solv_options):
         if dict_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
         if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
         if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
-    if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
-    if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', str(solv_options["mode"])])
-    if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', str(solv_options["mode"])])
-    if solv_options["solver"]=='TNC': name = ''.join([name,'TNC_', str(solv_options["mode"])])
-    if solv_options["solver"]=='ipopt': name = ''.join([name,'ipopt_', str(solv_options["mode"])])
+    if solv_options:
+        if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
+        if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', str(solv_options["mode"])])
+        if solv_options["solver"]=='trust-constr': name = ''.join([name,'_trust-constr_', str(solv_options["mode"])])
+        if solv_options["solver"]=='TNC': name = ''.join([name,'TNC_', str(solv_options["mode"])])
+        if solv_options["solver"]=='ipopt': name = ''.join([name,'ipopt_', str(solv_options["mode"])])
     
     return name
 
@@ -234,6 +236,7 @@ def writeCondNo(res_file, res_condNo, dict_options):
         res_file.write("\nRestructured System: %s"%(res_condNo["Restructured"]))
 
 
+
 def plotIncidence(model, dict_options, plot_options):
     """  plot incidence matrix of equation system and store it in PDF file
     
@@ -255,8 +258,8 @@ def plotIncidence(model, dict_options, plot_options):
     
     incidence = numpy.zeros(Jperm.shape)
     
-    cm = cl.ListedColormap(["white","red","black", "blue"], name='from_list', N=None)
-    
+    #cm = cl.ListedColormap(["white","red","black", "blue"], name='from_list', N=None)
+    cm = cl.ListedColormap(["white","red","black", "black"], name='from_list', N=None)
     nz_row = numpy.array(Jperm.row())
     nz_col = numpy.array(Jperm.sparsity().get_col())
     nz_count = len(nz_row)
@@ -316,9 +319,9 @@ def getResults(res_solver):
     """
     
     model = res_solver["Model"]
-    exblock = res_solver["Exitflag"]
+    #exblock = res_solver["Exitflag"]
     blockID = model.getBlockID()
-    ex = getQuantityForFunction(exblock, blockID) # in global order
+    ex = getQuantityForFunction(res_solver, "Exitflag", blockID) # in global order
     ex = getPermID(ex, model.rowPerm)
     
     
@@ -327,7 +330,7 @@ def getResults(res_solver):
     return J, ex, model
     
     
-def getQuantityForFunction(blockList, blockID):
+def getQuantityForFunction(res_solver, key, blockID):
     """ get a quantities of the functions in global order referring to their block ID
     
     Args:
@@ -337,12 +340,8 @@ def getQuantityForFunction(blockList, blockID):
     Return:
         :functionList:      list with function quantities in global order
     
-    """
-    functionList = []
-    for b in blockID:
-        functionList.append(blockList[b])
-        
-    return functionList
+    """ 
+    return [res_solver[b][key] for b in blockID]
 
 
 def getPermID(quantityInGlbOrder, permOrder):
@@ -377,7 +376,6 @@ def prepareIncidence(J, ex, dict_options):
         :deict_options:         dictionary with user specified settings
         
     """
-    
     incidence = numpy.zeros(J.shape)
     
     if dict_options["decomp"] == 'None':
@@ -403,8 +401,7 @@ def prepareIncidence(J, ex, dict_options):
                 else: 
                     incidence[col_nz_index,k]=0.5
                     if not incidence[k,k] == 0: incidence[k,k] = 1
-            if ex[k]<=0: incidence[col_nz_index,k]=0.5    
-            
+            if ex[k]<=0: incidence[col_nz_index,k]=0.5          
     return incidence
 
 
@@ -422,7 +419,7 @@ def plotPDF(incidence, model, dict_options, plot_options, solv_options):
     """
     fileName = getFileName(dict_options, solv_options)
     xSymbolicPerm = [model.xSymbolic[i] for i in model.colPerm]
-
+    
     
     
     if plot_options["labelsAndGrid"]: 
@@ -438,6 +435,6 @@ def plotPDF(incidence, model, dict_options, plot_options, solv_options):
     else:
         plt.ylabel("Equations")
         plt.xlabel("Variables")
-        plt.imshow(incidence, cmap=plot_options["color"], vmin=0, vmax=1.5)
+        plt.imshow(numpy.matrix(incidence), cmap=plot_options["color"], vmin=0, vmax=1.5)
         
     plt.savefig(''.join([fileName, "_incidence.pdf"]),bbox_inches='tight')       

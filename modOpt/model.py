@@ -158,7 +158,8 @@ class Model:
     
     def getPermutedFunctionValues(self):
         """ Return: permuted and scaled function Values at current state variable values"""
-        return self.getFunctionValues()[self.rowPerm] 
+        return [self.getFunctionValues()[i] for i in self.rowPerm]
+        #return self.getFunctionValues()[self.rowPerm] 
 
 
     def getPermutedAndScaledFunctionValues(self):

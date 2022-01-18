@@ -5,7 +5,7 @@ Import packages
 """
 import numpy
 import mpmath
-
+import os
 """
 ***************************************************
 Output
@@ -328,8 +328,12 @@ def writeResultsAnalytics(dict_options, res_solver, solv_options):
         
     """
     if res_solver != []:
-        fileName = getFileName(dict_options, solv_options)
+        fileName = getFileName(dict_options, solv_options)      
         res_file = open(''.join([fileName,"_analysis.txt"]), "w")
+        blockID = set(res_solver["Model"].getBlockID())
+        iterNo = getQuantityForFunction(res_solver, "IterNo", blockID)
+        res_solver["IterNo_tot"] = sum(iterNo)
+        res_solver["Residual"] = res_solver["Model"].getFunctionValuesResidual()
         writeSolverOutput(res_file, res_solver)
         
         writeFunctionLegend(res_file, res_solver["Model"])
@@ -420,9 +424,9 @@ def writeFunctionTable(res_file, res_solver):
     """
     model = res_solver["Model"]
     blockID = model.getBlockID()    
-    exitflag = getQuantityForFunction(res_solver["Exitflag"], blockID)
-    condNo = getQuantityForFunction(res_solver["CondNo"], blockID)
-    iterNo = getQuantityForFunction(res_solver["IterNo"], blockID)
+    exitflag = getQuantityForFunction(res_solver, "Exitflag", blockID)
+    condNo = getQuantityForFunction(res_solver, "CondNo", blockID)
+    iterNo = getQuantityForFunction(res_solver, "IterNo", blockID)
     funVal = model.getFunctionValues()
     
     res_file.write(" ****************** Table with Function Results ****************** \n\n") 
@@ -437,7 +441,7 @@ def writeFunctionTable(res_file, res_solver):
                                                funVal[i]))
 
 
-def getQuantityForFunction(blockList, blockID):
+def getQuantityForFunction(res_solver, key, blockID):
     """ get a quantities of the functions in global order referring to their block ID
     
     Args:
@@ -448,12 +452,8 @@ def getQuantityForFunction(blockList, blockID):
         :functionList:      list with function quantities in global order
     
     """ 
-    functionList = []
-    for b in blockID:
-        functionList.append(blockList[b])
+    return [res_solver[b][key] for b in blockID]
         
-    return functionList
-
     
 def writeSolverOutput(res_file, res_solver):
     """ writes output data of the solver to file res_file
