@@ -324,7 +324,10 @@ def reduceConsistentBox(model, dict_options, k, boxNo,
     if dict_options["cut_Box"] in {"tear", "all", True}:# and dict_options["cut"][k]:#  # if cut_Box is chosen,parts of the box are now tried to cut off 
         if dict_options["Debug-Modus"]: print("Now box ", k, "is cutted")
         if dict_options["cut_Box"] == "tear": 
-            newBox, possibleCutOffs = cutOffBox_tear(model, newBox, dict_options)
+            if model.tearVarsID == []: getTearVariables(model)
+            newBox, possibleCutOffs = cut_off_box(model, newBox, dict_options,
+                                                     model.tearVarsID)
+            #newBox, possibleCutOffs = cutOffBox_tear(model, newBox, dict_options)
         if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
             newBox, possibleCutOffs = cutOffBox(model, newBox, dict_options)
         if newBox == []: possibleCutOffs = False     
@@ -475,7 +478,7 @@ def cutOffBox_tear(model, xBounds, dict_options):
                 CutBoxBounds = list(xNewBounds)
                 xu = CutBoxBounds[u]
                 if (mpmath.mpf(xu.delta) <= 
-                    mpmath.mpf(xBounds[0][u].delta)*0.02*i): break #if total box is to small for further cutt offs
+                    mpmath.mpf(xBounds[0][u].delta)*0.02*i): break #if total box is too small for further cut offs
                 cur_x = (float(mpmath.mpf(xu.b)) - 
                          float(mpmath.mpf(xBounds[0][u].delta)*0.01*i))
                 CutBoxBounds[u] = mpmath.mpi(cur_x, xu.b) #define small box to cut
@@ -515,6 +518,88 @@ def cutOffBox_tear(model, xBounds, dict_options):
     return [list(xNewBounds)], cutOff
 
 
+def cut_off_box(model, box, dict_options, cut_var_id=None):
+    new_box = list(list(box[0]))
+    cut_off = False    
+    
+    if not cut_var_id: 
+        cut_var_id = model.colPerm
+        cut_box = [new_box[i] for i in cut_var_id]
+    else:
+        cut_box = [new_box[i] for i in cut_var_id]
+        cut_box = checkIntervalWidth(cut_box, dict_options["absTol"], 
+                                     dict_options["relTol"])
+        cut_var_id = [new_box.index(iv) for iv in cut_box]
+    
+    xChanged = numpy.array([True]*len(cut_var_id))
+    rstep_min = 0.01 
+    rstep = rstep_min                      
+    step = [rstep_min * float(mpmath.mpf(iv.delta)) for iv in cut_box]
+    
+    while xChanged.any():
+        for cut_id, i in enumerate(cut_var_id):
+            while(rstep <= 1.0):
+                edge_box = list(new_box)
+                xi = float(mpmath.mpf(edge_box[i].b)) - step[cut_id]
+                edge_box[i] = mpmath.mpi(xi, edge_box[i].b)   
+                           
+                (has_solution, 
+                 rstep) = check_solution_in_edge_box(model, i, cut_id, 
+                                                     float(mpmath.mpf(new_box[i].a)), 
+                                                     xi, edge_box, new_box, 
+                                                     step, rstep, dict_options)
+                if not has_solution: 
+                    cut_off = True
+                    continue
+                else: break
+            if (rstep == rstep_min): xChanged[cut_id] = False
+            elif rstep >= 1.0 and not has_solution: return [], cut_off
+            else: 
+                rstep = rstep_min
+                step[cut_id] = float(mpmath.mpf(new_box[i].delta)) * rstep
+            
+            while(rstep <= 1.0):
+                edge_box = list(new_box)
+                xi = float(mpmath.mpf(edge_box[i].a)) + step[cut_id]
+                edge_box[i] = mpmath.mpi(edge_box[i].a, xi)   
+                           
+                (has_solution, 
+                 rstep) = check_solution_in_edge_box(model, i, cut_id, xi, 
+                                                     float(mpmath.mpf(new_box[i].b)),
+                                                     edge_box, new_box, step,
+                                                     rstep, dict_options)
+                if not has_solution: 
+                    cut_off = True
+                    continue
+                else: break            
+
+            if not xChanged[cut_id] and not rstep == rstep_min: 
+                xChanged[cut_id] = True
+            elif rstep >= 1.0 and not has_solution: return [], cut_off
+            
+            rstep = rstep_min
+            step[cut_id] = (float(mpmath.mpf(new_box[i].delta)) * rstep)
+            #step[cut_id] = (float(mpmath.mpf(new_box[i].delta)) * 
+            #((rstep*100.0)**0.5 + 1)**2/100.0)
+        #rstep_min = ((rstep_min*100.0)**0.5 + 1)**2/100.0
+        #rstep = rstep_min
+             
+             
+    return [tuple(new_box)], cut_off  
+
+
+def check_solution_in_edge_box(model, i, cut_id, a, b, cur_box, new_box, step,
+                               rstep, dict_options):
+    if not solutionInFunctionRangePyibex(model.functions, numpy.array(cur_box), 
+                                         dict_options): 
+        new_box[i] = mpmath.mpi(a, b)
+        rstep = ((rstep*100.0)**0.5 + 1)**2/100.0
+        step[cut_id] = (b - a) * rstep
+        return False, rstep
+    else:
+        return True, rstep
+
+
 def cutOffBox(model, xBounds, dict_options):
     '''trys to cut off all empty sides of the box, to reduce the box without splitting
 
@@ -536,7 +621,7 @@ def cutOffBox(model, xBounds, dict_options):
         for u in range(len(model.xSymbolic)):
             #try to cut off upper variable parts
             i=1
-            while i<100: #number of cutt offs are limited to 100
+            while i<10: #number of cutt offs are limited to 100
                 CutBoxBounds = list(list(xNewBounds))
                 xu = CutBoxBounds[u]
                 if (mpmath.mpf(xu.delta) <= 
@@ -4076,7 +4161,7 @@ def checkUniqueness(new_x, old_x,relEpsX,absEpsX):
     return True
 
 
-def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_options,plot=None):
+def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_options):
     """Uses Matlab File and tries to find Solution with initial points in the box samples by HSS.
      Writes Results in File, if one is found: 
     
@@ -4102,7 +4187,7 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     
     model.xBounds = ConvertMpiBoundsToList(model.xBounds,boxID)
     results = mos.solveBlocksSequence(model, solv_options, dict_options, 
-                                      sampling_options,plot)
+                                      sampling_options)
     
     if results != {} and not results["Model"].failed:
         if not "FoundSolutions" in dict_options.keys():  
