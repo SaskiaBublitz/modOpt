@@ -288,7 +288,7 @@ def getReducedXBoundsResults(results, model, maxBoxNo, dict_options):
 
     for k in range(noOfxBounds):
         if results['%d' %k][8] != []:
-            if not dict_options["FoundSolutions"]:
+            if not dict_options.__contains__("FoundSolutions"):
                 dict_options["FoundSolutions"] = results['%d' %k][8]            
             else:
                 for new_sol in results['%d' %k][8]:

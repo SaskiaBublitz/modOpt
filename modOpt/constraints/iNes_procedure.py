@@ -321,7 +321,7 @@ def reduceConsistentBox(model, dict_options, k, boxNo,
                 }   
     newBox = output["xNewBounds"]
     possibleCutOffs = False
-    if dict_options["cut_Box"] in {"tear", "all", True}:# and dict_options["cut"][k]:#  # if cut_Box is chosen,parts of the box are now tried to cut off 
+    if dict_options["cut_Box"] in {"tear", "all", True} and dict_options["cut"][k]:#  # if cut_Box is chosen,parts of the box are now tried to cut off 
         if dict_options["Debug-Modus"]: print("Now box ", k, "is cutted")
         if dict_options["cut_Box"] == "tear": 
             if model.tearVarsID == []: getTearVariables(model)
@@ -329,25 +329,26 @@ def reduceConsistentBox(model, dict_options, k, boxNo,
                                                      model.tearVarsID)
             #newBox, possibleCutOffs = cutOffBox_tear(model, newBox, dict_options)
         if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
-            newBox, possibleCutOffs = cutOffBox(model, newBox, dict_options)
-        if newBox == []: possibleCutOffs = False     
-        if possibleCutOffs:  # if cut_Box was successful,the box is now tried to be reduced again
-            #output["xNewBounds"] = [numpy.array(newBox[0])]
-            #output["xSolved"] = [variableSolved(newBox[0], dict_options)]
-            #output["xAlmostEqual"] = [False]
-            #output["disconti"] = [False]
-            #output["cut"] = [True]
-            #return output
-            output = contractBox(numpy.array(newBox[0]), model, boxNo, 
-                                 dict_options)           
-            newBox = output["xNewBounds"]
-            output["cut"] = [True]*len(output["xNewBounds"])
+            #newBox, possibleCutOffs = cutOffBox(model, newBox, dict_options)
+            newBox, possibleCutOffs = cut_off_box(model, newBox, dict_options)
 
         if newBox == [] or newBox ==[[]]: 
             saveFailedSystem(output, model.functions[0], model, 0)
             output["disconti"]=[]
             output["cut"] = [True]  
             return output
+                
+        if possibleCutOffs:  # if cut_Box was successful,the box is now tried to be reduced again
+            output["xNewBounds"] = [numpy.array(newBox[0])]
+            output["xSolved"] = [variableSolved(newBox[0], dict_options)]
+            output["xAlmostEqual"] = [False]
+            output["disconti"] = [False]
+            output["cut"] = [True]
+            return output
+            #output = contractBox(numpy.array(newBox[0]), model, boxNo, 
+            #                     dict_options)           
+            #newBox = output["xNewBounds"]
+            #output["cut"] = [True]*len(output["xNewBounds"])
                          
         if output["xAlmostEqual"][0] and dict_options["Debug-Modus"]: 
             print("box ", k, " is still complete.")
@@ -519,6 +520,24 @@ def cutOffBox_tear(model, xBounds, dict_options):
 
 
 def cut_off_box(model, box, dict_options, cut_var_id=None):
+    """ cuts off edge boxes if they are identifed as having no solution to 
+    f(x)=0. The variables that are cut can be preselected by their global ids 
+    in cut_var_id or all variables are cut otherwise.
+    
+    Args:
+        :model:         instance of class model
+        :box:           list with numpy array that contains box which needs to 
+                        be cut
+        :dict_options:  dictionary with absolute and relative tolerances
+        :cut_var_id:    list with global indices referring to variables that
+                        shall be cut, if not specified all variables are cut
+                        
+    Return:
+        :new_box:       reduced box
+        :cut_off:       boolean that is set true as soon as one empty edge box
+                        could be removed
+        
+    """
     new_box = list(list(box[0]))
     cut_off = False    
     
@@ -579,17 +598,36 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
             
             rstep = rstep_min
             step[cut_id] = (float(mpmath.mpf(new_box[i].delta)) * rstep)
-            #step[cut_id] = (float(mpmath.mpf(new_box[i].delta)) * 
-            #((rstep*100.0)**0.5 + 1)**2/100.0)
-        #rstep_min = ((rstep_min*100.0)**0.5 + 1)**2/100.0
-        #rstep = rstep_min
-             
-             
+                        
     return [tuple(new_box)], cut_off  
 
 
 def check_solution_in_edge_box(model, i, cut_id, a, b, cur_box, new_box, step,
                                rstep, dict_options):
+    """ checks if edge box is empty or not during the cutting process and returns
+    True if it has a solution and False otherwise. If edge box is empty the
+    remaining box (new_box) is updated and also the absolute and relative 
+    step sizes
+    
+    Args:
+        :model:         instance of class model
+        :i:             integer with currently cutted variable's global index
+        :cut_id:        integer with currently cutted variable's index of 
+                        preselection
+        :a:             lower bound of new box as float from current variable
+        :b:             uper bound of new box as float from current variable
+        :cur_box:       list of currently checked box for root inclusion
+        :new_box:       list of non-empty box
+        :step:          current step size as float for cutting
+        :rstep:         current relative step size as float for cutting
+        :dict_options:  dictionary with absTol and relTol for root inclusion 
+                        test based on 3 HC4 steps
+                        
+    Return:
+        :True/False:    True if cur_box is not emtpy wnr False otherwise
+        :rstep:         updated relative step size
+        
+    """
     if not solutionInFunctionRangePyibex(model.functions, numpy.array(cur_box), 
                                          dict_options): 
         new_box[i] = mpmath.mpi(a, b)
@@ -617,49 +655,49 @@ def cutOffBox(model, xBounds, dict_options):
     
     cutOff=False
     xChanged = numpy.array([True]*len(model.xSymbolic))
-    while xChanged.any(): 
-        for u in range(len(model.xSymbolic)):
-            #try to cut off upper variable parts
-            i=1
-            while i<10: #number of cutt offs are limited to 100
-                CutBoxBounds = list(list(xNewBounds))
-                xu = CutBoxBounds[u]
-                if (mpmath.mpf(xu.delta) <= 
-                    mpmath.mpf(xBounds[0][u].delta)*0.02*i): break #if total bounds is too small for further cut offs
-                cur_x = (float(mpmath.mpf(xu.b)) - 
-                         float(mpmath.mpf(xBounds[0][u].delta)*0.01*i))
-                CutBoxBounds[u] = mpmath.mpi(cur_x, xu.b) #define small box to cut
+    #while xChanged.any(): 
+    for u in range(len(model.xSymbolic)):
+        #try to cut off upper variable parts
+        i=1
+        while i<10: #number of cutt offs are limited to 100
+            CutBoxBounds = list(list(xNewBounds))
+            xu = CutBoxBounds[u]
+            if (mpmath.mpf(xu.delta) <= 
+                mpmath.mpf(xBounds[0][u].delta)*0.02*i): break #if total bounds is too small for further cut offs
+            cur_x = (float(mpmath.mpf(xu.b)) - 
+                     float(mpmath.mpf(xBounds[0][u].delta)*0.01*i))
+            CutBoxBounds[u] = mpmath.mpi(cur_x, xu.b) #define small box to cut
+        
+            if not solutionInFunctionRangePyibex(model.functions, 
+                                                 numpy.array(CutBoxBounds), 
+                                                 dict_options): #check,if small box is empty
+                xNewBounds[u] = mpmath.mpi(xu.a, cur_x)
+                cutOff = True
+                i=i+1
+                continue
+            else:
+                break
+        if i == 1: xChanged[u] = False
+        #try to cut off lower part
+        i=1
+        while i<10:
+            CutBoxBounds = list(list(xNewBounds))
+            xu = CutBoxBounds[u]
+            if (mpmath.mpf(xu.delta) <= 
+                mpmath.mpf(xBounds[0][u].delta)*0.02*i): break
+            cur_x = (float(mpmath.mpf(xu.a)) + 
+                     float(mpmath.mpf(xBounds[0][u].delta)*0.01*i))
+            CutBoxBounds[u] = mpmath.mpi(xu.a, cur_x)
             
-                if not solutionInFunctionRangePyibex(model.functions, 
-                                                     numpy.array(CutBoxBounds), 
-                                                     dict_options): #check,if small box is empty
-                    xNewBounds[u] = mpmath.mpi(xu.a, cur_x)
-                    cutOff = True
-                    i=i+1
-                    continue
-                else:
-                    break
-            if i == 1: xChanged[u] = False
-            #try to cut off lower part
-            i=1
-            while i<100:
-                CutBoxBounds = list(list(xNewBounds))
-                xu = CutBoxBounds[u]
-                if (mpmath.mpf(xu.delta) <= 
-                    mpmath.mpf(xBounds[0][u].delta)*0.02*i): break
-                cur_x = (float(mpmath.mpf(xu.a)) + 
-                         float(mpmath.mpf(xBounds[0][u].delta)*0.01*i))
-                CutBoxBounds[u] = mpmath.mpi(xu.a, cur_x)
-                
-                if not solutionInFunctionRangePyibex(model.functions, 
-                                                     numpy.array(CutBoxBounds), 
-                                                     dict_options):
-                    xNewBounds[u] = mpmath.mpi(cur_x, xu.b)
-                    cutOff = True
-                    i=i+1
-                    continue
-                else:
-                    break
+            if not solutionInFunctionRangePyibex(model.functions, 
+                                                 numpy.array(CutBoxBounds), 
+                                                 dict_options):
+                xNewBounds[u] = mpmath.mpi(cur_x, xu.b)
+                cutOff = True
+                i=i+1
+                continue
+            else:
+                break
             if not xChanged[u] and not i ==1: xChanged[u]=True
     return [tuple(xNewBounds)], cutOff
 
@@ -969,79 +1007,6 @@ def separateBox(box, varID):
         
     return list(itertools.product(*box))
 
-# def getNewtonIntervalSystem(xBounds, model, options):
-#     '''calculates all necessary System matrices for the Newton-Interval reduction
-#     Args:
-#         :xBounds:           list with variable bounds in mpmath.mpi formate
-#         :model:             instance of type model
-#         :options:           dictionary options
-
-#     Return:
-#         :Boxpoint:          list with Boxpoint/s values
-#         :fpoint:            functions of Boxpoint/s in numpy array
-#         :Jacpoint:          jacobian of Boxpoint/s in numpy array
-#         :JacInterval:       jacobian of ivmpf intervals in numpy array
-#         :JacInv:            inverse of Jacpoint in numpy array, stripped of inf Parts
-#     '''
-    
-#     flamb = model.fLamb
-#     jaclamb = model.jacobianLambNumpy
-#     jacIvLamb = model.jacobianLambMpmath
-#     noJacpoint = False
-    
-#     if options['newton_method'] == "mJNewton": noJacpoint = True
-#     if options['newton_method'] == "detNewton":
-#         Boxpoint, Jacpoint, fpoint = findPointWithHighestDeterminant(jaclamb, flamb, xBounds, noJacpoint)
-#     elif options['newton_method'] == "3PNewton":
-#         Boxpoint, Jacpoint, fpoint = getFunctionPoint(jaclamb, flamb, xBounds, ['a','mid','b'], noJacpoint)
-#     else:
-#         Boxpoint, Jacpoint, fpoint = getFunctionPoint(jaclamb, flamb, xBounds, ['mid'], noJacpoint)
-     
-#     fpoint = [fp[model.rowPerm] for fp in fpoint]
-#     Boxpoint = [bp[model.colPerm] for bp in Boxpoint]
-#     #if not len(Jacpoint)==1: 
-#     Jacpoint = [jp[model.rowPerm,:][:,model.colPerm] for jp in Jacpoint]
-#     JacInterval = numpy.array(jacIvLamb(*xBounds))[model.rowPerm,:][:,model.colPerm]
-#     Jac_c = numpy.zeros([len(xBounds), len(xBounds)])
-
-#     infRows = []           
-#     for l in range(len(JacInterval)):
-#         for n, iv in enumerate(JacInterval[l]):
-#             if isinstance(iv, mpmath.ctx_iv.ivmpf):
-#                 if iv == mpmath.mpi('-inf','+inf'):
-#                     JacInterval[l][n] = mpmath.mpi(numpy.nan_to_num(-numpy.inf), numpy.nan_to_num(numpy.inf))
-#                     if l not in infRows:
-#                         infRows.append(l)
-#                 elif iv.a == '-inf': 
-#                     JacInterval[l][n] = mpmath.mpi(numpy.nan_to_num(-numpy.inf), iv.b)
-#                 elif iv.b == '+inf':
-#                     JacInterval[l][n] = mpmath.mpi(iv.a, numpy.nan_to_num(numpy.inf))
-#             if options['newton_method'] == "mJNewton": 
-#                 if not isinstance(JacInterval[l][n], mpmath.ctx_iv.ivmpf):
-#                     Jac_c[l][n] = float(JacInterval[l][n])
-#                 else:
-#                     Jac_c[l][n] = numpy.float(mpmath.mpf(JacInterval[l][n].mid))
-                    
-#     if options['newton_method'] == "mJNewton": Jacpoint = [Jac_c]
-#     JacInv = []
-#     if options["InverseOrHybrid"]!='Hybrid':
-#         for J in Jacpoint:
-#             try:
-#                 JacInv.append(numpy.linalg.inv(J))
-#             except: 
-#                 print('singular point')
-#                 JacInv.append(numpy.array(numpy.matrix(J).getH()))
-        
-#         #remove inf parts in inverse
-#         for inf in infRows:
-#             for Ji in JacInv:
-#                 Ji[:,inf] = numpy.zeros(len(Ji))
-       
-        
-#     return {'Boxpoint':Boxpoint, 'f(Boxpoint)':fpoint, 'J(Boxpoint)':Jacpoint,
-#             'J(Box)':JacInterval, 'J(Boxpoint)-1':JacInv,
-#             'infRows': infRows}
-
 
 def getPointInBox(xBounds, pointIndicator):
     '''returns lowest(a), highest(b) or Midpoint(mid)
@@ -1064,69 +1029,6 @@ def getPointInBox(xBounds, pointIndicator):
 	    
 	    
     return Boxpoint
-
-# def findPointWithHighestDeterminant(jacLamb, fLamb, xBounds, noJacpoint=None): 
-#     '''finds Boxpoint with highest determinant of J(Boxpoint)
-#     Args:
-#         :jacLamb: 		lambdifyed Jacobian 
-#         :fLamb: 		lambdifyed function
-#         :xBounds: 		current xBounds as iv.mpi
-#     Return:
-#         :chosenPoint: 	List of variable Point in Box
-#         :chosenJacobi: 	Jacobian evaluated at chosen Point
-#         :chosenFunc: 	function evaluated at chosen Point
-#     '''
-    
-#     lowerPoint = getPointInBox(xBounds, len(xBounds)*['a'])
-#     midPoint = getPointInBox(xBounds, len(xBounds)*['mid'])
-#     upperPoint = getPointInBox(xBounds, len(xBounds)*['b'])
-#     TestingPoints = [lowerPoint, midPoint, upperPoint]
-    
-#     biggestDValue = -numpy.inf    
-#     for tp in TestingPoints:
-#         warnings.filterwarnings("ignore", category=RuntimeWarning)
-#         currentJacpoint = jacLamb(*tp)
-#         currentFunc = numpy.array([fLamb(*tp)])
-#         warnings.filterwarnings("default", category=RuntimeWarning)
-#         currentJacpoint = removeInfAndConvertToFloat(currentJacpoint, 1)
-#         currentFunc = removeInfAndConvertToFloat(currentFunc, 1)
-#         currentAbsDet = numpy.absolute(numpy.linalg.det(currentJacpoint))
-#         decisionValue = currentAbsDet
-#         if decisionValue>=biggestDValue:
-#             biggestDValue = decisionValue
-#             chosenPoint = tp
-#             chosenJacobi = currentJacpoint
-#             chosenFunc = currentFunc
-     
-#     return [chosenPoint], [chosenJacobi], [chosenFunc[0]]
-
-
-# def getFunctionPoint(jacLamb, fLamb, xBounds, points, noJacpoint=None):
-#     '''finds Boxpoint with highest determinant of J(Boxpoint)
-#     Args:
-#         :jacLamb:       lambdifyed Jacobian 
-#         :fLamb:         lambdifyed function
-#         :xBounds:       current xBounds as iv.mpi
-#         :points:        list of strings with "a" and/or "mid" and/or "b"
-#     Return:
-#         :Boxpoint:  variable values of points
-#         :Jacpoint:  Jacobian values of chosen points
-#         :fpoint:    function values of chosen points
-#     '''
-    
-#     warnings.filterwarnings("ignore", category=RuntimeWarning)
-#     Boxpoint = []
-#     Jacpoint = []
-#     fpoint = []
-#     for p in points:
-#         PointIndicator = len(xBounds)*[p]
-#         singlePoint = getPointInBox(xBounds, PointIndicator)
-#         Boxpoint.append(singlePoint)
-#         if not noJacpoint: Jacpoint.append(removeInfAndConvertToFloat(jacLamb(*singlePoint), 1))
-#         fpoint.append(removeInfAndConvertToFloat(numpy.array([fLamb(*singlePoint)]), 1)[0])
-#     warnings.filterwarnings("default", category=RuntimeWarning)
-    
-#     return Boxpoint, Jacpoint, fpoint
 
 
 def removeInfAndConvertToFloat(array, subs):
@@ -4207,7 +4109,9 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
                         break
                 if not sol_exist: 
                     dict_options["FoundSolutions"].append(new_solution)  
-                    solv_options["sol_id"] += 1
+                    if not solv_options.__contains__("sol_id"): 
+                        solv_options["sol_id"]=len(dict_options["FoundSolutions"])
+                    else: solv_options["sol_id"] += 1
                     mos.results.write_successful_results({0: results}, dict_options, 
                                                  sampling_options, solv_options) 
             
