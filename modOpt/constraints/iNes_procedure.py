@@ -365,7 +365,7 @@ def reduceConsistentBox(model, dict_options, k, boxNo,
         if boxNo_split > 0:            
             if dict_options["Debug-Modus"]: print("Now box", k, " is teared")
             model.teared = True
-            output["xNewBounds"] = splitBox(newBox, model, dict_options, k, 
+            output["xNewBounds"] = split_box(newBox, model, dict_options, k, 
                                             boxNo_split)
             if output["xNewBounds"] == []:
                 saveFailedSystem(output, model.functions[0], model, 0)
@@ -398,6 +398,45 @@ def checkBoxesForRootInclusion(functions, boxes, dict_options):
     return nonEmptyboxes
 
 
+def split_box(consistentBox, model, dict_options, k, boxNo_split):
+    """ box splitting algorithm should be invoked if contraction doesn't work anymore because of consistency.
+    The user-specified splitting method is executed.
+    
+    Args:
+       :xNewBounds:         numpy.array with consistent box
+       :model:              instance of class model
+       :dict_options:       dictionary with user-specifications
+       :k:                  index of currently reduced box
+       :boxNo_split:        number of possible splits (maxBoxNo-boxNo) could be 
+                            used for multisection too
+    
+    Return:
+        list with split boxes
+    """
+    if dict_options["split_Box"]=="TearVar": 
+        # splits box by tear variables  
+        if model.tearVarsID == []: getTearVariables(model)  
+        tearId = getCurrentVarToSplit(model.tearVarsID, consistentBox[0], 
+                                      dict_options)
+        if tearId !=[]: split_var_id = [model.tearVarsID[tearId]]
+        else: split_var_id = None
+    elif dict_options["split_Box"] =="forecastTear":
+        if model.tearVarsID == []: getTearVariables(model)  
+        split_var_id = model.tearVarsID
+    elif dict_options["split_Box"] =="forecastSplit":
+        split_var_id = None
+    elif dict_options["split_Box"] =="LeastChanged":
+        split_var_id = split_least_changed_variable(consistentBox, model, k, 
+                                                    dict_options)
+    elif dict_options["split_Box"]=="LargestDer":  
+        split_var_id = getTearVariableLargestDerivative(model, k)
+    else:  split_var_id = None
+        
+    new_box = get_best_split(consistentBox, model, k, dict_options, split_var_id)
+    new_box = checkBoxesForRootInclusion(model.functions, new_box, 
+                                            dict_options)    
+    return new_box
+    
 def splitBox(consistentBox, model, dict_options, k, boxNo_split):
     """ box splitting algorithm should be invoked if contraction doesn't work anymore because of consistency.
     The user-specified splitting method is executed.
@@ -542,13 +581,12 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
     cut_off = False    
     
     if not cut_var_id: 
-        cut_var_id = model.colPerm
-        cut_box = [new_box[i] for i in cut_var_id]
-    else:
-        cut_box = [new_box[i] for i in cut_var_id]
-        cut_box = checkIntervalWidth(cut_box, dict_options["absTol"], 
-                                     dict_options["relTol"])
-        cut_var_id = [new_box.index(iv) for iv in cut_box]
+        cut_var_id = [i for i in model.colPerm 
+                      if not checkVariableBound(new_box[i], dict_options)] 
+    else:       
+        cut_var_id = [i for i in cut_var_id 
+                        if not checkVariableBound(new_box[i], dict_options)]      
+    cut_box = [new_box[i] for i in cut_var_id]
     
     xChanged = numpy.array([True]*len(cut_var_id))
     rstep_min = 0.01 
@@ -572,7 +610,8 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
                     continue
                 else: break
             if (rstep == rstep_min): xChanged[cut_id] = False
-            elif rstep >= 1.0 and not has_solution: return [], cut_off
+            elif rstep >= 1.0 and not has_solution: 
+                return [], cut_off
             else: 
                 rstep = rstep_min
                 step[cut_id] = float(mpmath.mpf(new_box[i].delta)) * rstep
@@ -594,7 +633,8 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
 
             if not xChanged[cut_id] and not rstep == rstep_min: 
                 xChanged[cut_id] = True
-            elif rstep >= 1.0 and not has_solution: return [], cut_off
+            elif rstep >= 1.0 and not has_solution: 
+                return [], cut_off
             
             rstep = rstep_min
             step[cut_id] = (float(mpmath.mpf(new_box[i].delta)) * rstep)
@@ -624,7 +664,7 @@ def check_solution_in_edge_box(model, i, cut_id, a, b, cur_box, new_box, step,
                         test based on 3 HC4 steps
                         
     Return:
-        :True/False:    True if cur_box is not emtpy wnr False otherwise
+        :True/False:    True if cur_box is not emtpy and False otherwise
         :rstep:         updated relative step size
         
     """
@@ -633,6 +673,11 @@ def check_solution_in_edge_box(model, i, cut_id, a, b, cur_box, new_box, step,
         new_box[i] = mpmath.mpi(a, b)
         rstep = ((rstep*100.0)**0.5 + 1)**2/100.0
         step[cut_id] = (b - a) * rstep
+        
+        if rstep >= 1:
+           return solutionInFunctionRangePyibex(model.functions, 
+                                                numpy.array(new_box), 
+                                                dict_options), rstep
         return False, rstep
     else:
         return True, rstep
@@ -824,6 +869,92 @@ def getBestTearSplit(xBounds,model, boxNo, dict_options, w_max_ids=None):
     return xNewBounds
 
 
+def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
+    '''finds variable, which splitting causes the best reduction
+
+    Args:
+        :box:           variable bounds of class momath.iv
+        :model:         instance of type model
+        :boxNo:         integer with number of boxes
+        :dict_options:  dictionary of options
+        :split_var_id:  list with global ids of potential split variables
+      
+    Return:
+        :new_box:    best reduced two variable boxes
+        
+    '''      
+    print(dict_options["split_Box"])
+    old_box = list(numpy.array(box)[0])  
+    old_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                       for iv in old_box]
+    smallestAvrSide = 2.0
+    new_box = []
+    # if split_var_id is availabe, solved variables from this set are removed
+    if split_var_id:     
+        split_var_id = [i for i in split_var_id 
+                        if not checkVariableBound(old_box[i], dict_options)]
+        
+    # if all variables from split_var_id are solved or all variables shall be
+    # tested for splitting, split_var_id then contains all unsovled variable ids
+    if not split_var_id:
+        split_var_id = model.colPerm
+        split_var_id = [i for i in split_var_id 
+                        if not checkVariableBound(old_box[i], dict_options)]
+    # if split_var_id is still empty then all variables in this box are solved
+    # and the box is returned    
+    if not split_var_id:
+        return [tuple(box[0])]
+    
+    # bisection and contraction is tested on all unsolved variable intervals from
+    # split_var_id             
+    for i, t in enumerate(split_var_id): 
+        box = list(old_box)
+        split_box = bisect_box(box, t)
+        
+        #reduce both boxes
+        output0, output1 = reduceHC4_orNewton(split_box, model, boxNo, 
+                                              dict_options)
+        
+        # if only one variable is split then no best split needs to be found
+        # and the split boxes are directly returned
+        if not new_box and i+1 == len(split_var_id): 
+            return output0["xNewBounds"] + output1["xNewBounds"]
+
+        # if first split box is not empty average length is calculated
+        elif output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
+            new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                       for iv in output0["xNewBounds"][0]]            
+            avrSide0 = identifyReduction(new_box_float, old_box_float)
+        else:
+            # if first split box is empty the second box is returned
+            if dict_options["Debug-Modus"]:
+                print("This is the current best splitted varID by an empty box ", 
+                  model.xSymbolic[t])
+            return [tuple(split_box[1])]
+        # if second split box is not empty average length is calculated
+        if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
+            new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                       for iv in output1["xNewBounds"][0]]            
+            avrSide1 = identifyReduction(new_box_float, old_box_float)
+            
+        else:
+            # if second split box is empty the first box is returned
+            if dict_options["Debug-Modus"]:
+                print("This is the current best splitted varID by an empty box: ", 
+                  model.xSymbolic[t])
+            return [tuple(split_box[0])]     
+        # sum of both boxreductions
+        avrSide = avrSide0 + avrSide1
+        # find best overall boxredution
+        if avrSide < smallestAvrSide:
+            smallestAvrSide = avrSide
+            if dict_options["Debug-Modus"]: 
+                print("variable ", model.xSymbolic[t], " is splitted")
+            new_box = output0["xNewBounds"] + output1["xNewBounds"]
+            
+    return new_box
+
+
 def getBestSplit(xBounds,model, boxNo, dict_options):
     '''finds variable, which splitting causes the best reduction
 
@@ -839,6 +970,8 @@ def getBestSplit(xBounds,model, boxNo, dict_options):
     '''      
     print(dict_options["split_Box"])
     oldBounds = list(numpy.array(xBounds)[0])  
+    oldBounds_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                       for iv in oldBounds]
     smallestAvrSide = numpy.Inf
     
     #try all splits
@@ -850,14 +983,18 @@ def getBestSplit(xBounds,model, boxNo, dict_options):
         output0, output1 = reduceHC4_orNewton(splittedBox, model, boxNo, 
                                               dict_options)
         if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
-            avrSide0 = identifyReduction(output0["xNewBounds"], oldBounds)
+            new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                       for iv in output0["xNewBounds"][0]]
+            avrSide0 = identifyReduction(new_box_float, oldBounds_float)
         else:
             #if one of splitted boxes is empty always prefer this split
             print("This is the current best splitted varID by an empty box ", i)
             return [tuple(splittedBox[1])]
         
         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
-            avrSide1 = identifyReduction(output1["xNewBounds"], oldBounds)
+            new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                       for iv in output1["xNewBounds"][0]]            
+            avrSide1 = identifyReduction(new_box_float, oldBounds_float)
         else:
             #if one of splitted boxes is empty always prefer this split
             print("This is the current best splitted varID by an empty box: ", 
@@ -891,30 +1028,53 @@ def reduceHC4_orNewton(splittedBox, model, boxNo, dict_options):
     dict_options_temp = dict_options.copy()
     
     #if newton for split
-    if (dict_options["split_Box"] =="forecast_newton" or 
-        dict_options["split_Box"] =="forecastSplit"or 
-        dict_options["split_Box"]=="forecastTear" or 
-        dict_options["split_Box"]=="LeastChanged"):
-        dict_options_temp.update({"hc_method":dict_options["hc_method"], 
+    # if (dict_options["split_Box"] =="forecast_newton" or 
+    #     dict_options["split_Box"] =="forecastSplit"or 
+    #     dict_options["split_Box"]=="forecastTear" or 
+    #     dict_options["split_Box"]=="TearVar" or 
+    #     dict_options["split_Box"]=="LeastChanged"):
+    dict_options_temp.update({"hc_method":'HC4',#dict_options["hc_method"], 
                                   "bc_method":'None',
-                                  "newton_method": dict_options["newton_method"],
-                                  "InverseOrHybrid": 'none', 
+                                  "newton_method": 'newton',#dict_options["newton_method"],
+                                  "InverseOrHybrid": 'None', 
                                   "Affine_arithmetic": False})       
-        output0 = reduceBox(numpy.array(splittedBox[0]), model, boxNo, dict_options_temp)
-        output1 = reduceBox(numpy.array(splittedBox[1]), model, boxNo, dict_options_temp)
+    output0 = reduceBox(numpy.array(splittedBox[0]), model, boxNo, dict_options_temp)
+    output1 = reduceBox(numpy.array(splittedBox[1]), model, boxNo, dict_options_temp)
         
     #if HC4 for split    
-    elif dict_options["split_Box"]=="forecast_HC4":
-        dict_options_temp.update({"hc_method":'HC4', "bc_method":'none',
-                                  "newton_method":'none', 
-                                  "InverseOrHybrid": 'both', 
-                                  "Affine_arithmetic": False})
+    # elif dict_options["split_Box"]=="forecast_HC4":
+    #     dict_options_temp.update({"hc_method":'HC4', "bc_method":'none',
+    #                               "newton_method":'none', 
+    #                               "InverseOrHybrid": 'both', 
+    #                               "Affine_arithmetic": False})
         
-        output0 = reduceBox(numpy.array(splittedBox[0]), model, boxNo, dict_options_temp)
-        output1 = reduceBox(numpy.array(splittedBox[1]), model, boxNo, dict_options_temp)
+    #    output0 = reduceBox(numpy.array(splittedBox[0]), model, boxNo, dict_options_temp)
+    #    output1 = reduceBox(numpy.array(splittedBox[1]), model, boxNo, dict_options_temp)
       
     return output0, output1
     
+
+def identify_interval_reduction(newBox,oldBox):
+    '''calculates the side length ratio of all intervals from a new box
+    to an old box
+
+    Args:
+        :newBox:        new variable bounds of class momath.iv
+        :oldBox:        old variable bounds of class momath.iv
+        
+    Return:
+        :sideLengthsRatio:    list with side length ratio for all interval
+        
+    '''
+    sideLengthsRatio = []
+    
+    for i, iv in enumerate(oldBox):
+        if (iv[1]-iv[0])>0: 
+            sideLengthsRatio.append((newBox[i][1] - newBox[i][0]) / (iv[1]-iv[0]))
+        else:
+            sideLengthsRatio.append(0)
+                                             
+    return sideLengthsRatio
         
 def identifyReduction(newBox,oldBox):
     '''calculates the average side length reduction from old to new Box
@@ -928,13 +1088,17 @@ def identifyReduction(newBox,oldBox):
         
     '''
     avrSideLength = 0
-    for i, box in enumerate(oldBox):
-        if (float(mpmath.convert(box.b))-float(mpmath.convert(box.a)))>0:
-            avrSideLength = avrSideLength + (float(mpmath.convert(newBox[0][i].b))-
-                                             float(mpmath.convert(newBox[0][i].a)))/(
-                                             float(mpmath.convert(oldBox[i].b))-
-                                             float(mpmath.convert(oldBox[i].a)))
-                                             
+    
+    # for i, iv in enumerate(oldBox):
+    #     if ((float(mpmath.convert(iv.b))-float(mpmath.convert(iv.a)))>0):
+    #         avrSideLength = avrSideLength + (float(mpmath.convert(newBox[0][i].b))-
+    #                                          float(mpmath.convert(newBox[0][i].a)))/(
+    #                                          float(mpmath.convert(iv.b))-
+    #                                          float(mpmath.convert(iv.a)))
+    for i, iv in enumerate(oldBox): 
+        if (iv[1] -iv[0])>0:
+            avrSideLength += (newBox[i][1] - newBox[i][0])/(iv[1] - iv[0])    
+                                                 
     return avrSideLength/len(oldBox)
 
 
@@ -976,7 +1140,7 @@ def getCurrentVarToSplit(tearVarIds, box, dict_options):
     i = dict_options["tear_id"]
     
     if i  > len(tearVarIds) - 1: i = 0   
-    if checkIntervalWidth(box[tearVarIds], dict_options["absTol"],
+    if checkIntervalWidth([box[i] for i in tearVarIds], dict_options["absTol"],
                             dict_options["relTol"]) == []:
         return []
          
@@ -984,8 +1148,10 @@ def getCurrentVarToSplit(tearVarIds, box, dict_options):
                              dict_options["relTol"]) == []:
         if i  < len(tearVarIds) - 1: i+=1
         else: i = 0
-
-    else: return i
+    
+    else: 
+        dict_options["tear_id"] = i
+        return i
     
         
 def separateBox(box, varID):
@@ -1006,6 +1172,14 @@ def separateBox(box, varID):
         else:box[i]=[interval]
         
     return list(itertools.product(*box))
+
+
+def bisect_box(box, varID):
+    box_low = list(box)
+    box_up = list(box)
+    box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)
+    box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
+    return [box_low, box_up]
 
 
 def getPointInBox(xBounds, pointIndicator):
@@ -1798,6 +1972,8 @@ def checkVariableBound(newXInterval, dict_options):
 
     if isclose_ordered(iv[0], iv[1], relEpsX, absEpsX):
         return True
+    else: 
+        return False
 
     
 def reduceXIntervalByFunction(xBounds, f, i, dict_options):
@@ -4206,31 +4382,28 @@ def split_least_changed_variable(box_new, model, k, dict_options):
     w_ratio = []
     r = model.complete_parent_boxes[k][0]
     box_ID = model.complete_parent_boxes[k][1]
-    boxNo = len(model.xBounds)
+    box_new_float=[[convert_mpi_float(iv.a), convert_mpi_float(iv.b)] for iv in box_new[0]]
+    #boxNo = len(model.xBounds)
     
     box_old = mostg.get_entry_from_npz_dict(dict_options["fileName"]+"_boxes.npz", 
                                             r, allow_pickle=True)[box_ID]
     
-    for i in range(0, len(box_new[0])):
-        if (mpmath.mpf(box_new[0][i].delta)>= dict_options["absTol"]):
-                                   w_ratio.append(
-                                       float(mpmath.mpf(box_new[0][i].delta))
-                                       / (box_old[i][1] - box_old[i][0])) 
-        else: w_ratio.append(0.0) 
+    w_ratio = identify_interval_reduction(box_new_float, box_old)
     w_max_ids = [i for i, j in enumerate(w_ratio) if j == max(w_ratio)]
-    if model.fCounts == []: model.fCounts = [len(model.dict_varId_fIds[i]) 
-                                             for i in range(0, len(box_new[0]))]
-    if len(w_max_ids) > 3:
-        splitVar = []
-        least_changed_intervals = [ model.fCounts[i] for i in w_max_ids]
-        for i in range(3):
-            splitVar.append(w_max_ids.pop(
-                least_changed_intervals.index(max(least_changed_intervals))))
-            least_changed_intervals.pop(
-                least_changed_intervals.index(max(least_changed_intervals)))
-        w_max_ids = splitVar
+    
+    #if model.fCounts == []: model.fCounts = [len(model.dict_varId_fIds[i]) 
+    #                                         for i in range(0, len(box_new[0]))]
+    #if len(w_max_ids) > 3:
+    #    splitVar = []
+    #    least_changed_intervals = [ model.fCounts[i] for i in w_max_ids]
+    #    for i in range(3):
+    #        splitVar.append(w_max_ids.pop(
+    #            least_changed_intervals.index(max(least_changed_intervals))))
+    #        least_changed_intervals.pop(
+    #            least_changed_intervals.index(max(least_changed_intervals)))
+    #    w_max_ids = splitVar
 
-    return getBestTearSplit(box_new, model, boxNo, dict_options, w_max_ids) 
+    return w_max_ids#getBestTearSplit(box_new, model, boxNo, dict_options, w_max_ids) 
 
 
 def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
@@ -4267,7 +4440,7 @@ def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
     return ready_for_reduction
 
 
-def unify_boxes(boxes):
+def unify_boxes(boxes, dict_options):
     results = {
         "boxes_unified": len(boxes) * [False],
         "epsilon_uni": [],
@@ -4289,7 +4462,8 @@ def unify_boxes(boxes):
                     identical=[box[i]==box_2[i] for i in range(len(box))]
                     if identical.count(False)==1:
                         i = identical.index(False)
-                        if box[i].a == box_2[i].b: 
+                        if box[i].a in mpmath.mpi(box_2[i].b - dict_options["absTol"],
+                                                  box_2[i].b): 
                             index = [l for l, cur_box in enumerate(boxes) 
                                      if list(cur_box) == list(box)]
                             boxes[j][i]=mpmath.mpi(box_2[i].a, box[i].b)
@@ -4298,7 +4472,8 @@ def unify_boxes(boxes):
                             if index: boxes.pop(index[0])
                             #boxes.pop(k - l)
                             #if k l += 1
-                        elif box[i].b == box_2[i].a: 
+                        elif box[i].b in mpmath.mpi(box_2[i].a - dict_options["absTol"], 
+                                                    box_2[i].a):
                             index = [l for l, cur_box in enumerate(boxes) 
                                      if list(cur_box) == list(box)]
                             boxes[j][i]=mpmath.mpi(box[i].a, box_2[i].b) 

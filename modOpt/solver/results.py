@@ -123,6 +123,7 @@ def write_solution(xSymbolic, solution, bounds, dict_options, solv_options=None)
     res_file.write(" ****************** Iteration Variable Values ****************** \n\n") 
     if isinstance(bounds[0], list) or isinstance(bounds[0], numpy.ndarray):
         for i in range(0, len(xSymbolic)):
+            
             res_file.write("%s    %s    %s    %s\n"%(xSymbolic[i], 
                                                  solution[i],
                                                  bounds[i][0],

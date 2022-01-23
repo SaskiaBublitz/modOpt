@@ -320,7 +320,7 @@ def getReducedXBoundsResults(results, model, maxBoxNo, dict_options):
                 output["xAlmostEqual"] += [True]
                 output["xSolved"] += [False]
                 output["cut"] += [False]
-                output["disconti"] += [dict_options["dicsonti"][k]]#results['%d' %k][5]
+                output["disconti"] += [dict_options["disconti"][k]]#results['%d' %k][5]
                 output["complete_parent_boxes"] += [model.complete_parent_boxes[k]]
                 if results['%d' %k][7] != []: cut += results['%d' %k][7]
 

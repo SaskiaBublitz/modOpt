@@ -50,6 +50,7 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     if dict_options["split_Box"] == "LargestDer": filename += "_ld"
     if dict_options["split_Box"] == "forecastSplit": filename += "_fcs"
     if dict_options["split_Box"] == "LeastChanged": filename += "_lc"
+    if dict_options["split_Box"] == "forecastTear": filename += "_ftv"
     
     # cutting methods:
     if dict_options["cut_Box"]== "tear": filename += "_cbtv"

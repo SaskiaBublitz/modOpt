@@ -181,7 +181,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
                                                                        dict_options)
     else:
       if all(dict_options["xSolved"]): 
-          validXBounds, res_solver["unified"] = iNes_procedure.unify_boxes(validXBounds)       
+          validXBounds, res_solver["unified"] = iNes_procedure.unify_boxes(validXBounds,
+                                                                           dict_options)       
       newModel.setXBounds(validXBounds)
       res_solver["Model"] = newModel
     storage.store_time(npzFileName, timeMeasure, iterNo)
