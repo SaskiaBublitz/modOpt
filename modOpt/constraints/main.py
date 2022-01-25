@@ -152,17 +152,17 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
         
         if len(model.xBounds) > 1: 
             change_order_of_boxes_residual(model, output, dict_options) 
-            # validBounds = [iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options) for x in model.xBounds]
-            # if not all(validBounds):
+            validBounds = [iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options) for x in model.xBounds]
+            if not all(validBounds):
                 
-            #     for i,val in enumerate(validBounds):
-            #         if not val: 
-            #             model.xBounds.pop(i)
-            #             dict_options["xAlmostEqual"].pop(i)
-            #             dict_options["disconti"].pop(i)
-            #             dict_options["xSolved"].pop(i)
-            #             dict_options["mean_residual"].pop(i)
-            #             model.complete_parent_boxes.pop(i)
+                for i,val in enumerate(validBounds):
+                    if not val: 
+                        model.xBounds.pop(i)
+                        dict_options["xAlmostEqual"].pop(i)
+                        dict_options["disconti"].pop(i)
+                        dict_options["xSolved"].pop(i)
+                        dict_options["mean_residual"].pop(i)
+                        model.complete_parent_boxes.pop(i)
                     
             # print(model.xBounds)
                

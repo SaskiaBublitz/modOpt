@@ -45,9 +45,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     results = manager.dict()
     done = numpy.zeros(len(model.xBounds))
     started = numpy.zeros(len(model.xBounds))
-    #output["xSolved"]  = dict_options["xSolved"]
-    #output["xAlmostEqual"] = dict_options["xAlmostEqual"]  
-    #output["disconti"] = dict_options["disconti"]
+
     if dict_options["cut_Box"] in {"all", "tear", True}: model.cut = True
     dict_options["ready_for_reduction"] = get_index_of_boxes_for_reduction(dict_options["xSolved"],
                                                                           dict_options["xAlmostEqual"], 
@@ -61,13 +59,6 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     
     startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
     
-    #(output["newXBounds"], 
-    # output["xAlmostEqual"], 
-    # output["xSolved"], tearVarIds, 
-    # output["num_solved"], 
-    # output["disconti"], 
-    # output["complete_parent_boxes"], 
-    # output["complete_boxes"]) 
     output, tearVarIds = getReducedXBoundsResults(results, model, 
                                                   dict_options["maxBoxNo"],
                                                   dict_options)
@@ -159,6 +150,7 @@ def reduceBoxes_Worker(k, model, dict_options, results_tot, sampling_options=Non
 
         iNes_procedure.prepare_results_constant_x(model, k, results, allBoxes, 
                                                   dict_options)
+        cut += [False]
     else:
         if dict_options["Debug-Modus"]: print(f'Box {k+1}')
         if (not dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
