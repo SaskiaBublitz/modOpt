@@ -168,7 +168,8 @@ def reduceBoxes_Worker(k, model, dict_options, results_tot, sampling_options=Non
  
             #output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
             #                               [ model.complete_parent_boxes[k]])   
-        iNes_procedure.prepare_results_inconsistent_x(model, k, results, output) 
+        iNes_procedure.prepare_results_inconsistent_x(model, k, results, output, 
+                                                      dict_options) 
         
         if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) and 
             dict_options["hybrid_approach"] and not sampling_options ==None and 

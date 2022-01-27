@@ -101,8 +101,9 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                                                                                                                             
             if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
                 and dict_options["hybrid_approach"] and not
-                sampling_options ==None and not solv_options == None):  
-
+                sampling_options ==None and not solv_options == None and 
+                len(output["xNewBounds"])==1):  
+                model.xBounds[k] = output["xNewBounds"][0]
                 results["num_solved"] = lookForSolutionInBox(model, k, 
                                                              dict_options, 
                                                              sampling_options, 
@@ -1317,88 +1318,88 @@ def reduceBox(xBounds, model, boxNo, dict_options):
                 return prepare_output(dict_options, output, True, [x_HC4], 
                                       True)
             xBounds = list(x_HC4)
-        # TODO: also return when x is solved
+
         # Preparation for contraction with iv_newton or bnormal
-        xUnchanged = False # relevant for newton and bnormal
+        #xUnchanged = False # relevant for newton and bnormal
         xNewBounds = list(xBounds)
         
-        while not xUnchanged: # TODO: check without xUnchanged?
-            subBoxNo = 1
-            xUnchanged = True   
-            # update current old x to see progress in each contraction method
-            dict_options_temp["x_old"]=list(xBounds) 
-                                                     
-            for i in model.colPerm:
-                y = [xBounds[i]] # currently reduced variable
-                if dict_options["Debug-Modus"]: print(i)
-                # if y is already solved tolerances are decreased to contract y 
-                #further because other variables may rely on y
-                checkIntervalAccuracy(xBounds, i, dict_options_temp)
-           
-                # if any newton method is active       
-                if not (variableSolved(y, dict_options_temp) and 
-                        dict_options['newton_method'] in newtonMethods):
-                    
-                    # Iv Newton step:
-                    y = iv_newton(model, xBounds, i, dict_options_temp)
+        #while not xUnchanged: # TODO: check without xUnchanged?
+        subBoxNo = 1
+        #xUnchanged = True   
+        # update current old x to see progress in each contraction method
+        dict_options_temp["x_old"]=list(xBounds) 
+                                                 
+        for i in model.colPerm:
+            y = [xBounds[i]] # currently reduced variable
+            if dict_options["Debug-Modus"]: print(i)
+            # if y is already solved tolerances are decreased to contract y 
+            #further because other variables may rely on y
+            checkIntervalAccuracy(xBounds, i, dict_options_temp)
+       
+            # if any newton method is active       
+            if not (variableSolved(y, dict_options_temp) and 
+                    dict_options['newton_method'] in newtonMethods):
+                
+                # Iv Newton step:
+                y = iv_newton(model, xBounds, i, dict_options_temp)
+                if y == [] or y ==[[]]: 
+                    saveFailedSystem(output, model.functions[0], model, i)
+                    return output
+                y = check_contracted_set(model, y, i, xBounds, dict_options)
+               
+            # if bnormal is active
+            if (not variableSolved(y, dict_options_temp) and 
+                dict_options['bc_method']=='bnormal'):
+                
+                if dict_options_temp["unique_bc"]: unique_test_bc = True
+                else: unique_test_bc = False            
+                f_for_unique_test_bc = False
+               
+                # Bnormal step:
+                for j in model.dict_varId_fIds[i]:            
+                    y = do_bnormal(model.functions[j], xBounds, y, i, 
+                                       dict_options_temp)
+                    if unique_test_bc: # unique solution test
+                        (fbc, ubc) = update_for_unique_test(j, 
+                                                            model.dict_varId_fIds[i][-1],
+                                                            f_for_unique_test_bc,
+                                                            dict_options_temp["unique_bc"])
+                        f_for_unique_test_bc = fbc
+                        dict_options_temp["unique_bc"] = ubc                            
+                    # if discontinuity has been detected during reduction 
+                    # it could be used for split order by discontinuities:                                     
+                    if ("disconti_iv" in dict_options_temp.keys() and 
+                        dict_options["consider_disconti"]):
+                        output["disconti"] = [True]
+                        del dict_options_temp["disconti_iv"]  
                     if y == [] or y ==[[]]: 
-                        saveFailedSystem(output, model.functions[0], model, i)
+                        saveFailedSystem(output, model.functions[j], model, i)
                         return output
-                    y = check_contracted_set(model, y, i, xBounds, dict_options)
-                   
-                # if bnormal is active
-                if (not variableSolved(y, dict_options_temp) and 
-                    dict_options['bc_method']=='bnormal'):
+                    y = check_contracted_set(model, y, i, xBounds, 
+                                             dict_options)
+                    if variableSolved(y, dict_options_temp): 
+                        if f_for_unique_test_bc: 
+                            dict_options_temp["unique_bc"] = True
+                        break                     
+                # Turns unique_bc to true if function for unique solution 
+                # criterion in interval has been found:
+                if f_for_unique_test_bc: 
+                    dict_options_temp["unique_bc"] = True
                     
-                    if dict_options_temp["unique_bc"]: unique_test_bc = True
-                    else: unique_test_bc = False            
-                    f_for_unique_test_bc = False
-                   
-                    # Bnormal step:
-                    for j in model.dict_varId_fIds[i]:            
-                        y = do_bnormal(model.functions[j], xBounds, y, i, 
-                                           dict_options_temp)
-                        if unique_test_bc: # unique solution test
-                            (fbc, ubc) = update_for_unique_test(j, 
-                                                                model.dict_varId_fIds[i][-1],
-                                                                f_for_unique_test_bc,
-                                                                dict_options_temp["unique_bc"])
-                            f_for_unique_test_bc = fbc
-                            dict_options_temp["unique_bc"] = ubc                            
-                        # if discontinuity has been detected during reduction 
-                        # it could be used for split order by discontinuities:                                     
-                        if ("disconti_iv" in dict_options_temp.keys() and 
-                            dict_options["consider_disconti"]):
-                            output["disconti"] = [True]
-                            del dict_options_temp["disconti_iv"]  
-                        if y == [] or y ==[[]]: 
-                            saveFailedSystem(output, model.functions[j], model, i)
-                            return output
-                        y = check_contracted_set(model, y, i, xBounds, 
-                                                 dict_options)
-                        if variableSolved(y, dict_options_temp): 
-                            if f_for_unique_test_bc: 
-                                dict_options_temp["unique_bc"] = True
-                            break                     
-                    # Turns unique_bc to true if function for unique solution 
-                    # criterion in interval has been found:
-                    if f_for_unique_test_bc: 
-                        dict_options_temp["unique_bc"] = True
-                        
-                # Update quantities:
-                if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:  
-                    y = [mpmath.mpi(min([yi.a for yi in y]),max([yi.b for yi in y]))]
-                    output["disconti"]=[True]
+            # Update quantities:
+            if ((boxNo-1) + subBoxNo * len(y)) > dict_options["maxBoxNo"]:  
+                y = [mpmath.mpi(min([yi.a for yi in y]),max([yi.b for yi in y]))]
+                output["disconti"]=[True]
 
-                (xSolved, xUnchanged, 
-                 subBoxNo) = update_quantities(y, i, subBoxNo, xNewBounds, xBounds,
-                                               xUnchanged, xSolved, dict_options, 
-                                               dict_options_temp)
-            
-            xNewBounds = check_uniqueness(output, xNewBounds, dict_options_temp) 
-            if "uniqueSolutionInBox" in output.keys(): 
-                    return prepare_output(dict_options, output, True, xNewBounds, 
-                                          True)    
+            (xSolved, 
+             subBoxNo) = update_quantities(y, i, subBoxNo, xNewBounds, xBounds,
+                                           xSolved, dict_options, 
+                                           dict_options_temp)
+        
+        xNewBounds = check_uniqueness(output, xNewBounds, dict_options_temp) 
+        if "uniqueSolutionInBox" in output.keys(): 
+                return prepare_output(dict_options, output, True, xNewBounds, 
+                                      True)    
         # Check for consistency:                             
         consistent = compare_with_last_box(xBounds, x_last, dict_options)    
         
@@ -1723,7 +1724,7 @@ def prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged):
     return output
 
 
-def update_quantities(y, i, subBoxNo, xNewBounds, xBounds, xUnchanged, xSolved,
+def update_quantities(y, i, subBoxNo, xNewBounds, xBounds, xSolved,
                       dict_options, dict_options_temp):
     """ updates all quantities after box reductions
     
@@ -1748,14 +1749,14 @@ def update_quantities(y, i, subBoxNo, xNewBounds, xBounds, xUnchanged, xSolved,
     subBoxNo = subBoxNo * len(y)
     xNewBounds[i] = y
     if not variableSolved(y, dict_options): xSolved = False
-    if xUnchanged: xUnchanged = checkXforEquality(dict_options_temp["x_old"][i], 
-                                                  xBounds[i], xUnchanged, 
-                                   {"absTol":dict_options["absTol"], 
-                                    'relTol':dict_options["relTol"]})  
+    #if xUnchanged: xUnchanged = checkXforEquality(dict_options_temp["x_old"][i], 
+    #                                              xBounds[i], xUnchanged, 
+    #                               {"absTol":dict_options["absTol"], 
+    #                                'relTol':dict_options["relTol"]})  
     
     dict_options_temp["relTol"] = dict_options["relTol"]
     dict_options_temp["absTol"] = dict_options["absTol"]  
-    return xSolved, xUnchanged, subBoxNo
+    return xSolved, subBoxNo
 
 
 def do_bnormal(f, xBounds, y, i, dict_options):
@@ -1867,15 +1868,24 @@ def do_HC4(model, xBounds, output, dict_options):
                 
                 output["uniqueSolutionInBox"] = True
                 return output, empty, box_mpmath   
-            
+        elif solved(box, dict_options):
+            box_mpmath = numpy.array([mpmath.mpi(iv[0], iv[1]) for iv in box]) 
+            output["uniqueSolutionInBox"] = True
+            return output, empty, box_mpmath  
         elif dict_options["unique_hc"]: 
-            output["box_has_unique_solution"] = True 
- 
+            output["box_has_unique_solution"] = True         
+        
         consistent = check_consistency(box_old, box, dict_options)
  
     box = numpy.array([mpmath.mpi(iv[0], iv[1]) for iv in box])      
     return output, empty, box
 
+
+def solved(box, dict_options):
+    for iv in box:
+        if not isclose_ordered(iv[0],iv[1],dict_options["relTol"], 
+                           dict_options["absTol"]): return False
+    return True
 
 def check_consistency(box_old, box, dict_options):
     """ checks if two boxes are consistent

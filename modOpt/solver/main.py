@@ -170,8 +170,18 @@ def sample_and_solve_one_block(model, b, sampling_options,
    # if sampling_options["init_method"] == "tear_sampling":
    #     samples = moi.do_tear_sampling(model, cur_block, 0, sampling_options, 
    #                                       dict_options, solv_options)        
-    if sampling_options["sampling method"]== "ax_optimization":
-       samples = [[moi.do_ax_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
+    if sampling_options["sampling method"]== "optuna":
+        samples = [[moi.func_optuna_timeout(cur_block, 0, sampling_options, 
+                                       dict_options)]]
+        print("The residual of the sample point is: ", 
+              numpy.linalg.norm(cur_block.getFunctionValues()))   
+        #try: samples = [[moi.do_optuna_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
+        #except: 
+        #    sampling_options["number of samples"] = 0
+        #    moi
+        #    model.stateVarValues[0][cur_block.colPerm]=samples[0][0]
+    #if sampling_options["sampling method"]== "ax_optimization":
+    #   samples = [[moi.do_ax_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
     else: 
        moi.sample_box_in_block(cur_block, 0, sampling_options, dict_options, samples)
        model.stateVarValues[0][cur_block.colPerm]=samples[0][0]

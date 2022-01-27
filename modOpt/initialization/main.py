@@ -5,12 +5,13 @@
 Import packages
 ***************************************************
 """
+import optuna
 import copy
 import time
 import numpy
 from modOpt.initialization import parallelization, VarListType, Sampling, arithmeticMean, axOptimization
 import modOpt.storage as mostge
-
+from func_timeout import func_timeout, FunctionTimedOut
 
 """
 ********************************************************
@@ -18,7 +19,8 @@ All methods to specify a specific sample point selection
 ********************************************************
 """
 __all__ = ['get_samples_with_n_lowest_residuals', 'doSampling', 'sample_box',
-           'sample_box_in_block', 'do_ax_optimization_in_block', 'do_tear_sampling']
+           'sample_box_in_block', 'do_ax_optimization_in_block', 'do_tear_sampling',
+           'do_optuna_optimization_in_block', 'func_optuna_timeout']
 
 def do_ax_optimization(model, dict_options, sampling_options):
     sampling_options["max_iter"] = 1000
@@ -199,6 +201,55 @@ def do_ax_optimization_in_block(block, boxID, sampling_options, dict_options):
     print("The residual of the sample point is: ", numpy.linalg.norm(block.getFunctionValues()))
     return sample
     
+
+def do_optuna_optimization_in_block(block, boxID, sampling_options, dict_options):
+    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, dict_options) 
+    residual =  numpy.linalg.norm(block.getFunctionValues())
+    if residual > dict_options["absTol"]:  
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        box = block.xBounds_tot
+        var_names = [str(var_name)  for var_name in block.x_sym_tot]
+        sampler = optuna.samplers.CmaEsSampler()
+        study = optuna.create_study(direction='minimize', 
+                                    sampler=sampler)
+        study.optimize(lambda trial: objective(trial, box, var_names, 
+                                           block.functions_block), 
+                   n_trials=sampling_options["number of samples"])
+        sample = [study.best_params[var_names[c]] for c in block.colPerm]
+    else:
+        sample = block.x_tot[block.colPerm]
+    return sample
+
+
+def func_optuna_timeout(block, boxID, sampling_options, dict_options):
+    args = (block, boxID, sampling_options, dict_options)
+    try:
+        sample = func_timeout(0.5, do_optuna_optimization_in_block, args)
+    except FunctionTimedOut:
+        print("Sampling took too long, hence midpoint of box is taken")
+        samples = {}
+        old_val = sampling_options["number of samples"]
+        sampling_options["number of samples"]= 0
+        sample_box_in_block(block, boxID, sampling_options, dict_options, samples)
+        sample =  samples[0][0]
+        sampling_options["number of samples"]=old_val
+        
+    return sample
+
+    
+def objective(trial, box, var_names, functions):
+    variables = []
+    quadratic_error_sum = 0
+    for i, var in enumerate(var_names):  
+        variables.append(trial.suggest_float(var, box[i][0], box[i][1])) 
+    
+    for f in functions: 
+        f_vars = [variables[i] for i in f.glb_ID]        
+        quadratic_error_sum += f.f_numpy(*f_vars)**2
+        
+    return quadratic_error_sum
+
+
 
     
 def sample_box_in_block(block, boxID, sampling_options, dict_options, res):

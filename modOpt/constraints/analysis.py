@@ -8,6 +8,7 @@ import mpmath
 import modOpt.decomposition as mod
 import sympy
 import numpy
+import modOpt.scaling as mosca
 
 """
 ***************************************************
@@ -163,16 +164,25 @@ def calc_vol_fraction(box, init_box, tol):
             vol_frac*=(tol/width_0)
     return vol_frac
 
-def calc_residual(model): 
+def calc_residual(model, solv_options): 
     residual = []
+    
+    
     if model.xBounds != []:
+        x_old = model.stateVarValues[0]
         for i,box in  enumerate(model.xBounds):
             x = []
-            for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
+            
+            model.stateVarValues[0] =  numpy.array([float(mpmath.mpf(iv.mid)) for iv in box])
+            mosca.main.scaleSystem(model, solv_options)
+            #for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
             try: 
-                residual.append(sum([abs(fi) for fi in model.fLamb(*x)]))
+                residual.append(sum([abs(fi)/model.rowSca[j] for j, fi 
+                                     in enumerate(model.fLamb(*model.stateVarValues[0]))]))
             except: 
                 residual.append(float('nan'))
+        model.stateVarValues[0] = x_old
+        print(residual)
     return residual
         
         

@@ -110,18 +110,11 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
                                                 sampling_options, solv_options)
         
         if len(model.xBounds) > 1: 
-            dict_options["mean_residual"] = analysis.calc_residual(model) 
+            dict_options["mean_residual"] = analysis.calc_residual(model, solv_options) 
         dict_options["xAlmostEqual"]= output["xAlmostEqual"]
         dict_options["xSolved"] = output["xSolved"]
         dict_options["disconti"] = output["disconti"] 
-        dict_options["cut"] = output["cut"] 
-        #dict_options["tear_id"] = output["tear_id"] 
-        #dict_options["xAlmostEqual"]  = [item for sublist in output["xAlmostEqual"] 
-        #                                 if sublist != [] 
-        #                                 for item in sublist if item != []]
-        #dict_options["xSolved"]  = [item for sublist in output["xSolved"] 
-        #                            if sublist != [] 
-        #                            for item in sublist if item != []]             
+        dict_options["cut"] = output["cut"]            
         timeMeasure.append(time.time() - tic)
         #num_solved.append(any(output["num_solved"]))
         num_solved.append(output["num_solved"])     

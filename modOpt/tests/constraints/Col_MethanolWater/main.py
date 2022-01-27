@@ -43,7 +43,7 @@ def main():
     dict_options_all = {
                     'fileName': ["Col_MethanolWater"],   # requires python module with this name                  
                     'tol': [1e-9],
-                    'redStepMax': [22],
+                    'redStepMax': [10],
                     'resolution': [8],
                     'Parallel Branches': [0,1],
                     'bc_method': ["None", "bnormal"],
@@ -63,7 +63,7 @@ def main():
     dict_options_ref = {
                     'fileName': "Col_MethanolWater",   # requires python module with this name
                     'tol': 1e-9,
-                    'redStepMax': 22,
+                    'redStepMax': 10,
                     'resolution': 8,
                     'Parallel Branches': 1,
                     'bc_method': "bnormal",
