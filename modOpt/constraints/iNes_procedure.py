@@ -96,7 +96,8 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
             else:                                
                 output = contractBox(xBounds, model, dict_options["boxNo"] , 
                                      dict_options)
-            prepare_results_inconsistent_x(model, k, results, output)    
+            prepare_results_inconsistent_x(model, k, results, output, 
+                                           dict_options)    
                                                                                                                             
             if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
                 and dict_options["hybrid_approach"] and not
@@ -168,7 +169,7 @@ def prepare_general_resluts(model, k, allBoxes, results, output, dict_options):
     return []
 
 
-def prepare_results_inconsistent_x(model, k, results, output):
+def prepare_results_inconsistent_x(model, k, results, output, dict_options):
     """ writes results of box after contraction into dictionary results 
     
     Args:
@@ -176,9 +177,14 @@ def prepare_results_inconsistent_x(model, k, results, output):
         :k:             integer with curremt box index                
         :results:       dictionary with results from reduction step
         :output:        dictionary with output from splitting and cutting
+        :dict_options:  dictionary with reduction step
     
     """
-    results["complete_parent_boxes"] += (len(output["xNewBounds"]) * 
+    if len(output["xNewBounds"]) > 1:
+        results["complete_parent_boxes"] += (len(output["xNewBounds"]) 
+                                             * [[dict_options["iterNo"]-1, k]])
+    else:
+        results["complete_parent_boxes"] += (len(output["xNewBounds"]) * 
                                          [model.complete_parent_boxes[k]])
     results["cut"] += len(output["xNewBounds"]) * [True]
 
@@ -1311,12 +1317,12 @@ def reduceBox(xBounds, model, boxNo, dict_options):
                 return prepare_output(dict_options, output, True, [x_HC4], 
                                       True)
             xBounds = list(x_HC4)
-        
+        # TODO: also return when x is solved
         # Preparation for contraction with iv_newton or bnormal
         xUnchanged = False # relevant for newton and bnormal
         xNewBounds = list(xBounds)
         
-        while not xUnchanged:
+        while not xUnchanged: # TODO: check without xUnchanged?
             subBoxNo = 1
             xUnchanged = True   
             # update current old x to see progress in each contraction method
