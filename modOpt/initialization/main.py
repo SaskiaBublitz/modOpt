@@ -5,13 +5,11 @@
 Import packages
 ***************************************************
 """
-import optuna
 import copy
 import time
 import numpy
 from modOpt.initialization import parallelization, VarListType, Sampling, arithmeticMean, axOptimization
 import modOpt.storage as mostge
-from func_timeout import func_timeout, FunctionTimedOut
 
 """
 ********************************************************
@@ -203,6 +201,7 @@ def do_ax_optimization_in_block(block, boxID, sampling_options, dict_options):
     
 
 def do_optuna_optimization_in_block(block, boxID, sampling_options, dict_options):
+    import optuna
     arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, dict_options) 
     residual =  numpy.linalg.norm(block.getFunctionValues())
     if residual > dict_options["absTol"]:  
@@ -222,6 +221,7 @@ def do_optuna_optimization_in_block(block, boxID, sampling_options, dict_options
 
 
 def func_optuna_timeout(block, boxID, sampling_options, dict_options):
+    from func_timeout import func_timeout, FunctionTimedOut
     args = (block, boxID, sampling_options, dict_options)
     try:
         sample = func_timeout(0.5, do_optuna_optimization_in_block, args)

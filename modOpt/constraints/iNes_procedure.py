@@ -79,9 +79,29 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
         elif (dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
               and dict_options["boxNo"]  >= dict_options["maxBoxNo"]):
             
-            prepare_results_constant_x(model, k, results, allBoxes, dict_options)
-            cut += [False]
-            continue
+            if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
+                if model.tearVarsID == []: getTearVariables(model)
+                newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options,
+                                                     model.tearVarsID)
+
+                if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
+                    newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options)
+                if newBox == [] or newBox ==[[]]: 
+                    saveFailedSystem(output, model.functions[0], model, 0)
+                    output["disconti"]=[]
+                    output["cut"] = [True]         
+                elif possibleCutOffs:
+                    output["xNewBounds"] = [numpy.array(newBox[0])]
+                    output["xSolved"] = [variableSolved(newBox[0], dict_options)]
+                    output["xAlmostEqual"] = [False]
+                    output["disconti"] = [False]
+                    output["cut"] = [True]
+                    prepare_results_splitted_x(model, cut, k, results, output, dict_options)
+                    continue
+                else:
+                   prepare_results_constant_x(model, k, results, allBoxes, dict_options) 
+                   cut += [False]
+                   continue
 
         else:
             if dict_options["Debug-Modus"]: print(f'Box {k}')
@@ -96,7 +116,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
             else:                                
                 output = contractBox(xBounds, model, dict_options["boxNo"] , 
                                      dict_options)
-            prepare_results_inconsistent_x(model, k, results, output, 
+            prepare_results_inconsistent_x(model, k, results, cut, output, 
                                            dict_options)    
                                                                                                                             
             if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
@@ -111,7 +131,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
                                    
         emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
                                              output, dict_options)
-    
+    print("cut in function", cut)
     check_results_reduction_step(model, cut, allBoxes, emptyBoxes, results)      
       
     return results
@@ -170,7 +190,7 @@ def prepare_general_resluts(model, k, allBoxes, results, output, dict_options):
     return []
 
 
-def prepare_results_inconsistent_x(model, k, results, output, dict_options):
+def prepare_results_inconsistent_x(model, k, results, cut, output, dict_options):
     """ writes results of box after contraction into dictionary results 
     
     Args:
@@ -188,6 +208,7 @@ def prepare_results_inconsistent_x(model, k, results, output, dict_options):
         results["complete_parent_boxes"] += (len(output["xNewBounds"]) * 
                                          [model.complete_parent_boxes[k]])
     results["cut"] += len(output["xNewBounds"]) * [True]
+    cut += len(output["xNewBounds"]) * [True]
 
 
 def prepare_results_splitted_x(model, cut, k, results, output, dict_options):

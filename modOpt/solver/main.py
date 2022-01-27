@@ -13,8 +13,6 @@ import modOpt.scaling as mos
 import modOpt.initialization as moi
 from modOpt.initialization import arithmeticMean
 from modOpt.constraints.function import Function
-import copy
-import time
 import mpmath
 
 """

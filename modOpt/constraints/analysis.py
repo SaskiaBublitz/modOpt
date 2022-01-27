@@ -171,8 +171,6 @@ def calc_residual(model, solv_options):
     if model.xBounds != []:
         x_old = model.stateVarValues[0]
         for i,box in  enumerate(model.xBounds):
-            x = []
-            
             model.stateVarValues[0] =  numpy.array([float(mpmath.mpf(iv.mid)) for iv in box])
             mosca.main.scaleSystem(model, solv_options)
             #for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
@@ -182,7 +180,6 @@ def calc_residual(model, solv_options):
             except: 
                 residual.append(float('nan'))
         model.stateVarValues[0] = x_old
-        print(residual)
     return residual
         
         
