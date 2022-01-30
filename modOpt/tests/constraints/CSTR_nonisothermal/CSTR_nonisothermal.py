@@ -69,6 +69,8 @@ def main():
     solv_options = {"solver": 'newton', # 'newton', 'SLSQP', 'trust-constr', 'ipopt, fsolve, TNC', 'matlab-fsolve', 'matlab-fsolve-mscript'
                 "mode": 1, # relevant for ipopt 1 = minimization of function residuals, 2 = equality constraints, constant objective
                 "FTOL": 1e-12,
+                "scaling": "MC77",
+                "scaling procedure": "block_iter", #"tot_init", "block_init", "tot_iter", "block_iter",		
                 "iterMax": 1000,
                 "iterMax_tear": 10,
                 "parallel_boxes": False,

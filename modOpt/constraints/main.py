@@ -73,6 +73,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     dict_options["splitvar_id"] = -1
     dict_options["disconti"] = [False] * len(model.xBounds)
     dict_options["xAlmostEqual"] = [False] * len(model.xBounds)
+    dict_options["cut"] = [True] * len(model.xBounds)
     dict_options["xSolved"] = [False] * len(model.xBounds)
     os.makedirs(dict_options["save_path"], exist_ok=True)
     dict_options["matlabName"] = dict_options["fileName"]
@@ -115,7 +116,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
         dict_options["xAlmostEqual"]= output["xAlmostEqual"]
         dict_options["xSolved"] = output["xSolved"]
         dict_options["disconti"] = output["disconti"] 
-        dict_options["cut"] = output["cut"]            
+        dict_options["cut"] = output["cut"]       
+        dict_options["maxBoxNo"] = len(model.xBounds)
         timeMeasure.append(time.time() - tic)
         #num_solved.append(any(output["num_solved"]))
         num_solved.append(output["num_solved"])     

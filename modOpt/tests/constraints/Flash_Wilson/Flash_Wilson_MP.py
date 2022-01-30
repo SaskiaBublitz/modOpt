@@ -72,6 +72,8 @@ def main():
                 "FTOL": 1e-8,
                 "iterMax": 100,
                 "iterMax_tear": 10,
+                "scaling": "MC77",
+                "scaling procedure": "block_iter", #"tot_init", "block_init", "tot_iter", "block_iter",
                 "parallel_boxes": False,
                 "CPU count": 2}   
 

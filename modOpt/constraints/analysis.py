@@ -164,7 +164,7 @@ def calc_vol_fraction(box, init_box, tol):
             vol_frac*=(tol/width_0)
     return vol_frac
 
-def calc_residual(model, solv_options): 
+def calc_residual(model, solv_options=None): 
     residual = []
     
     
@@ -172,7 +172,9 @@ def calc_residual(model, solv_options):
         x_old = model.stateVarValues[0]
         for i,box in  enumerate(model.xBounds):
             model.stateVarValues[0] =  numpy.array([float(mpmath.mpf(iv.mid)) for iv in box])
-            mosca.main.scaleSystem(model, solv_options)
+            if solv_options:
+                if "scaling" in solv_options.keys():
+                    mosca.main.scaleSystem(model, solv_options)
             #for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
             try: 
                 residual.append(sum([abs(fi)/model.rowSca[j] for j, fi 

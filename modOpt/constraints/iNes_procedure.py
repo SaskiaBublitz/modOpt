@@ -57,7 +57,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     newtonMethods = {'newton', 'detNewton', '3PNewton','mJNewton'}
     dict_options["boxNo"] = len(model.xBounds) 
     dict_options["ready_for_reduction"] = get_index_of_boxes_for_reduction(dict_options["xSolved"], 
-                                                                           dict_options["xAlmostEqual"], 
+                                                                           dict_options["cut"], 
                                                                            dict_options["maxBoxNo"]  )
     for k in range(len(model.xBounds)):
         xBounds = model.xBounds[k]
@@ -79,29 +79,29 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
         elif (dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
               and dict_options["boxNo"]  >= dict_options["maxBoxNo"]):
             
-            if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
-                if model.tearVarsID == []: getTearVariables(model)
-                newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options,
-                                                     model.tearVarsID)
+            # if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
+            #     if model.tearVarsID == []: getTearVariables(model)
+            #     newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options,
+            #                                          model.tearVarsID)
 
-                if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
-                    newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options)
-                if newBox == [] or newBox ==[[]]: 
-                    saveFailedSystem(output, model.functions[0], model, 0)
-                    output["disconti"]=[]
-                    output["cut"] = [True]         
-                elif possibleCutOffs:
-                    output["xNewBounds"] = [numpy.array(newBox[0])]
-                    output["xSolved"] = [variableSolved(newBox[0], dict_options)]
-                    output["xAlmostEqual"] = [False]
-                    output["disconti"] = [False]
-                    output["cut"] = [True]
-                    prepare_results_splitted_x(model, cut, k, results, output, dict_options)
-                    continue
-                else:
-                   prepare_results_constant_x(model, k, results, allBoxes, dict_options) 
-                   cut += [False]
-                   continue
+            #     if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
+            #         newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options)
+            #     if newBox == [] or newBox ==[[]]: 
+            #         saveFailedSystem(output, model.functions[0], model, 0)
+            #         output["disconti"]=[]
+            #         output["cut"] = [True]         
+            #     elif possibleCutOffs:
+            #         output["xNewBounds"] = [numpy.array(newBox[0])]
+            #         output["xSolved"] = [variableSolved(newBox[0], dict_options)]
+            #         output["xAlmostEqual"] = [False]
+            #         output["disconti"] = [False]
+            #         output["cut"] = [True]
+            #         prepare_results_splitted_x(model, cut, k, results, output, dict_options)
+            #         continue
+            #     else:
+            prepare_results_constant_x(model, k, results, allBoxes, dict_options) 
+            cut += [False]
+            continue
 
         else:
             if dict_options["Debug-Modus"]: print(f'Box {k}')
@@ -402,7 +402,7 @@ def reduceConsistentBox(model, dict_options, k, boxNo,
         output["disconti"] = [False] * len(output["xNewBounds"]) 
     else:
        output["xAlmostEqual"] = [True]
-       output["xAlmostEqual"] = [False]
+       output["disconti"] = [False]
     return output
 
 
@@ -4399,6 +4399,7 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     """
     if dict_options["Debug-Modus"]: print("Box no. ", boxID, 
                                           "is now numerically iterated.")
+    print("box no. ", boxID, "is now numerically iterated")
     dict_options["sampling"] =True
     if solv_options.__contains__("scaling"): 
         dict_options["scaling"] = solv_options["scaling"]
@@ -4559,7 +4560,7 @@ def split_least_changed_variable(box_new, model, k, dict_options):
     return w_max_ids
 
 
-def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
+def get_index_of_boxes_for_reduction(xSolved, cut, maxBoxNo):
     """ creates list for all boxes that can still be reduced
     Args:
         :xAlmostEqual:      list with boolean that is true for complete boxes
@@ -4574,18 +4575,18 @@ def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
     incomplete = []
     solved =[]
     not_solved_but_complete=[]
-    ready_for_reduction = len(xAlmostEqual) * [False]
+    ready_for_reduction = len(cut) * [False]
     
     for i, val in enumerate(xSolved):
         if val: solved +=[i]
     
-    for i,val in enumerate(xAlmostEqual):
-        if val: 
+    for i,val in enumerate(cut):
+        if not val: 
             complete += [i]
             if not i in solved: not_solved_but_complete +=[i] 
         else: incomplete += [i]
    
-    nl = max(0, min(len(not_solved_but_complete), maxBoxNo - len(xAlmostEqual)))
+    nl = max(0, min(len(not_solved_but_complete), maxBoxNo - len(cut)))
     
     for i in range(nl): ready_for_reduction[not_solved_but_complete[i]] = True
     for i in incomplete: ready_for_reduction[i] = True

@@ -48,7 +48,7 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
 
     if dict_options["cut_Box"] in {"all", "tear", True}: model.cut = True
     dict_options["ready_for_reduction"] = get_index_of_boxes_for_reduction(dict_options["xSolved"],
-                                                                          dict_options["xAlmostEqual"], 
+                                                                          dict_options["cut"], 
                                                                            dict_options["maxBoxNo"])    
     for k,x in enumerate(model.xBounds):  
         p = Process(target=reduceBoxes_Worker, args=(k, model, dict_options,
@@ -168,8 +168,8 @@ def reduceBoxes_Worker(k, model, dict_options, results_tot, sampling_options=Non
  
             #output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
             #                               [ model.complete_parent_boxes[k]])   
-        iNes_procedure.prepare_results_inconsistent_x(model, k, results, output, 
-                                                      dict_options) 
+        iNes_procedure.prepare_results_inconsistent_x(model, k, results, cut, 
+                                                      output, dict_options) 
         
         if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) and 
             dict_options["hybrid_approach"] and not sampling_options ==None and 
@@ -335,7 +335,9 @@ def getReducedXBoundsResults(results, model, maxBoxNo, dict_options):
             #complete_parent_boxes += []
             
     #disconti_cleaned = []
-    if not cut == []: model.cut = any(cut)
+    if not cut == []: 
+        print("This is cut in function", cut)
+        model.cut = any(cut)
     #for cb in disconti:
     #        if isinstance(cb, list): # if interval splits
     #            disconti_cleaned += cb
@@ -550,7 +552,7 @@ def convertMpiToList(listWitMpiIntervals):
              float(mpmath.mpf(iv.b))] for iv in listWitMpiIntervals]
 
 
-def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
+def get_index_of_boxes_for_reduction(xSolved, cut, maxBoxNo):
     """ creates list for all boxes that can still be reduced
     Args:
         :xAlmostEqual:      list with boolean that is true for complete boxes
@@ -565,18 +567,18 @@ def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
     incomplete = []
     solved =[]
     not_solved_but_complete=[]
-    ready_for_reduction = len(xAlmostEqual) * [False]
+    ready_for_reduction = len(cut) * [False]
     
     for i, val in enumerate(xSolved):
         if val: solved +=[i]
     
-    for i,val in enumerate(xAlmostEqual):
-        if val: 
+    for i,val in enumerate(cut):
+        if not val: 
             complete += [i]
             if not i in solved: not_solved_but_complete +=[i] 
         else: incomplete += [i]
    
-    nl = max(0, min(len(not_solved_but_complete), maxBoxNo - len(xAlmostEqual)))
+    nl = max(0, min(len(not_solved_but_complete), maxBoxNo - len(cut)))
     
     for i in range(nl): ready_for_reduction[not_solved_but_complete[i]] = True
     for i in incomplete: ready_for_reduction[i] = True
