@@ -88,8 +88,43 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     
     return output
 
-
 def reduceBoxes_Worker(k, model, dict_options, results_tot, sampling_options=None, 
+                       solv_options=None):
+    newSol = []
+    output = {"num_solved": False, "disconti": [], "complete_parent_boxes": [],
+        "xSolved": [], "xAlmostEqual": [], "cut": [],
+        }
+    allBoxes = []
+    emptyBoxes = []
+    dict_options["boxNo"] = len(model.xBounds)
+    if "FoundSolutions" in dict_options.keys(): 
+        solNo = len(dict_options["FoundSolutions"])
+    else: solNo = 0
+    
+    emptyboxes = iNes_procedure.reduce_box(model, allBoxes, emptyBoxes, 
+                                       k, output, dict_options,
+                                       sampling_options, solv_options)
+    
+    if "FoundSolutions" in dict_options.keys():   
+        if len(dict_options["FoundSolutions"]) > solNo:
+            newSol = [dict_options["FoundSolutions"][i] for i in 
+                      range(solNo, len(dict_options["FoundSolutions"]))]     
+
+    if emptyboxes:
+        results_tot['%d' %k] = ([], emptyboxes,[],[],[],[],[], False, [],[])
+    else:
+        list_box = [convertMpiToList(numpy.array(box, dtype=object)) for box in 
+                                 allBoxes]
+        results_tot['%d' %k] = (list_box, output["xAlmostEqual"], 
+                                output["xSolved"],
+                                dict_options["tear_id"], 
+                                output["num_solved"], 
+                                output["disconti"],
+                                output["complete_parent_boxes"], 
+                                output["cut"], newSol, output["cut"])
+    return True
+
+def reduceBoxes_Worker_old(k, model, dict_options, results_tot, sampling_options=None, 
                        solv_options=None):
     """ contains work that can be done in parallel during the reduction of multiple 
     solution interval sets stored in xBounds. The package multiprocessing is used 
@@ -223,6 +258,7 @@ def reduceBoxes_Worker(k, model, dict_options, results_tot, sampling_options=Non
     #                         num_solved, 
     #                         len(output["xNewBounds"])*[output["disconti"]],
     #                         output["complete_parent_boxes"], model.cut, newSol)
+    print(results)
     return True
 
 

@@ -53,108 +53,142 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
         }
     allBoxes = []
     emptyBoxes = []
-    cut = []
-    newtonMethods = {'newton', 'detNewton', '3PNewton','mJNewton'}
     dict_options["boxNo"] = len(model.xBounds) 
     dict_options["ready_for_reduction"] = get_index_of_boxes_for_reduction(dict_options["xSolved"], 
                                                                            dict_options["cut"], 
                                                                            dict_options["maxBoxNo"]  )
     for k in range(len(model.xBounds)):
-        xBounds = model.xBounds[k]
-
-        if dict_options["Debug-Modus"]: print("Current box index: ", k)
-
-        if dict_options["xSolved"][k]: 
-            prepare_results_constant_x(model, k, results, allBoxes, dict_options)
-            continue    
+        emptyBoxes = reduce_box(model, allBoxes, emptyBoxes, k, results, 
+                                dict_options, sampling_options, solv_options)
         
-        elif dict_options["xAlmostEqual"][k] and not dict_options["disconti"][k]:
-            output = reduceConsistentBox(model, dict_options, k, 
-                                         dict_options["boxNo"],
-                                         newtonMethods)             
+        
+        
+        # xBounds = model.xBounds[k]
 
-            prepare_results_splitted_x(model, cut, k, results, output, 
-                                       dict_options)
+        # if dict_options["Debug-Modus"]: print("Current box index: ", k)
+
+        # if dict_options["xSolved"][k]: 
+        #     prepare_results_constant_x(model, k, results, allBoxes, dict_options)
+        #     continue    
+        
+        # elif dict_options["xAlmostEqual"][k] and not dict_options["disconti"][k]:
+        #     output = reduceConsistentBox(model, dict_options, k, 
+        #                                  dict_options["boxNo"])             
+
+        #     prepare_results_splitted_x(model, cut, k, results, output, 
+        #                                dict_options)
                 
-        elif (dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
-              and dict_options["boxNo"]  >= dict_options["maxBoxNo"]):
+        # elif (dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
+        #       and dict_options["boxNo"]  >= dict_options["maxBoxNo"]):
             
-            # if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
-            #     if model.tearVarsID == []: getTearVariables(model)
-            #     newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options,
-            #                                          model.tearVarsID)
 
-            #     if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
-            #         newBox, possibleCutOffs = cut_off_box(model, model.xBounds[k], dict_options)
-            #     if newBox == [] or newBox ==[[]]: 
-            #         saveFailedSystem(output, model.functions[0], model, 0)
-            #         output["disconti"]=[]
-            #         output["cut"] = [True]         
-            #     elif possibleCutOffs:
-            #         output["xNewBounds"] = [numpy.array(newBox[0])]
-            #         output["xSolved"] = [variableSolved(newBox[0], dict_options)]
-            #         output["xAlmostEqual"] = [False]
-            #         output["disconti"] = [False]
-            #         output["cut"] = [True]
-            #         prepare_results_splitted_x(model, cut, k, results, output, dict_options)
-            #         continue
-            #     else:
-            prepare_results_constant_x(model, k, results, allBoxes, dict_options) 
-            cut += [False]
-            continue
+        #     prepare_results_constant_x(model, k, results, allBoxes, dict_options) 
+        #     cut += [False]
+        #     continue
 
-        else:
-            if dict_options["Debug-Modus"]: print(f'Box {k}')
-            if (not dict_options["xAlmostEqual"][k] and 
-                dict_options["disconti"][k] and dict_options["consider_disconti"]): 
+        # else:
+        #     if dict_options["Debug-Modus"]: print(f'Box {k}')
+        #     if (not dict_options["xAlmostEqual"][k] and 
+        #         dict_options["disconti"][k] and dict_options["consider_disconti"]): 
                 
-                store_boxNo = dict_options["boxNo"]
-                dict_options["boxNo"] = dict_options["maxBoxNo"]
-                output = contractBox(xBounds, model, dict_options["boxNo"] , 
-                                     dict_options)     
-                dict_options["boxNo"]  = store_boxNo             
-            else:                                
-                output = contractBox(xBounds, model, dict_options["boxNo"] , 
-                                     dict_options)
-            prepare_results_inconsistent_x(model, k, results, cut, output, 
-                                           dict_options)    
+        #         store_boxNo = dict_options["boxNo"]
+        #         dict_options["boxNo"] = dict_options["maxBoxNo"]
+        #         output = contractBox(xBounds, model, dict_options["boxNo"] , 
+        #                              dict_options)     
+        #         dict_options["boxNo"]  = store_boxNo             
+        #     else:                                
+        #         output = contractBox(xBounds, model, dict_options["boxNo"] , 
+        #                              dict_options)
+        #     prepare_results_inconsistent_x(model, k, results, cut, output, 
+        #                                    dict_options)    
                                                                                                                             
-            if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
-                and dict_options["hybrid_approach"] and not
-                sampling_options ==None and not solv_options == None and 
-                len(output["xNewBounds"])==1):  
-                model.xBounds[k] = output["xNewBounds"][0]
-                results["num_solved"] = lookForSolutionInBox(model, k, 
-                                                             dict_options, 
-                                                             sampling_options, 
-                                                             solv_options)
+        #     if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
+        #         and dict_options["hybrid_approach"] and not
+        #         sampling_options ==None and not solv_options == None and 
+        #         len(output["xNewBounds"])==1):  
+        #         model.xBounds[k] = output["xNewBounds"][0]
+        #         results["num_solved"] = lookForSolutionInBox(model, k, 
+        #                                                      dict_options, 
+        #                                                      sampling_options, 
+        #                                                      solv_options)
                                    
-        emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
-                                             output, dict_options)
-    print("cut in function", cut)
-    check_results_reduction_step(model, cut, allBoxes, emptyBoxes, results)      
+        # emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
+        #                                      output, dict_options)
+    check_results_reduction_step(model, allBoxes, emptyBoxes, results)      
       
     return results
 
+def reduce_box(model, allBoxes, emptyBoxes, k, results, dict_options,
+                      sampling_options=None, solv_options=None):
+    xBounds = model.xBounds[k]
+    
+    if dict_options["Debug-Modus"]: print("Current box index: ", k)
 
-def check_results_reduction_step(model, cut, allBoxes, emptyBoxes, results):
+    if dict_options["xSolved"][k]: 
+        prepare_results_constant_x(model, k, results, allBoxes, dict_options)
+        return emptyBoxes
+    
+    elif dict_options["xAlmostEqual"][k] and not dict_options["disconti"][k]:
+        output = reduceConsistentBox(model, dict_options, k, 
+                                     dict_options["boxNo"])             
+
+        prepare_results_splitted_x(model, k, results, output, 
+                                   dict_options)
+            
+    elif (dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
+          and dict_options["boxNo"]  >= dict_options["maxBoxNo"] or 
+          (not dict_options["ready_for_reduction"][k])):
+        
+
+        prepare_results_constant_x(model, k, results, allBoxes, dict_options) 
+        #cut += [False]
+        return emptyBoxes
+
+    else:
+        if dict_options["Debug-Modus"]: print(f'Box {k}')
+        if (not dict_options["xAlmostEqual"][k] and 
+            dict_options["disconti"][k] and dict_options["consider_disconti"]): 
+            
+            store_boxNo = dict_options["boxNo"]
+            dict_options["boxNo"] = dict_options["maxBoxNo"]
+            output = contractBox(xBounds, model, dict_options["boxNo"] , 
+                                 dict_options)     
+            dict_options["boxNo"]  = store_boxNo             
+        else:                                
+            output = contractBox(xBounds, model, dict_options["boxNo"] , 
+                                 dict_options)
+        prepare_results_inconsistent_x(model, k, results, output, 
+                                       dict_options)    
+                                                                                                                        
+        if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
+            and not solv_options == None and len(output["xNewBounds"])==1):  
+            model.xBounds[k] = output["xNewBounds"][0]
+            results["num_solved"] = lookForSolutionInBox(model, k, 
+                                                         dict_options, 
+                                                         sampling_options, 
+                                                         solv_options)
+                               
+    emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
+                                         output, dict_options)
+    return emptyBoxes
+
+
+def check_results_reduction_step(model, allBoxes, emptyBoxes, results):
     """ checks results for no solution at all in intial box or if consistent
     boxes from contraction cannot be further reduced through cutting. If this
     is true for all consistent boxes than model.cut is False. If it is False
     then the maximum allowed number of boxes is increased.
     
     Args:
-        :model:         instance of type model
-        :cut:           list with boolean if consistent boxes can be further
-                        cutted   
+        :model:         instance of type model 
         :allBoxes:      list with currently reduced boxes             
         :emptyBoxes:    dictionary with entries for error analysis in case
                         all boxes are empty
         :results:       dictionary with reduction step's reults
     
     """
-    if cut != []: 
-        model.cut = any(cut)
+    if results["cut"] != []: 
+        model.cut = any(results["cut"])
     if allBoxes == []: results["noSolution"] = emptyBoxes
     else: model.xBounds = allBoxes       
  
@@ -190,7 +224,7 @@ def prepare_general_resluts(model, k, allBoxes, results, output, dict_options):
     return []
 
 
-def prepare_results_inconsistent_x(model, k, results, cut, output, dict_options):
+def prepare_results_inconsistent_x(model, k, results, output, dict_options):
     """ writes results of box after contraction into dictionary results 
     
     Args:
@@ -208,16 +242,14 @@ def prepare_results_inconsistent_x(model, k, results, cut, output, dict_options)
         results["complete_parent_boxes"] += (len(output["xNewBounds"]) * 
                                          [model.complete_parent_boxes[k]])
     results["cut"] += len(output["xNewBounds"]) * [True]
-    cut += len(output["xNewBounds"]) * [True]
+    #cut += len(output["xNewBounds"]) * [True]
 
 
-def prepare_results_splitted_x(model, cut, k, results, output, dict_options):
+def prepare_results_splitted_x(model, k, results, output, dict_options):
     """ writes results of box after splitting and cutting into dictionary results 
     
     Args:
         :model:         instance of type model
-        :cut:           list with boolean if consistent boxes can be further
-                        cutted
         :k:             integer with curremt box index                
         :results:       dictionary with results from reduction step
         :output:        dictionary with output from splitting and cutting
@@ -225,7 +257,7 @@ def prepare_results_splitted_x(model, cut, k, results, output, dict_options):
     
     """
     results["cut"] += output["cut"]
-    cut += output["cut"] 
+    #cut += output["cut"] 
     if model.teared: 
         results["complete_parent_boxes"] += (len(output["xNewBounds"]) 
                                              * [[dict_options["iterNo"]-1, k]])
@@ -331,8 +363,7 @@ def contractBox(xBounds, model, boxNo, dict_options):
     return output
 
 
-def reduceConsistentBox(model, dict_options, k, boxNo, 
-                        newtonMethods):
+def reduceConsistentBox(model, dict_options, k, boxNo):
     """ reduces a consistent box after the contraction step
     
     Args:
@@ -1876,7 +1907,7 @@ def do_HC4(model, xBounds, output, dict_options):
     while not consistent:
         box_old = list(box)
         box = HC4_float(model.functions, box, dict_options)
-        
+
         if box.is_empty():
             saveFailedSystem(output, dict_options["failed_function"], model, 
                              dict_options["failed_function"].glb_ID[0])
@@ -4252,7 +4283,7 @@ def HC4_float(functions, box, dict_options):
     box_old = list(x_HC4)
 
     for f in functions:
-        sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])               
+        sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])            
         currentIntervalVector = pyibex.IntervalVector(sub_box)
         f.f_pibex.contract(currentIntervalVector)
 
@@ -4267,13 +4298,25 @@ def HC4_float(functions, box, dict_options):
             
         sub_box = sub_box & currentIntervalVector
         if sub_box.is_empty():
+            for i,val in enumerate(f.glb_ID): 
+                if (x_HC4[val][1] - x_HC4[val][0]) < tol: 
+                    x_HC4[val] = [float(x_HC4[val][0])-0.1*tol, 
+                                  float(x_HC4[val][1])+0.1*tol] 
+                    sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])  
+                    break
+        if sub_box.is_empty():
             dict_options["failed_subbox"] = pyibex.IntervalVector([x_HC4[i] for 
                                                                    i in f.glb_ID])
             dict_options["failed_function"] = f
             dict_options["unique_hc"] = all(unique_x)
             return sub_box
         else:
-            for i,val in enumerate(f.glb_ID): x_HC4[val] =  list(sub_box[i])
+            for i,val in enumerate(f.glb_ID): 
+                # if (sub_box[i][1] - sub_box[i][0]) < tol: 
+                #     x_HC4[val] = [float(sub_box[i][0])-0.01*tol, 
+                #                   float(sub_box[i][1])+0.01*tol]  
+                # else:
+                    x_HC4[val] =  list(sub_box[i])
     dict_options["unique_hc"] = all(unique_x)
     return pyibex.IntervalVector(x_HC4)
 
@@ -4400,7 +4443,7 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     if dict_options["Debug-Modus"]: print("Box no. ", boxID, 
                                           "is now numerically iterated.")
     print("box no. ", boxID, "is now numerically iterated")
-    dict_options["sampling"] =True
+    
     if solv_options.__contains__("scaling"): 
         dict_options["scaling"] = solv_options["scaling"]
     else: dict_options["scaling"] = "None"
@@ -4409,8 +4452,12 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     else: dict_options["scaling procedure"] = "None"
     solved = False
     allBoxes = list(model.xBounds)
-    
     model.xBounds = ConvertMpiBoundsToList(model.xBounds,boxID)
+    if sampling_options == None: 
+        sampling_options = {"number of samples": 0, "sampleNo_min_resiudal": 1,
+                            "sampling method": "None"}
+    dict_options["sampling"] =True
+    
     results = mos.solveBlocksSequence(model, solv_options, dict_options, 
                                       sampling_options)
     
