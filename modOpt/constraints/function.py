@@ -119,8 +119,15 @@ class Function:
 
         for i, x in enumerate(self.x_sym):
             if not x in self.vars_of_deriv[i] and self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
+                #and self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
                 # TODO: One could include the case self.dgdx_sym[i] * self.x_sym[i] != self.g_sym[i] 
                 # but then had to add the constant bit dgdx*x - dgdx to bInterval
+                #if not self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
+                #    self.b_sym[i] = sympy.simplify(self.dgdx_sym[i]*self.x_sym[i]-self.f_sym)
+                #    self.g_sym[i] = self.dgdx_sym[i] * self.x_sym[i]
+                #    self.dbdx_sym[i] = []
+                #    for x in self.x_sym:                    
+                #        self.dbdx_sym[i] += [sympy.diff(self.b_sym[i], x)]      
                 deriv_is_constant.append(True)
             else: deriv_is_constant.append(False)
         return deriv_is_constant
@@ -128,7 +135,7 @@ class Function:
                    
     def get_vars_of_deriv(self):
         vars_of_deriv = []
-        for cur_deriv in self.dgdx_sym: vars_of_deriv.append(cur_deriv.free_symbols)
+        for cur_deriv in self.dgdx_sym: vars_of_deriv.append(list(cur_deriv.free_symbols))
         return vars_of_deriv
     
     

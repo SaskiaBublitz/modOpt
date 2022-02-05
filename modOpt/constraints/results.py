@@ -23,42 +23,50 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     filename = dict_options["fileName"]
     
     # contraction methods:
-    if dict_options["bc_method"] == "bnormal": filename += "_bc"
-    if dict_options["hc_method"] == "HC4": filename += "_hc4"        
-    if dict_options["newton_method"] == "newton": 
-        filename += "_n"
-        # interval newton preconditioning:
-        if dict_options["newton_point"] == "center": filename += "c"
-        elif dict_options["newton_point"] == "3P": filename +="3P"
-        elif dict_options["newton_point"] == "condJ": filename +="cJ"
-        
-        if dict_options["preconditioning"] == "all_functions": 
-            filename += "af"
-        elif dict_options["preconditioning"] == "inverse_centered": 
-            filename +="ic"
-        elif dict_options["preconditioning"] == "inverse_point": 
-            filename +="ip"        
-        elif dict_options["preconditioning"] == "diag_inverse_centered": 
-            filename +="dic" 
+    if "bc_method" in dict_options.keys(): 
+        if dict_options["bc_method"] == "bnormal": filename += "_bc"
+    if "hc_method" in dict_options.keys(): 
+        if dict_options["hc_method"] == "HC4": filename += "_hc4" 
+    if "newton_method" in dict_options.keys():       
+        if dict_options["newton_method"] == "newton": 
+            filename += "_n"
+            # interval newton preconditioning:
+            if dict_options["newton_point"] == "center": filename += "c"
+            elif dict_options["newton_point"] == "3P": filename +="3P"
+            elif dict_options["newton_point"] == "condJ": filename +="cJ"
+            
+            if dict_options["preconditioning"] == "all_functions": 
+                filename += "af"
+            elif dict_options["preconditioning"] == "inverse_centered": 
+                filename +="ic"
+            elif dict_options["preconditioning"] == "inverse_point": 
+                filename +="ip"        
+            elif dict_options["preconditioning"] == "diag_inverse_centered": 
+                filename +="dic" 
                 
     # tightening bounds:                     
-    if dict_options["Affine_arithmetic"]: filename += "_aff"
-    if dict_options["tight_bounds"]: filename += "_tb"
+    if "Affine_arithmetic" in dict_options.keys(): 
+        if dict_options["Affine_arithmetic"]: filename += "_aff"
+    if "tight_bounds" in dict_options.keys(): 
+        if dict_options["tight_bounds"]: filename += "_tb"
     
     # splitting methods:
-    if dict_options["split_Box"] == "TearVar": filename += "_tv"
-    if dict_options["split_Box"] == "LargestDer": filename += "_ld"
-    if dict_options["split_Box"] == "forecastSplit": filename += "_fcs"
-    if dict_options["split_Box"] == "LeastChanged": filename += "_lc"
-    if dict_options["split_Box"] == "forecastTear": filename += "_ftv"
+    if "split_Box" in dict_options.keys(): 
+        if dict_options["split_Box"] == "TearVar": filename += "_tv"
+        if dict_options["split_Box"] == "LargestDer": filename += "_ld"
+        if dict_options["split_Box"] == "forecastSplit": filename += "_fcs"
+        if dict_options["split_Box"] == "LeastChanged": filename += "_lc"
+        if dict_options["split_Box"] == "forecastTear": filename += "_ftv"
     
     # cutting methods:
-    if dict_options["cut_Box"]== "tear": filename += "_cbtv"
-    if dict_options["cut_Box"]== "all": 
-        filename += "_cba"
+    if "cut_Box" in dict_options.keys(): 
+        if dict_options["cut_Box"]== "tear": filename += "_cbtv"
+        if dict_options["cut_Box"]== "all": 
+            filename += "_cba"
     
     # considering gaps in splitting:    
-    if dict_options["consider_disconti"]: filename += "_gap"
+    if "consider_disconti" in dict_options.keys():     
+        if dict_options["consider_disconti"]: filename += "_gap"
     
     # decomposition for solving:
     if "decomp" in dict_options.keys():
@@ -68,8 +76,9 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     # hyper parameters for box reduction:
     filename += "_rs" + str(dict_options["resolution"])
     filename += "_r" + str(dict_options["redStepMax"])
-    if dict_options["Parallel Branches"]:
-        filename += "_pb" + str(dict_options["CPU count Branches"])
+    if "Parallel Branches" in dict_options.keys():
+        if dict_options["Parallel Branches"]:
+            filename += "_pb" + str(dict_options["CPU count Branches"])
     #if dict_options["Parallel Variables"]:
     #    filename += "_pb" + str(dict_options["CPU count Variables"])
         

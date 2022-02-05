@@ -9,7 +9,7 @@ import sympy
 import mpmath
 import pyibex
 import itertools
-from modOpt.constraints import affineArithmetic,parallelization
+from modOpt.constraints import affineArithmetic,parallelization, analysis
 #from modOpt.constraints import function
 from modOpt.constraints.FailedSystem import FailedSystem
 from modOpt.decomposition import MC33
@@ -121,6 +121,27 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
 def reduce_box(model, allBoxes, emptyBoxes, k, results, dict_options,
                       sampling_options=None, solv_options=None):
     xBounds = model.xBounds[k]
+    """ reduction of one box by contraction, cutting,  splitting and numerical
+    iteration
+    
+    Args:    
+        :model:                 object of type model   
+        :allBoxes:              list with reduced boxes
+        :emptyBoxes:            list with empty boxes
+        :k:                     index as integer of currently reduced box
+        :results:               dictionary for storing results
+        :dict_options:          dictionary with user specified algorithm settings
+        :sampling_options:      dictionary with sampling settings
+        :solv_options:          dicionary with settings for numerical solver
+
+    Return:
+        :results:               dictionary with newXBounds and a list of booleans
+                                that marks all non reducable variable bounds with 
+                                True. If solver terminates because of a NoSolution 
+                                case the critical equation is also stored in results 
+                                for the error analysis.
+
+    """
     
     if dict_options["Debug-Modus"]: print("Current box index: ", k)
 
@@ -241,7 +262,10 @@ def prepare_results_inconsistent_x(model, k, results, output, dict_options):
     else:
         results["complete_parent_boxes"] += (len(output["xNewBounds"]) * 
                                          [model.complete_parent_boxes[k]])
-    results["cut"] += len(output["xNewBounds"]) * [True]
+    if dict_options["cut_Box"]=="tear" or dict_options["cut_Box"]=="all":
+        results["cut"] += len(output["xNewBounds"]) * [True]
+    else: results["cut"] += len(output["xNewBounds"]) * [False]
+    
     #cut += len(output["xNewBounds"]) * [True]
 
 
@@ -295,7 +319,8 @@ def roundValue(val, digits):
         :val:         sympy.Float value
         :digit:       integer number of digits
 
-    Return: tightest interval in mpmath.mpi formate
+    Return: 
+        tightest interval in mpmath.mpi formate
     
     """
     rounded_val = round(val, digits)
@@ -381,6 +406,7 @@ def reduceConsistentBox(model, dict_options, k, boxNo):
               "xAlmostEqual": [dict_options["xAlmostEqual"][k]],
               "xSolved": [dict_options["xSolved"][k]],                      
                 }   
+     
     newBox = output["xNewBounds"]
     possibleCutOffs = False
     # if cut_Box is chosen,parts of the box are now tried to cut off 
@@ -414,6 +440,12 @@ def reduceConsistentBox(model, dict_options, k, boxNo):
         
     # Check if consistent box is allowed to be split:
     output["cut"] = [possibleCutOffs]
+    
+    if not dict_options["split_Box"] or dict_options["split_Box"]=="None":
+       output["xAlmostEqual"] = [True]
+       output["disconti"] = [False]
+       return output   
+   
     if "ready_for_reduction" in dict_options.keys(): 
        if not dict_options["ready_for_reduction"][k]: 
            output["disconti"] = [False] 
@@ -983,7 +1015,7 @@ def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
         elif output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
             new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
                        for iv in output0["xNewBounds"][0]]            
-            avrSide0 = identifyReduction(new_box_float, old_box_float)
+            avrSide0 = analysis.identify_box_reduction(new_box_float, old_box_float)
         else:
             # if first split box is empty the second box is returned
             if dict_options["Debug-Modus"]:
@@ -994,7 +1026,7 @@ def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
             new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
                        for iv in output1["xNewBounds"][0]]            
-            avrSide1 = identifyReduction(new_box_float, old_box_float)
+            avrSide1 = analysis.identify_box_reduction(new_box_float, old_box_float)
             
         else:
             # if second split box is empty the first box is returned
@@ -1096,47 +1128,47 @@ def reduceHC4_orNewton(splittedBox, model, boxNo, dict_options):
     return output0, output1
     
 
-def identify_interval_reduction(newBox,oldBox):
-    '''calculates the side length ratio of all intervals from a new box
-    to an old box
+# def identify_interval_reduction(box_new,box_old):
+#     '''calculates the side length ratio of all intervals from a new box
+#     to an old box
 
-    Args:
-        :newBox:        new variable bounds of class momath.iv
-        :oldBox:        old variable bounds of class momath.iv
+#     Args:
+#         :box_new:        new variable bounds of class momath.iv
+#         :box_old:        old variable bounds of class momath.iv
         
-    Return:
-        :sideLengthsRatio:    list with side length ratio for all interval
+#     Return:
+#         :sideLengthsRatio:    list with side length ratio for all interval
         
-    '''
-    sideLengthsRatio = []
+#     '''
+#     sideLengthsRatio = []
     
-    for i, iv in enumerate(oldBox):
-        if (iv[1]-iv[0])>0: 
-            sideLengthsRatio.append((newBox[i][1] - newBox[i][0]) / (iv[1]-iv[0]))
-        else:
-            sideLengthsRatio.append(0)
+#     for i, iv in enumerate(box_old):
+#         if (iv[1]-iv[0])>0: 
+#             sideLengthsRatio.append((box_new[i][1] - box_new[i][0]) / (iv[1]-iv[0]))
+#         else:
+#             sideLengthsRatio.append(0)
                                              
-    return sideLengthsRatio
+#     return sideLengthsRatio
  
        
-def identifyReduction(newBox,oldBox):
-    '''calculates the average side length reduction from old to new Box
+# def identifyReduction(newBox,oldBox):
+#     '''calculates the average side length reduction from old to new Box
 
-    Args:
-        :newBox:        new variable bounds of class momath.iv
-        :oldBox:        old variable bounds of class momath.iv
+#     Args:
+#         :newBox:        new variable bounds of class momath.iv
+#         :oldBox:        old variable bounds of class momath.iv
         
-    Return:
-        :avrSideLength/len(oldBox):    average sidelength reduction
+#     Return:
+#         :avrSideLength/len(oldBox):    average sidelength reduction
         
-    '''
-    avrSideLength = 0
+#     '''
+#     avrSideLength = 0
     
-    for i, iv in enumerate(oldBox): 
-        if (iv[1] -iv[0])>0:
-            avrSideLength += (newBox[i][1] - newBox[i][0])/(iv[1] - iv[0])    
+#     for i, iv in enumerate(oldBox): 
+#         if (iv[1] -iv[0])>0:
+#             avrSideLength += (newBox[i][1] - newBox[i][0])/(iv[1] - iv[0])    
                                                  
-    return avrSideLength/len(oldBox)
+#     return avrSideLength/len(oldBox)
 
 
 def splitTearVars(tearVarIds, box, boxNo_max, dict_options):
@@ -1281,26 +1313,26 @@ def removeInfAndConvertToFloat(array, subs):
     return array
 
 
-def get_failed_output(f, varBounds):
-    """ collects information about variable bound reduction in function f
-    Args:
-        :f:             instance of class function
-        :varBounds:     dictionary with informaiton about failed variable bound
+# def get_failed_output(f, varBounds):
+#     """ collects information about variable bound reduction in function f
+#     Args:
+#         :f:             instance of class function
+#         :varBounds:     dictionary with informaiton about failed variable bound
 
-    Return:
-        :output:        dictionary with information about failed variable bound
-                        reduction
+#     Return:
+#         :output:        dictionary with information about failed variable bound
+#                         reduction
 
-    """
+#     """
 
-    output = {}
-    output["xNewBounds"] = []
-    failedSystem = FailedSystem(f.f_sym, f.x_sym[varBounds['Failed_xID']])
-    output["noSolution"] = failedSystem
-    output["xAlmostEqual"] = False
-    output["xSolved"] = False
+#     output = {}
+#     output["xNewBounds"] = []
+#     failedSystem = FailedSystem(f.f_sym, f.x_sym[varBounds['Failed_xID']])
+#     output["noSolution"] = failedSystem
+#     output["xAlmostEqual"] = False
+#     output["xSolved"] = False
     
-    return output
+#     return output
        
 
 def getPrecision(xBounds):
@@ -1346,23 +1378,23 @@ def reduceBox(xBounds, model, boxNo, dict_options):
     dict_options_temp = dict_options.copy()
     
     # Prepare settings for unique solution test ref. to applied contraction methods
-    newtonMethods = {'newton', 'detNewton', '3PNewton', 'mJNewton'}
-    hc_methods = {'HC4'}
-    bc_methods = {'bnormal'}
+    nwt_enabled = (dict_options['newton_method'] 
+                   in {'newton', 'detNewton', '3PNewton', 'mJNewton'})
+    hc_enabled = (dict_options['hc_method'] in {'HC4'})                                                 
+    bc_enabled = (dict_options['bc_method'] in {'bnormal'})
     dict_options_temp["x_old"] = list(xBounds)
-    (dict_options_temp["unique_nwt"], 
+    [dict_options_temp["unique_nwt"], 
      dict_options_temp["unique_hc"], 
-     dict_options_temp["unique_bc"]) = set_unique_solution_true(dict_options, 
-                                                                newtonMethods, 
-                                                                hc_methods, 
-                                                   bc_methods)
+     dict_options_temp["unique_bc"]] = set_unique_solution_true(nwt_enabled, 
+                                                                hc_enabled, 
+                                                                bc_enabled)
                                                                 
     # cycling through contraction methods until they are all consistent:                                  
     while not consistent: 
         x_last = list(xBounds) # Store box for consistency check
         
         # if HC4 is active
-        if dict_options['hc_method']=='HC4':
+        if hc_enabled:
             (output, empty, x_HC4) = do_HC4(model, xBounds, output, 
                                             dict_options_temp)        
             if empty: return output
@@ -1372,12 +1404,8 @@ def reduceBox(xBounds, model, boxNo, dict_options):
             xBounds = list(x_HC4)
 
         # Preparation for contraction with iv_newton or bnormal
-        #xUnchanged = False # relevant for newton and bnormal
         xNewBounds = list(xBounds)
-        
-        #while not xUnchanged: # TODO: check without xUnchanged?
-        subBoxNo = 1
-        #xUnchanged = True   
+        subBoxNo = 1  
         # update current old x to see progress in each contraction method
         dict_options_temp["x_old"]=list(xBounds) 
                                                  
@@ -1389,28 +1417,26 @@ def reduceBox(xBounds, model, boxNo, dict_options):
             checkIntervalAccuracy(xBounds, i, dict_options_temp)
        
             # if any newton method is active       
-            if not (variableSolved(y, dict_options_temp) and 
-                    dict_options['newton_method'] in newtonMethods):
-                
+            if (not variableSolved(y, dict_options_temp) and nwt_enabled):             
                 # Iv Newton step:
                 y = iv_newton(model, xBounds, i, dict_options_temp)
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, model.functions[0], model, i)
                     return output
                 y = check_contracted_set(model, y, i, xBounds, dict_options)
-               
+            if xBounds[1] in mpmath.mpi('333', '3349'):
+                print(xBounds)               
             # if bnormal is active
-            if (not variableSolved(y, dict_options_temp) and 
-                dict_options['bc_method']=='bnormal'):
-                
+            if (not variableSolved(y, dict_options_temp) and bc_enabled):                
                 if dict_options_temp["unique_bc"]: unique_test_bc = True
                 else: unique_test_bc = False            
                 f_for_unique_test_bc = False
-               
+
                 # Bnormal step:
-                for j in model.dict_varId_fIds[i]:            
+                for j in model.dict_varId_fIds[i]:   
                     y = do_bnormal(model.functions[j], xBounds, y, i, 
                                        dict_options_temp)
+
                     if unique_test_bc: # unique solution test
                         (fbc, ubc) = update_for_unique_test(j, 
                                                             model.dict_varId_fIds[i][-1],
@@ -1457,6 +1483,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
         
     # Update contraction data:    
     xNewBounds = list(itertools.product(*xNewBounds))
+
     return prepare_output(dict_options, output, xSolved, xNewBounds, consistent)
 
 
@@ -1721,32 +1748,28 @@ def prove_list_for_root_inclusion(interval_list, box, i, functions, dict_options
     return interval_list
 
 
-def set_unique_solution_true(dict_options, newtonMethods, hc_methods, bc_methods):
-    """ initializes the parameter unique_solution for root inclusion tests in
-    a box. It is set to False if it is not used in the user-specified run.
+def set_unique_solution_true(nwt_enabled, hc_enabled, bc_enabled):
+    """ initializes the list unique_solution for root inclusion tests in
+    a box. It is set to False if method is not used in the user-specified run.
     
     Args:
-        :dict_options:      dictionary with chosed reduction algorithms
-        :newtonMethods:     dictionary with all possible I-Newton methods
-        :hc_methods:        dictionary with all possible HC-methods
-        :hc_methods:        dictionary with all possible BC-methods
+        :nwt_enabled:     boolean true if interval newton is used
+        :hc_enabled:      boolean true if hc method is used
+        :bc_enabled:      boolean true if hc method is used
         
     Returns:
-        :unique_solution_newton: boolean if root inclusion test in I-Newton
-        :unique_solution_hc:     boolean if root inclusion test in HC-method
+        :unique_solution_enabled:     boolean if root inclusion test in HC-method
         
     """    
-    if dict_options['newton_method'] in newtonMethods: 
-        unique_solution_newton = True
-    else: unique_solution_newton = False
-    if dict_options['hc_method'] in hc_methods: unique_solution_hc = True
-    else: unique_solution_hc = False
-    if dict_options['bc_method'] in bc_methods: unique_solution_bc = True
-    else: unique_solution_bc = False    
-    return unique_solution_newton, unique_solution_hc, unique_solution_bc
+    unique_solution_test_enabled = []
+    for enabled in [nwt_enabled, hc_enabled, bc_enabled]:
+        if enabled:  unique_solution_test_enabled.append(True)
+        else: unique_solution_test_enabled.append(False)
+        
+    return unique_solution_test_enabled
 
 
-def prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged):   
+def prepare_output(dict_options, output, xSolved, xNewBounds, consistent):   
     """ prepares dictionary with output of box reduction step
     
     Args:
@@ -1755,7 +1778,7 @@ def prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged):
                             step
         :xSolved:           list with boolean if box intervals are solved
         :xNewBounds:        list with reduced variable bounds
-        :xUnchanged:        list with boolean if box intervals still change
+        :consistent:        list with boolean if box intervals still change
                             
     Return
         :output:            dictionary with output
@@ -1763,14 +1786,14 @@ def prepare_output(dict_options, output, xSolved, xNewBounds, xUnchanged):
     """
     if "uniqueSolutionInBox" in output.keys():
         xSolved = True
-        xUnchanged = True 
+        consistent = True 
     output["xNewBounds"] = xNewBounds
     if len(output["xNewBounds"])>1: 
         output["xAlmostEqual"] = [False] * len(output["xNewBounds"])
         output["xSolved"] = [xSolved] * len(output["xNewBounds"])   
         output["disconti"] = output["disconti"] * len(output["xNewBounds"]) 
     else: 
-        output["xAlmostEqual"] = [xUnchanged]
+        output["xAlmostEqual"] = [consistent]
         output["xSolved"] = [xSolved]
 
     return output
@@ -2143,8 +2166,12 @@ def reduceXIntervalByFunction(xBounds, f, i, dict_options):
                                    xUnchanged, dict_options)
     # Linear Case -> solving system directly f.x_sym[i] in f.dgdx_sym[i].free_symbols:
     if f.deriv_is_constant[i] and xUnchanged : 
-        x_new = getReducedIntervalOfLinearFunction(dgdxInterval, i, xBounds, 
+        x_new,si = getReducedIntervalOfLinearFunction(dgdxInterval, i, xBounds, 
                                                   bInterval)
+        if si:
+            x_new = getReducedIntervalOfNonlinearFunction(f, dgdxInterval, i, 
+                                                          xBounds, bInterval, 
+                                                          dict_options)            
              
     else: # Nonlinear Case -> solving system by interval nesting:
         x_new = getReducedIntervalOfNonlinearFunction(f, dgdxInterval, i, 
@@ -2440,12 +2467,12 @@ def getReducedIntervalOfLinearFunction(a, i, xBounds, bi):
     
     """        
     # If this is the case, there is no solution in xBounds
-    if bool(0 in mpmath.mpi(bi) - a * xBounds[i]) == False: return []
+    if bool(0 in mpmath.mpi(bi) - a * xBounds[i]) == False: return [], False
     # If this is the case, bi/aInterval would return [-inf, +inf]. 
     # Hence the approximation of x is already smaller
-    if bool(0 in mpmath.mpi(bi)) and bool(0 in mpmath.mpi(a)): return [xBounds[i]]
+    if bool(0 in mpmath.mpi(bi)) and bool(0 in mpmath.mpi(a)): return [xBounds[i]], True
     else: 
-        return hansenSenguptaOperator(mpmath.mpi(a), mpmath.mpi(bi), xBounds[i]) # bi/aInterval  
+        return hansenSenguptaOperator(mpmath.mpi(a), mpmath.mpi(bi), xBounds[i]),False # bi/aInterval  
 
 
 # def checkAndRemoveComplexPart(interval):
@@ -2756,12 +2783,13 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
     """
     tb = dict_options["tight_bounds"]
     reso = dict_options["resolution"]
+    nosuccess = False
     fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
     # first check if xBounds can be further reduced:
     if fxInterval in bi: return xBounds[i]
     if ivIntersection(fxInterval, bi)==[]: return []
     x_old = list(xBounds)
-
+    
     # Otherwise, iterate each bound of bi:
     relEpsX = dict_options["relTol"]
     absEpsX = dict_options["absTol"]
@@ -2774,14 +2802,15 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
                 [convert_mpi_float(fxInterval.b), convert_mpi_float(bi.a)],
                 relEpsX, absEpsX)):
 
-            x = curInterval.a + curInterval.delta/2.0
+            x = curInterval.mid #+ curInterval.delta/2.0
             xBounds[i] = mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
                                         f.g_aff[i], tb, reso).b - bi.a
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds,False, tb,reso))
+                                                        xBounds))
+
             if len(quotient)==1: curInterval = ivIntersection(curInterval, 
                                                               x - quotient[0])
             else: 
@@ -2793,13 +2822,18 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
                     break
                 else:
                    curInterval = intersection 
-            if curInterval == []: return []
+            if curInterval == []: 
+                nosuccess = True
+                break
             
-    if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
-    #if curInterval.b < x_old[i].a: x_low = x_old[i].a
-    else: x_low = max(curInterval.a, x_old[i].a)   
-    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i], tb, reso)
+    if (not curInterval or curInterval.a > x_old[i].b or 
+        curInterval.b < x_old[i].a): 
+        x_low = x_old[i].a
+    else: 
+        x_low = max(curInterval.a, x_old[i].a) 
     curInterval = x_old[i]
+    
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i], tb, reso)
     
     if fIntervalxUp.a > bi.b:
         while (not check_bound_and_interval_accuracy(
@@ -2807,14 +2841,15 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
                 [convert_mpi_float(bi.b), convert_mpi_float(fxInterval.a)],
                 relEpsX, absEpsX)):               
 
-            x = curInterval.b - curInterval.delta/2.0
+            x = curInterval.mid
             xBounds[i] = mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
                                         f.g_aff[i]).a - bi.b
             xBounds[i] = curInterval
+            #if not const_deriv:
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds))
+                                                        xBounds))                
             if len(quotient)==1: curInterval = ivIntersection(curInterval, 
                                                               x - quotient[0])
             else: 
@@ -2826,10 +2861,11 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
                     break
                 else:
                    curInterval = intersection 
-            if curInterval == []: return []
+            if curInterval == []: break
             
-    if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
-        if x_low == x_old[i].mid: return []
+    if (not curInterval or curInterval.a > x_old[i].b or 
+        curInterval.b < x_old[i].a):
+        if nosuccess: return []
         else: return mpmath.mpi(x_low, x_old[i].mid)
     else: 
         return mpmath.mpi(x_low, min(curInterval.b, x_old[i].b))
@@ -2849,13 +2885,13 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
         
     """
     tb = dict_options["tight_bounds"]
-    reso = dict_options["resolution"]    
+    reso = dict_options["resolution"]  
+    nosuccess = False
     fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
     # first check if xBounds can be further reduced:
     if fxInterval in bi: return xBounds[i]
     if ivIntersection(fxInterval, bi)==[]: return []
     x_old = list(xBounds)
-    
     # Otherwise, iterate each bound of bi:
     relEpsX = dict_options["relTol"]
     absEpsX = dict_options["absTol"]
@@ -2868,7 +2904,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
                 [convert_mpi_float(bi.b), convert_mpi_float(fxInterval.a)],
                 relEpsX, absEpsX)):        
         
-            x = curInterval.a + curInterval.delta/2.0
+            x = curInterval.mid# + curInterval.delta/2.0
             xBounds[i]=mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
                                         f.g_aff[i], tb, reso).a - bi.b
@@ -2884,16 +2920,20 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
                 intersection = ivIntersection(curInterval, newInterval)
                 if intersection == curInterval:
+                    nosuccess = True
                     break
                 else:
                    curInterval = intersection 
-            if curInterval == []: return []
-           
-    if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a: x_low = x_old[i].mid
-    #if curInterval.b < x_old[i].a: x_low = x_old[i].a
-    else: x_low = max(curInterval.a, x_old[i].a)       
-    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i], tb, reso)
+            if curInterval == []: 
+                break
+                   
+    if (curInterval == [] or curInterval.a > x_old[i].b or 
+        curInterval.b < x_old[i].a): 
+        x_low = x_old[i].a
+    else:
+        x_low = max(curInterval.a, x_old[i].a)   
     curInterval = x_old[i]
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], x_old, f.g_aff[i], tb, reso)
     
     if fIntervalxUp.b < bi.a:
         while (not check_bound_and_interval_accuracy(
@@ -2901,7 +2941,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
                 [convert_mpi_float(fxInterval.b), convert_mpi_float(bi.a)],
                 relEpsX, absEpsX)):
 
-            x = curInterval.b - curInterval.delta/2.0
+            x = curInterval.mid#b - curInterval.delta/2.0
             xBounds[i]=mpmath.mpi(x)
             fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, 
                                         f.g_aff[i], tb, reso).b - bi.a
@@ -2920,12 +2960,14 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
                     break
                 else:
                    curInterval = intersection 
-            if curInterval == []: return []
+            if curInterval == []: break
             
-    if curInterval.a > x_old[i].b or curInterval.b < x_old[i].a:
-        if x_low == x_old[i].mid: return []
-        else: return mpmath.mpi(x_low, x_old[i].mid)    
+    if (curInterval == [] or curInterval.a > x_old[i].b or 
+        curInterval.b < x_old[i].a):
+        if nosuccess: return []
+        else: return mpmath.mpi(x_low, x_old[i].b)    
     else: return mpmath.mpi(x_low, min(curInterval.b, x_old[i].b))
+   
     
 def convert_mpi_float(mpi):
     """ converts single mpi value to float value
@@ -4297,13 +4339,7 @@ def HC4_float(functions, box, dict_options):
                                          dict_options["absTol"])
             
         sub_box = sub_box & currentIntervalVector
-        if sub_box.is_empty():
-            for i,val in enumerate(f.glb_ID): 
-                if (x_HC4[val][1] - x_HC4[val][0]) < tol: 
-                    x_HC4[val] = [float(x_HC4[val][0])-0.1*tol, 
-                                  float(x_HC4[val][1])+0.1*tol] 
-                    sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])  
-                    break
+
         if sub_box.is_empty():
             dict_options["failed_subbox"] = pyibex.IntervalVector([x_HC4[i] for 
                                                                    i in f.glb_ID])
@@ -4311,12 +4347,7 @@ def HC4_float(functions, box, dict_options):
             dict_options["unique_hc"] = all(unique_x)
             return sub_box
         else:
-            for i,val in enumerate(f.glb_ID): 
-                # if (sub_box[i][1] - sub_box[i][0]) < tol: 
-                #     x_HC4[val] = [float(sub_box[i][0])-0.01*tol, 
-                #                   float(sub_box[i][1])+0.01*tol]  
-                # else:
-                    x_HC4[val] =  list(sub_box[i])
+            for i,val in enumerate(f.glb_ID): x_HC4[val] =  list(sub_box[i])
     dict_options["unique_hc"] = all(unique_x)
     return pyibex.IntervalVector(x_HC4)
 
@@ -4590,7 +4621,7 @@ def split_least_changed_variable(box_new, model, k, dict_options):
     box_old = mostg.get_entry_from_npz_dict(dict_options["fileName"]+"_boxes.npz", 
                                             r, allow_pickle=True)[box_ID]
     
-    w_ratio = identify_interval_reduction(box_new_float, box_old)
+    w_ratio = analysis.identify_interval_reduction(box_new_float, box_old)
     w_max_ids = [i for i, j in enumerate(w_ratio) if j == max(w_ratio)]
     
     #if model.fCounts == []: model.fCounts = [len(model.dict_varId_fIds[i]) 
@@ -4610,8 +4641,8 @@ def split_least_changed_variable(box_new, model, k, dict_options):
 def get_index_of_boxes_for_reduction(xSolved, cut, maxBoxNo):
     """ creates list for all boxes that can still be reduced
     Args:
-        :xAlmostEqual:      list with boolean that is true for complete boxes
-        :maxBoxNo:          integer with current maximum number of boxes
+        :cut:           list with boolean that is true for incomplete boxes
+        :maxBoxNo:      integer with current maximum number of boxes
         
     Returns:
         :ready_for_reduction:   list with boolean that is true if box is ready 

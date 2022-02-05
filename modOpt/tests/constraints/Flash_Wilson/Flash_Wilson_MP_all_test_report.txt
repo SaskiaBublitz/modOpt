@@ -3,12 +3,12 @@ Test report from module: Flash_Wilson_MP
 Tolerance:	 1e-09
 
 Case	 Status	 CPU in s	 Hypercubic Length
-Flash_Wilson_MP_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 38.16897773742676	 3.919032071583211e-06
-Flash_Wilson_MP_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r320	 Ok	 41.898136138916016	 Identical to reference
-Flash_Wilson_MP_hc4_ncaf_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 31.20391297340393	 2.0737475094892408e-07
-Flash_Wilson_MP_bc_hc4_ncaf_lc_cbtv_dm_rs8_r320_pb2	 Ok	 27.084227085113525	 2.0698883360077292e-07
-Flash_Wilson_MP_bc_hc4_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 43.619088649749756	 3.919032071583212e-06
-Flash_Wilson_MP_bc_ncaf_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 85.86374950408936	 8.93567512619616e-08
-Flash_Wilson_MP_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r320_pb2	 Ok	 49.797897815704346	 2.0643376746583232e-07
-Flash_Wilson_MP_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r320_pb2	 Ok	 88.032883644104	 2.0652344479398113e-07
-Flash_Wilson_MP_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r320_pb2	 Ok	 139.68094205856323	 2.7826804891803358e-06
+Flash_Wilson_MP_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 50.611982345581055	 3.919032071583211e-06
+Flash_Wilson_MP_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r320	 Ok	 53.05987477302551	 Identical to reference
+Flash_Wilson_MP_hc4_ncaf_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 39.827392578125	 2.0737475094892408e-07
+Flash_Wilson_MP_bc_hc4_ncaf_lc_cbtv_dm_rs8_r320_pb2	 Ok	 33.676735639572144	 2.0698883360077292e-07
+Flash_Wilson_MP_bc_hc4_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 53.262969732284546	 3.919032071583212e-06
+Flash_Wilson_MP_bc_ncaf_tb_lc_cbtv_dm_rs8_r320_pb2	 Ok	 107.49803256988525	 8.93567512619616e-08
+Flash_Wilson_MP_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r320_pb2	 Ok	 62.43051028251648	 2.0643376746583232e-07
+Flash_Wilson_MP_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r320_pb2	 Ok	 64.68912053108215	 1.1832977747463864e-07
+Flash_Wilson_MP_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r320_pb2	 Ok	 166.30687952041626	 2.7826804891803358e-06

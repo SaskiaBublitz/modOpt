@@ -31,7 +31,7 @@ class FailedSystem:
         
         self.critF = CRITF # critical equation
         self.critVar = CRITVAR # critical variable
-        self.varsInF = self.getVarsInF()
+        #self.varsInF = self.getVarsInF()
 
         
     def getVarsInF(self):

@@ -9,6 +9,7 @@ import modOpt.decomposition as mod
 import sympy
 import numpy
 import modOpt.scaling as mosca
+import modOpt.constraints as moc
 
 """
 ***************************************************
@@ -20,46 +21,46 @@ __all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
            'calc_hypercubic_length', 'calc_average_length', 'calc_residual']
 
 
-def analyseResults(dict_options, initialModel, res_solver):
+def analyseResults(dict_options, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
     calculated and stored in a textfile <fileName>_analysis.txt
     
     Args:
         :dict_options:     dictionary with user settings
-        :initialModel:     instance of type model with initial bounds 
         :res_solver:       dictionary with resulting model after variable bounds 
                            reduction 
         
     """
     
     modelWithReducedBounds = res_solver["Model"]
-    varSymbolic = initialModel.xSymbolic
+    varSymbolic = res_solver["Model"].xSymbolic
     tol = dict_options["absTol"]
-    initVarBounds = initialModel.xBounds
-    initLength = calc_length(initVarBounds, tol)
+    init_box = res_solver["init_box"]
+    initLength = calc_length(init_box, tol)
     #initLength = calcVolumeLength(initVarBounds, len(varSymbolic),tol) # volume calculation failed for large systems with large initial volumes
 
     if modelWithReducedBounds != []:
-        reducedVarBounds = modelWithReducedBounds.xBounds
-        solvedVarsID, solvedVarsNo = getSolvedVars(reducedVarBounds)
+        reduced_boxes = modelWithReducedBounds.xBounds
+        solvedVarsID, solvedVarsNo = getSolvedVars(reduced_boxes)
         dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
-        initLengths = calcInitLengths(initVarBounds, tol)
+        initLengths = calcInitLengths(init_box, tol)
         
-        boundsRatios = getVarBoundsRatios(initVarBounds[0], reducedVarBounds)
+        boundsRatios = getVarBoundsRatios(init_box[0], reduced_boxes)
 
-        lengths = calcHypercubicLength(reducedVarBounds, tol)        
+        lengths = calcHypercubicLength(reduced_boxes, tol)        
         boundRatiosOfVars = getBoundRatiosOfVars(boundsRatios)
 
         lengthFractions = 0#getLengthFractions(initLengths, lengths)
-        hypercubicLFraction = get_hypercubic_length(dict_options, 
-                                                    initVarBounds, 
-                                                    reducedVarBounds)
+        #hypercubicLFraction = get_hypercubic_length(dict_options, 
+        #                                            initVarBounds, 
+        #                                            reducedVarBounds)
+        abl = identify_average_box_reduction(reduced_boxes, init_box[0])
         #hypercubicLFraction = getHyperCubicLengthFraction(initLengths, lengths, dim_reduced)
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
         writeAnalysisResults(dict_options["fileName"], varSymbolic, boundsRatios, 
                              boundRatiosOfVars, initLength, lengthFractions, 
-                             hypercubicLFraction, solvedVarsID, density, nonLinRatio)
+                             abl, solvedVarsID, density, nonLinRatio)
 
 
 def get_hypercubic_length(dict_options, init_box, reduced_boxes):
@@ -189,12 +190,26 @@ def calc_average_length(dict_options, init_box, boxes):
     avLength = 0
     avLength_0 = 0
     
-    for i, iv in enumerate(boxes[0]):
-        for box in boxes:
-            avLength += (box[i][1] - box[i][0])
-            #else: avLength +=  tol
-    
-        avLength_0 +=  (init_box[0][i][1] - init_box[0][i][0]) 
+    all_boxes = init_box + boxes
+
+    for j, box in enumerate(all_boxes):
+        nvar = len(box)
+        al_box = 0
+        if isinstance(box[0], mpmath.iv.mpf):
+            box = [[float(mpmath.mpf(iv.a)), float(mpmath.mpf(iv.b))] 
+                  for iv in list(box)]
+        for i, iv in enumerate(box):
+            if numpy.isclose(iv[0], iv[1], dict_options["relTol"], 
+                             dict_options["absTol"]):
+                nvar -= 1
+            else:
+                if not j == 0: al_box += (iv[1] - iv[0])
+                else: avLength_0 += (iv[1] - iv[0])
+        
+        if nvar == 0 and not j==0: continue
+        elif not j==0: avLength += al_box/nvar 
+        elif nvar == 0 and j == 0: return 0.0     
+        else: avLength_0 = avLength_0/nvar 
       
     return avLength/len(boxes)/ avLength_0
     
@@ -459,8 +474,8 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
     res_file.write("System Dimension: \t%s\n"%(len(boundRatios[0]))) 
     res_file.write("Jacobian Nonzero Density: \t%s\n"%(density))
     res_file.write("Jacobian Nonlinearity Ratio: \t%s\n"%(nonLinRatio))
-    res_file.write("Length of initial box: \t%s\n"%(initVolume))
-    res_file.write("\nHypercubicLengthFraction\t ")
+    res_file.write("Length of initial box: \t%s\n\n"%(initVolume))
+    res_file.write("AverageLengthFraction\t ")
     #for j in range(0, noOfVarSets):
     #    res_file.write("%s\t"%(hypercubicLFractions[j]))
     res_file.write("%s"%(hypercubicLFraction)) 
@@ -470,7 +485,7 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
         for solvedVar in solvedVars:
             res_file.write("%s (VarBound_%s)\n" %(varSymbolic[solvedVar[1]], 
                                                                solvedVar[0]))
-    res_file.write("\nVariables\t") 
+    res_file.write("\n\nVariables\t") 
     for j in range(0, noOfVarSets):
           res_file.write("VarBounds_%s\t"%(j)) 
     res_file.write("VarBoundFraction\n")
@@ -544,7 +559,7 @@ def calcBoundFraction(initVarBound, curVarBound):
     return bratio
 
 
-def trackErrors(initialModel, res_solver, dict_options):
+def trackErrors(res_solver, dict_options):
     """ proofs if current state of model is correctly and write the error that
     occured in case the model failed to an error text file.
     
@@ -555,17 +570,18 @@ def trackErrors(initialModel, res_solver, dict_options):
         
     """
     if res_solver["Model"].failed:
-        fileName = dict_options["fileName"] + "_errorAnalysis.txt"
-        failedModel = res_solver["Model"]
-        failedSystem = res_solver["noSolution"]
-        fCrit = failedSystem.critF
-        varCrit = failedSystem.critVar
-        varsInF = failedSystem.varsInF
+        file_name = dict_options["fileName"] + "_errorAnalysis.txt"
+        failed_mod = res_solver["Model"]
+        failed_sys = res_solver["noSolution"]
+        f_crit_sym = failed_sys.critF    
+        f_crit =  [f for f in failed_mod.functions if f.f_sym == f_crit_sym][0]
+        var_crit = failed_sys.critVar 
+        init_box = moc.analysis.convert_mpi_box_float(res_solver["init_box"][0])
+        init_failed_box = numpy.array([list(init_box[glb_id]) for glb_id in f_crit.glb_ID])
+        failed_box = failed_mod.getXBoundsOfCertainVariablesFromIntervalSet(f_crit.x_sym, 0)
         
-        xBoundsInitial = initialModel.getXBoundsOfCertainVariablesFromIntervalSet(varsInF, 0)
-        xBoundsFailed = failedModel.getXBoundsOfCertainVariablesFromIntervalSet(varsInF, 0)
-        
-        writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBoundsFailed)
+        writeErrorAnalysis(file_name, f_crit.f_sym, var_crit, f_crit.x_sym, 
+                           init_failed_box, failed_box)
 
 
 def writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBoundsFailed) :
@@ -582,4 +598,66 @@ def writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBound
         res_file.write("%s \t %s \t %s \n"%(varsInF[i],  str(xBoundsInitial[i]), str(xBoundsFailed[i])))
      
     res_file.close()
+
+
+def identify_interval_reduction(box_new,box_old):
+    '''calculates the side length ratio of all intervals from a new box
+    to an old box
+
+    Args:
+        :box_new:        new variable bounds of class momath.iv
+        :box_old:        old variable bounds of class momath.iv
+        
+    Return:
+        :w_ratio:    list with side length ratio for all interval
+        
+    '''
+    w_ratio = []
+    
+    for i, iv in enumerate(box_old):
+        if (iv[1]-iv[0])>0: 
+            w_ratio.append((box_new[i][1] - box_new[i][0]) / (iv[1]-iv[0]))
+        else:
+            w_ratio.append(0)
+                                             
+    return w_ratio    
+
+def identify_average_box_reduction(boxes_new,box_old): 
+
+    if isinstance(boxes_new[0][0], mpmath.iv.mpf):
+            boxes_new = [convert_mpi_box_float(box) for box in list(boxes_new)]
+    if isinstance(box_old[0], mpmath.iv.mpf):
+            box_old = convert_mpi_box_float(box_old)
+            
+    return (sum([identify_box_reduction(box, box_old) for box in boxes_new])/
+            len(boxes_new))
+
+
+def identify_box_reduction(box_new,box_old):
+    '''calculates the average side length reduction from old to new Box
+
+    Args:
+        :box_new:        new variable bounds of class momath.iv
+        :box_old:        old variable bounds of class momath.iv
+        
+    Return:
+        :av_w_ratio:    average sidelength reduction
+        
+    '''
+    av_w_ratio = 0
+    n_vars = len(box_old)
+    for i, iv in enumerate(box_old): 
+        if (iv[1] -iv[0])>0:
+            av_w_ratio += (box_new[i][1] - box_new[i][0])/(iv[1] - iv[0])    
+        else:
+            n_vars -= 1
+    if n_vars == 0: return 0.0                                           
+    return av_w_ratio/len(box_old)
+
+
+def convert_mpi_box_float(box):
+    return [[float(mpmath.mpf(iv.a)), float(mpmath.mpf(iv.b))] for iv in list(box)]
+    
+    
+    
     

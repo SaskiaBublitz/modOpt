@@ -41,9 +41,9 @@ def reduceVariableBounds(model, dict_options, sampling_options=None,
     """   
     res_solver = {}
     tic = time.time()     
-    res_solver["Model"] = copy.copy(model)
+    res_solver["Model"] = model
     res_solver["time"] = []
-
+    res_solver["init_box"] = list(model.xBounds)
     doIntervalNesting(res_solver, dict_options, sampling_options, solv_options)
     toc = time.time()
     res_solver["time"] = toc - tic
@@ -175,7 +175,8 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     if validXBounds == []: 
         model.failed = True
         res_solver["Model"] = model
-        res_solver = iNes_procedure.identify_function_with_no_solution(res_solver, 
+        if not "noSolution" in res_solver.keys():
+            res_solver = iNes_procedure.identify_function_with_no_solution(res_solver, 
                                                                        model.functions, 
                                                                        model.xBounds[0], 
                                                                        dict_options)
