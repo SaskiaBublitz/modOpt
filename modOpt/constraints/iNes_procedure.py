@@ -1000,8 +1000,8 @@ def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
     # split_var_id             
     for i, t in enumerate(split_var_id): 
         box = list(old_box)
-        split_box = bisect_box(box, t)
-        
+        #split_box = bisect_box(box, t)
+        split_box = bisect_box_adv(model, box, t, dict_options)
         #reduce both boxes
         output0, output1 = reduceHC4_orNewton(split_box, model, boxNo, 
                                               dict_options)
@@ -1242,6 +1242,33 @@ def getCurrentVarToSplit(tearVarIds, box, dict_options):
         
 #     return list(itertools.product(*box))
 
+def bisect_box_adv(model, box, varID, dict_options):
+    """ bisects a box by the variable with the global index varID
+    
+    Args:
+        :box:       numpy.array with variable bounds
+        :varID:     integer with global index of variable chosen for bisection        
+        
+    Returns:
+        list with subboxes
+        
+    """
+    box_low = list(box)
+    box_up = list(box)
+    if box[varID].mid == 0:
+        box_mid = list(box)
+        box_mid[varID] = dict_options["absTol"] * mpmath.mpi(-1,1)    
+        empty = not solutionInFunctionRangePyibex(model.functions, numpy.array(box_mid), 
+                                                dict_options)
+        if empty:
+            box_low[varID] = mpmath.mpi(box[varID].a, -dict_options["absTol"])
+            box_up[varID] = mpmath.mpi(dict_options["absTol"], box[varID].b)
+            return [box_low, box_up]
+        
+    box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)   
+    box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
+    return [box_low, box_up]
+    
 
 def bisect_box(box, varID):
     """ bisects a box by the variable with the global index varID
@@ -1257,6 +1284,8 @@ def bisect_box(box, varID):
     box_low = list(box)
     box_up = list(box)
     box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)
+    
+    
     box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
     
     return [box_low, box_up]
@@ -1424,8 +1453,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
                     saveFailedSystem(output, model.functions[0], model, i)
                     return output
                 y = check_contracted_set(model, y, i, xBounds, dict_options)
-            if xBounds[1] in mpmath.mpi('333', '3349'):
-                print(xBounds)               
+             
             # if bnormal is active
             if (not variableSolved(y, dict_options_temp) and bc_enabled):                
                 if dict_options_temp["unique_bc"]: unique_test_bc = True
@@ -1480,7 +1508,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
                                       True)    
         # Check for consistency:                             
         consistent = compare_with_last_box(xBounds, x_last, dict_options)    
-        
+        print(xBounds)
     # Update contraction data:    
     xNewBounds = list(itertools.product(*xNewBounds))
 
@@ -2007,31 +2035,22 @@ def checkIntervalAccuracy(xNewBounds, i, dict_options):
     """  
     if xNewBounds[i].delta == 0: return True
     else:
+        if isinstance(xNewBounds[i], mpmath.ctx_iv.ivmpf):
+            iv = [convert_mpi_float(xNewBounds[i].a),convert_mpi_float(xNewBounds[i].b)]
+        else: iv = xNewBounds[i]
         accurate = variableSolved([xNewBounds[i]], dict_options)
-        notdegenerate = xNewBounds[i].delta > 1.0e-15
+        notdegenerate = iv[1]-iv[0] > 1.0e-15
         if accurate and notdegenerate:
-            if isinstance(xNewBounds[i], mpmath.ctx_iv.ivmpf):
-                dict_options["relTol"] = min(0.1 * xNewBounds[i].delta/
-                                             (1.0+float(mpmath.mpf(
-                                                 abs(xNewBounds[i]).b))),
-                                             0.1*dict_options["relTol"])
-                dict_options["absTol"] = min(0.1 * float(mpmath.mpf(
-                    xNewBounds[i].delta)), 
-                                             0.1*dict_options["absTol"])
-            else:  
-                dict_options["relTol"] = min(0.1 * (xNewBounds[i][1] - 
-                                                    xNewBounds[i][0])/
-                                             (1+max(abs(xNewBounds[i][0]), 
-                                                    abs(xNewBounds[i][1]))),
-                                             0.1*dict_options["relTol"])
-                dict_options["absTol"] = min(0.1 * abs(xNewBounds[i][1]- 
-                                                       xNewBounds[i][0]), 
-                                                  0.1*dict_options["absTol"])   
+            dict_options["relTol"] = min(0.9*(iv[1] - iv[0])/
+                                         (max(abs(iv[0]),abs(iv[1]))),
+                                         0.1*dict_options["relTol"])
+            dict_options["absTol"] = min(0.9 * abs(iv[1]- iv[0]), 
+                                         0.1*dict_options["absTol"])   
                 
-        if isinstance(dict_options["relTol"], mpmath.ctx_iv.ivmpf):
-            dict_options["relTol"] = float(mpmath.mpf(dict_options["relTol"].a))
-        if isinstance(dict_options["absTol"], mpmath.ctx_iv.ivmpf):
-            dict_options["absTol"] = float(mpmath.mpf(dict_options["absTol"].a))             
+        #if isinstance(dict_options["relTol"], mpmath.ctx_iv.ivmpf):
+        #    dict_options["relTol"] = float(mpmath.mpf(dict_options["relTol"].a))
+        #if isinstance(dict_options["absTol"], mpmath.ctx_iv.ivmpf):
+        #    dict_options["absTol"] = float(mpmath.mpf(dict_options["absTol"].a))             
                 
         return False
 
@@ -2168,8 +2187,7 @@ def reduceXIntervalByFunction(xBounds, f, i, dict_options):
     if f.deriv_is_constant[i] and xUnchanged : 
         x_new,si = getReducedIntervalOfLinearFunction(dgdxInterval, i, xBounds, 
                                                   bInterval)
-        if si:
-            x_new = getReducedIntervalOfNonlinearFunction(f, dgdxInterval, i, 
+        if si: x_new = getReducedIntervalOfNonlinearFunction(f, dgdxInterval, i, 
                                                           xBounds, bInterval, 
                                                           dict_options)            
              
@@ -2810,21 +2828,22 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
                                                         xBounds))
-
-            if len(quotient)==1: curInterval = ivIntersection(curInterval, 
-                                                              x - quotient[0])
+            if len(quotient)==1: 
+                newInterval = x - quotient[0]
+                intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
-                intersection = ivIntersection(curInterval, newInterval)
-                if intersection == curInterval:
-                    break
-                else:
-                   curInterval = intersection 
-            if curInterval == []: 
-                nosuccess = True
+            intersection = ivIntersection(curInterval, newInterval)
+            if intersection == curInterval: break
+            if intersection == []: 
+                curInterval = check_accuracy_newton_step(curInterval, 
+                                                         newInterval, 
+                                                         dict_options)
+                if not curInterval: nosuccess = True
                 break
+            else: curInterval = intersection
             
     if (not curInterval or curInterval.a > x_old[i].b or 
         curInterval.b < x_old[i].a): 
@@ -2849,24 +2868,28 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, dict_options):
             #if not const_deriv:
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds))                
-            if len(quotient)==1: curInterval = ivIntersection(curInterval, 
-                                                              x - quotient[0])
+                                                        xBounds))   
+             
+            if len(quotient)==1: 
+                newInterval = x - quotient[0]
+                intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
-                intersection = ivIntersection(curInterval, newInterval)
-                if intersection == curInterval:
-                    break
-                else:
-                   curInterval = intersection 
-            if curInterval == []: break
-            
+            intersection = ivIntersection(curInterval, newInterval)
+            if intersection == curInterval: break
+            if intersection == []: 
+                curInterval = check_accuracy_newton_step(curInterval, 
+                                                         newInterval, 
+                                                         dict_options)
+                break
+            else: curInterval = intersection
+      
     if (not curInterval or curInterval.a > x_old[i].b or 
         curInterval.b < x_old[i].a):
         if nosuccess: return []
-        else: return mpmath.mpi(x_low, x_old[i].mid)
+        else: return mpmath.mpi(x_low, x_old[i].b)
     else: 
         return mpmath.mpi(x_low, min(curInterval.b, x_old[i].b))
 
@@ -2913,19 +2936,21 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
                                                         xBounds, False, tb, reso))
             if len(quotient)==1: 
-                curInterval = ivIntersection(curInterval, x - quotient[0])
+                newInterval = x - quotient[0]
+                intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
-                intersection = ivIntersection(curInterval, newInterval)
-                if intersection == curInterval:
-                    nosuccess = True
-                    break
-                else:
-                   curInterval = intersection 
-            if curInterval == []: 
+            intersection = ivIntersection(curInterval, newInterval)
+            if intersection == curInterval: break
+            if intersection == []: 
+                curInterval = check_accuracy_newton_step(curInterval, 
+                                                         newInterval, 
+                                                         dict_options)
+                if not curInterval: nosuccess = True
                 break
+            else: curInterval = intersection
                    
     if (curInterval == [] or curInterval.a > x_old[i].b or 
         curInterval.b < x_old[i].a): 
@@ -2950,17 +2975,20 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, dict_options):
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
                                                         xBounds,tb,reso))
             if len(quotient)==1: 
-                curInterval = ivIntersection(curInterval, x - quotient[0])
+                newInterval = x - quotient[0]
+                intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
                     max([float(mpmath.mpf(element.b)) for element in quotient])])
-                intersection = ivIntersection(curInterval, newInterval)
-                if intersection == curInterval:
-                    break
-                else:
-                   curInterval = intersection 
-            if curInterval == []: break
+            intersection = ivIntersection(curInterval, newInterval)
+            if intersection == curInterval: break
+            if intersection == []: 
+                curInterval = check_accuracy_newton_step(curInterval, 
+                                                         newInterval, 
+                                                         dict_options)
+                break
+            else: curInterval = intersection
             
     if (curInterval == [] or curInterval.a > x_old[i].b or 
         curInterval.b < x_old[i].a):
@@ -3756,7 +3784,7 @@ def iv_newton(model, box, i, dict_options):
         for x in x_all:
             try: condNo.append(numpy.linalg.cond(model.jacobianLambNumpy(*x))) 
             except: condNo.append(numpy.inf)
-        x_c = x_all[condNo.index(min(condNo))]
+        x_c = [float(mpmath.mpf(iv.mid)) for iv in box]
               
     if dict_options["preconditioning"] == "inverse_centered":
         G_i, r_i, n_x_c, n_box, n_i = get_precondition_centered(model, box, i,
@@ -3804,9 +3832,11 @@ def get_best_from_all_functions(model, box, i, dict_options, x_c=None):
         unique_test = True
     else: unique_test = False
     f_for_unique_test = False
-    
     y_old = [box[i]]
-    for j in model.fWithX[i]:           
+    y_new = [box[i]]
+        
+    for j in model.fWithX[i]:     
+        y_old = y_new
         (G_i, r_i, 
          n_x_c, n_box, n_i) = get_org_newton_system(model, box, i, j, x_c,
                                                     dict_options["newton_point"])      
@@ -3830,7 +3860,9 @@ def get_best_from_all_functions(model, box, i, dict_options, x_c=None):
             
             y_new = setOfIvSetIntersection([y_new, y_old])
         if y_new == []: break
-        elif len(y_new)==1: box[i] = y_new[0]
+        elif len(y_new)==1: 
+            box[i] = y_new[0]
+            x_c[i] = convert_mpi_float(y_new[0].mid)
         if f_for_unique_test: dict_options["unique_nwt"] = True
         
     return y_new
@@ -3894,7 +3926,8 @@ def get_diag_precondition_centered(model, box, i, x_c):
                                  box_sub)  
     Y = float(mpmath.mpf(Y.mid))
     if Y == 0: Y = 1.0
-    r_i = function.f_numpy(*x_c_sub) / Y
+    try: r_i = function.f_numpy(*x_c_sub) / Y
+    except: r_i = numpy.inf
     
     for k in range(len(box_sub)):
         G_i_row[k] = get_function_value_as_iv(function, function.dgdx_mpmath[k], 
@@ -4111,13 +4144,17 @@ def newton_step(r_i, G_i, x_c, box, i, dict_options):
                                                          dict_options["absTol"])
         
         y_new = setOfIvSetIntersection([N, [box[i]]])
+        
     except: 
         dict_options["unique_nwt"] = False
         return [box[i]]
     
-    if y_new == []: return check_accuracy_newton_step(box[i], N, dict_options)
+    if y_new == []: return [check_accuracy_newton_step(box[i], N[0], dict_options)]
     
     return y_new
+
+def convert_mpi_iv_float(iv):
+    return [float(mpmath.mpf(iv.a)), float(mpmath.mpf(iv.b))]
 
 
 def check_accuracy_newton_step(old_iv, new_iv, dict_options):
@@ -4132,19 +4169,28 @@ def check_accuracy_newton_step(old_iv, new_iv, dict_options):
                             intervals are almost equal they are joined to
                             one interval instead of discarded   
                             
-    """      
-    if (isinstance(old_iv, mpmath.ctx_iv.ivmpf) and 
-        isinstance(new_iv, mpmath.ctx_iv.ivmpf)):    
-        if(isclose_ordered(float(mpmath.mpf(old_iv.b)), 
-                         float(mpmath.mpf(new_iv.a)), 0.0, 
-                         dict_options["absTol"]) or
-           isclose_ordered(float(mpmath.mpf(old_iv.a)), 
-                         float(mpmath.mpf(new_iv.b)), 0.0, 
-                         dict_options["absTol"])):   
-            return [mpmath.mpi(min(old_iv.a, new_iv.a), max(old_iv.b, 
-                                                            new_iv.b))] 
-    return []
-
+    """     
+    if (isinstance(old_iv, mpmath.ctx_iv.ivmpf)):
+        mpi = True
+        old_float = convert_mpi_iv_float(old_iv)
+    else: 
+        old_float = list(old_iv)
+        mpi = False
+    if (isinstance(new_iv, mpmath.ctx_iv.ivmpf)):
+        new_float = convert_mpi_iv_float(new_iv)
+    else: new_float = list(new_iv)
+ 
+    if(isclose_ordered(old_float[1], new_float[0], dict_options["relTol"], 
+                         dict_options["absTol"])):
+       if mpi: return mpmath.mpi(old_float[0], new_float[1])
+       else: return [old_float[0], new_float[1]]
+       
+    elif(isclose_ordered(new_float[1], old_float[0], dict_options["relTol"], 
+                         dict_options["absTol"])):
+       if mpi: return mpmath.mpi(new_float[0], old_float[1])
+       else: return [new_float[0], old_float[1]]    
+    else: return []
+       
 
 def permute_matrix(A, rowPerm, colPerm):
     """permutes matrix based on permutation order 
