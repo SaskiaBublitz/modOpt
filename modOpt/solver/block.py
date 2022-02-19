@@ -35,7 +35,7 @@ class Block:
     
     def __init__(self, rBlock, cBlock, xInF, J_sym, F_sym, x, xBounds, 
                  parameter=None, constraints=None, xSymbolic=None,
-                 jacobianSympy =None, functions=None):
+                 jacobianSympy =None, functions=None, jacobian_numpy=None):
         """ Initialization method for class Block
         
         Args:
@@ -64,6 +64,7 @@ class Block:
         self.allConstraints = constraints
         self.jacobianSympy = jacobianSympy
         self.FoundSolutions = []
+        self.jacobian_numpy = jacobian_numpy
         if functions: self.functions_block = self.get_functions_block(functions)
         
     def getSubsystemVariableIDs(self, xInF):
@@ -99,7 +100,7 @@ class Block:
                 if item not in newList:
                     newList.append(item)
         return newList       
-
+    
         
     def getPermutedJacobian(self):
          """ Return: block jacobian evaluated at x_tot"""
@@ -116,6 +117,12 @@ class Block:
         lam_f_mat = sympy.lambdify(self.x_sym_tot, self.jacobianSympy, modules=array2mat)
         jac = lam_f_mat(*self.x_tot)
         return casadi.DM(jac)[self.rowPerm, self.colPerm]
+
+
+    def get_jacobian_at_x(self, x):
+        x_cur = numpy.array(list(self.x_tot))
+        x_cur[self.colPerm] = x
+        return self.jacobian_numpy(*x_cur)[self.rowPerm,:][:,self.colPerm]
 
 
     def getSympySymbolicJacobian(self):

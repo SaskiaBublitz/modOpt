@@ -162,15 +162,16 @@ def sample_and_solve_one_block(model, b, sampling_options,
                             model.xInF, model.jacobian, model.fSymCasadi, 
                             model.stateVarValues[0], model.xBounds[0], model.parameter,
                             model.constraints, model.xSymbolic, model.jacobianSympy, 
-                            model.functions
+                            model.functions,model.jacobianLambNumpy
                             )
     
    # if sampling_options["init_method"] == "tear_sampling":
    #     samples = moi.do_tear_sampling(model, cur_block, 0, sampling_options, 
    #                                       dict_options, solv_options)        
     if sampling_options["sampling method"]== "optuna":
-        samples = [[moi.func_optuna_timeout(cur_block, 0, sampling_options, 
-                                       dict_options)]]
+        #samples = [[moi.func_optuna_timeout(cur_block, 0, sampling_options, 
+        #                               dict_options)]]
+        samples = [[moi.do_optuna_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
         print("The residual of the sample point is: ", 
               numpy.linalg.norm(cur_block.getFunctionValues()))   
         #try: samples = [[moi.do_optuna_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
@@ -456,7 +457,7 @@ def solveBlocksSequence(model, solv_options, dict_options,
                             model.xInF, model.jacobian, model.fSymCasadi, 
                             model.stateVarValues[0], model.xBounds[0], model.parameter,
                             model.constraints, model.xSymbolic, model.jacobianSympy, 
-                            model.functions
+                            model.functions, model.jacobianLambNumpy
                             )
             res_blocks[b] = startSolver(cur_block, b, solv_options, dict_options)
         #if isinstance(solv_options["solver"], list):
@@ -486,8 +487,12 @@ def startSolver(curBlock, b, solv_options, dict_options):
         doNewton(curBlock, b, solv_options, dict_options, res_solver)
     
     if solv_options["solver"] == "fsolve":
-        doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver)
-    
+        doScipyFsolve(curBlock, b, solv_options, dict_options, res_solver)
+    if solv_options["solver"] in ['hybr', 'lm', 'broyden1', 'broyden2',
+                                  'anderson', 'linearmixing', 'diagbroyden',
+                                  'excitingmixing', 'krylov', 'df-sane']:
+        doScipyRoot(curBlock, b, solv_options, dict_options, res_solver)
+        
     if solv_options["solver"] in ['SLSQP', 'trust-constr', 'TNC']:
         doScipyOptiMinimize(curBlock, b, solv_options, dict_options, res_solver)
         
@@ -571,11 +576,38 @@ def doNewton(curBlock, b, solv_options, dict_options, res_solver):
         res_solver["FRES"] = 'nan'   
         
 
-def doScipyOptimize(curBlock, b, solv_options, dict_options, res_solver):
-    """ starts Newton-Raphson Method
+def doScipyRoot(curBlock, b, solv_options, dict_options, res_solver):
+    """ starts scipy's fsolve method
     
     Args:
-        :model:             object of type Model
+        :curBlock:          object of type Block
+        :b:                 current block index
+        :solv_options:      dictionary with user specified solver settings
+        :dict_options:      dictionary with user specified structure settings
+        :res_solver:        dictionary with results from solver
+        
+    """
+    
+    try: 
+        exitflag, iterNo = scipyMinimization.root(curBlock, solv_options, 
+                                                    dict_options)
+        res_solver["IterNo"] = iterNo
+        res_solver["Exitflag"] = exitflag
+        res_solver["CondNo"] = numpy.linalg.cond(curBlock.getScaledJacobian())
+        res_solver["FRES"] = curBlock.getFunctionValues()
+        
+    except: 
+        print ("Error in Block ", b)
+        res_solver["IterNo"] = 0
+        res_solver["Exitflag"] = -1 
+        res_solver["CondNo"] = 'nan'
+        res_solver["FRES"] = 'nan' 
+
+
+def doScipyFsolve(curBlock, b, solv_options, dict_options, res_solver):
+    """ starts scipy's fsolve method
+    
+    Args:
         :curBlock:          object of type Block
         :b:                 current block index
         :solv_options:      dictionary with user specified solver settings

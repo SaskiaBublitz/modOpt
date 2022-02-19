@@ -175,7 +175,8 @@ def calc_residual(model, solv_options=None):
             model.stateVarValues[0] =  numpy.array([float(mpmath.mpf(iv.mid)) for iv in box])
             if solv_options:
                 if "scaling" in solv_options.keys():
-                    mosca.main.scaleSystem(model, solv_options)
+                    if solv_options["scaling"] != "None":
+                        mosca.main.scaleSystem(model, solv_options)
             #for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
             try: 
                 residual.append(sum([abs(fi)/model.rowSca[j] for j, fi 

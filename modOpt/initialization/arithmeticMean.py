@@ -30,7 +30,7 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
         model = res_solver["Model"]
     
         if model.xBounds !=[]:
-            absEps = dict_options["absTol"]
+            #absEps = dict_options["absTol"]
             model.stateVarValues = numpy.empty((len(model.xBounds), len(model.xBounds[0])))
             for i in range(0, len(model.xBounds)):
                 for j in range(0, len(model.xBounds[i])):
@@ -41,15 +41,19 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
                         if midPoint != 0: 
                             model.stateVarValues[i][j]= midPoint
                         else :
-                            model.stateVarValues[i][j] = absEps
+                            #model.stateVarValues[i][j] = absEps
+                            if (abs(model.stateVarValues[i][j].a) > 
+                                abs(model.stateVarValues[i][j].b)):
+                                model.stateVarValues[i][j] = model.stateVarValues[i][j].a/2.0
+                            else:
+                                model.stateVarValues[i][j] = model.stateVarValues[i][j].b/2.0
 
     if "Block" in res_solver.keys():
         block = res_solver["Block"]
     
         if block.xBounds_tot !=[]:
-            absEps = dict_options["absTol"]
+            #absEps = dict_options["absTol"]
             for i in block.colPerm:
-
                 if isinstance(block.xBounds_tot[i], numpy.ndarray):
                     midPoint = (block.xBounds_tot[i][0] + block.xBounds_tot[i][1]) / 2.0
                 else:
@@ -57,4 +61,7 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
                 if midPoint != 0: 
                     block.x_tot[i]= midPoint
                 else :
-                    block.x_tot[i] = absEps
+                    if abs(block.xBounds_tot[i][0]) > abs(block.xBounds_tot[i][1]):
+                        block.x_tot[i] = block.xBounds_tot[i][0]/2.0
+                    else:
+                        block.x_tot[i] = block.xBounds_tot[i][1]/2.0

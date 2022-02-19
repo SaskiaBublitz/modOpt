@@ -103,6 +103,11 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
         elif solv_options["solver"] == "matlab-fsolve": filename += "_mfslv"
         elif solv_options["solver"] == "matlab-fsolve-mscript": filename += "_mfslvscrpt"
         elif solv_options["solver"] == "casadi-ipopt": filename += "_casipopt"
+        elif solv_options["solver"] == "hybr": filename +="_hybr"
+        elif solv_options["solver"] == "lm": filename +="_lm"
+        elif solv_options["solver"] == "broyden1": filename +="_bd1"
+        elif solv_options["solver"] == "broyden2": filename +="_bd2"
+        elif solv_options["solver"] == "krylov": filename +="_krlv"
     
     return filename
     

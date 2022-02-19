@@ -1508,7 +1508,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
                                       True)    
         # Check for consistency:                             
         consistent = compare_with_last_box(xBounds, x_last, dict_options)    
-        print(xBounds)
+
     # Update contraction data:    
     xNewBounds = list(itertools.product(*xNewBounds))
 
@@ -3857,10 +3857,9 @@ def get_best_from_all_functions(model, box, i, dict_options, x_c=None):
                  dict_options["unique_nwt"]) = update_for_unique_test(j, model.fWithX[i][-1],
                                                                       f_for_unique_test,
                                                                       dict_options["unique_nwt"])
-            
-            y_new = setOfIvSetIntersection([y_new, y_old])
-        if y_new == []: break
-        elif len(y_new)==1: 
+        if y_new == [] or y_new==[[]]: break
+        y_new = setOfIvSetIntersection([y_new, y_old])   
+        if len(y_new)==1: 
             box[i] = y_new[0]
             x_c[i] = convert_mpi_float(y_new[0].mid)
         if f_for_unique_test: dict_options["unique_nwt"] = True

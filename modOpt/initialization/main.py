@@ -211,8 +211,8 @@ def do_optuna_optimization_in_block(block, boxID, sampling_options, dict_options
         sampler = optuna.samplers.CmaEsSampler()
         study = optuna.create_study(direction='minimize', 
                                     sampler=sampler)
-        study.optimize(lambda trial: objective(trial, box, var_names, 
-                                           block.functions_block), 
+        study.optimize(lambda trial: objective_2(trial, var_names, 
+                                           block), 
                    n_trials=sampling_options["number of samples"])
         sample = [study.best_params[var_names[c]] for c in block.colPerm]
     else:
@@ -250,6 +250,17 @@ def objective(trial, box, var_names, functions):
     return quadratic_error_sum
 
 
+def objective_2(trial, var_names, block):
+    iter_vars = []
+    
+    for c in block.colPerm:
+        iter_vars.append(trial.suggest_float(var_names[c], 
+                                                 block.xBounds_tot[c][0],
+                                                 block.xBounds_tot[c][1])) 
+    block.x_tot[block.colPerm] = iter_vars
+    return sum([fi**2 for fi in block.getFunctionValues()])
+    
+        
 
     
 def sample_box_in_block(block, boxID, sampling_options, dict_options, res):
