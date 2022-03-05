@@ -18,7 +18,8 @@ analysis tools
 """
 
 __all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
-           'calc_hypercubic_length', 'calc_average_length', 'calc_residual']
+           'calc_hypercubic_length', 'calc_average_length', 'calc_residual',
+           'identify_average_box_reduction','initialize_with_boxFile']
 
 
 def analyseResults(dict_options, res_solver):
@@ -61,6 +62,25 @@ def analyseResults(dict_options, res_solver):
         writeAnalysisResults(dict_options["fileName"], varSymbolic, boundsRatios, 
                              boundRatiosOfVars, initLength, lengthFractions, 
                              abl, solvedVarsID, density, nonLinRatio)
+
+def initialize_with_boxFile(model, textFile_name):
+    """reads out bounds and initial values from text file and assigns them
+    to model object
+    
+    Args:
+        :model:               instance of type Model
+        :textFile_name:       string with text file name
+
+    """   
+    box_to_init = open(textFile_name,'r').readlines()
+    for l,line in enumerate(box_to_init):
+        if l < 2: continue
+        elements = line.split()
+        i = list(model.xSymbolic).index(sympy.symbols(elements[0]))
+        model.stateVarValues[0][i] = float(elements[1])
+        #if float(elements[2]) == 0: elements[2] = str(1.0e-12)
+        #if float(elements[3]) == 0: elements[3] = str(-1.0e-12)
+        model.xBounds[0][i] = mpmath.mpi(elements[2], elements[3])
 
 
 def get_hypercubic_length(dict_options, init_box, reduced_boxes):

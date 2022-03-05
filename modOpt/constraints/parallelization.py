@@ -138,143 +138,6 @@ def reduce_boxes_worker(k, model, dict_options, results_tot, sampling_options=No
                                 output["cut"], newSol)
     return True
 
-# def reduceBoxes_Worker_old(k, model, dict_options, results_tot, sampling_options=None, 
-#                        solv_options=None):
-#     """ contains work that can be done in parallel during the reduction of multiple 
-#     solution interval sets stored in xBounds. The package multiprocessing is used 
-#     for parallelization.
-    
-    # Args:
-    #     :k:                     index of current job
-    #     :model:                 object of type model
-    #                             with function's glb id they appear in           
-    #     :dict_options:          dictionary with user specified algorithm settings
-    #     :results_tot:           dictionary from multiprocessing where results are 
-    #                             stored after a job is done   
-    #     :sampling_options:      dictionary with sampling settings
-    #     :solv_options:          dicionary with settings for numerical solver
-                                
-    # Return:                     True if method finishes ordinary
-                             
-    # """
-    # emptyBoxes = []
-    # results = {"num_solved": False, "disconti": [], "complete_parent_boxes": [],
-    #     "xSolved": [], "xAlmostEqual": [], "cut": [],
-    #     }    
-    # if "FoundSolutions" in dict_options.keys(): 
-    #     solNo = len(dict_options["FoundSolutions"])
-    # else: solNo = 0
-    # newSol = []
-    # model.interval_jac = None  
-    # model.jac_center = None
-    # #disconti = dict_options["disconti"][k]
-    # if dict_options["cut_Box"] in {"all", "tear", True}: model.cut = True
-    # #results = {}
-    # allBoxes = []
-    # cut = []
-    # newtonMethods = {'newton', 'detNewton', '3PNewton'}
-    # boxNo = len(model.xBounds)
-    # xBounds = model.xBounds[k]
-    # num_solved = False
-    
-    # if dict_options["xSolved"][k]: 
-    #     iNes_procedure.prepare_results_constant_x(model, k, results, allBoxes, 
-    #                                               dict_options)
-
-    # elif dict_options["xAlmostEqual"][k] and not dict_options["disconti"][k]:    
-
-    #     output = iNes_procedure.reduceConsistentBox(model, dict_options, 
-    #                                  k, boxNo,
-    #                                  newtonMethods)     
-
-    #     iNes_procedure.prepare_results_splitted_x(model, cut, k, results, 
-    #                                               output, dict_options)
-        
-    #     emptyBoxes = iNes_procedure.prepare_general_resluts(model, k, allBoxes, results, 
-    #                                                     output, dict_options)
-                     
-    # elif ((dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] and 
-    #        boxNo >= dict_options["maxBoxNo"]) or 
-    #       (not dict_options["ready_for_reduction"][k])):
-
-    #     iNes_procedure.prepare_results_constant_x(model, k, results, allBoxes, 
-    #                                               dict_options)
-    #     cut += [False]
-    # else:
-    #     if dict_options["Debug-Modus"]: print(f'Box {k+1}')
-    #     if (not dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
-    #         and dict_options["consider_disconti"]): 
-    #         store_boxNo = dict_options["boxNo"]
-    #         dict_options["boxNo"] = dict_options["maxBoxNo"]
-            
-    #         output = iNes_procedure.contractBox(xBounds, model, 
-    #                                             dict_options["boxNo"] , 
-    #                                             dict_options)
-    #         dict_options["boxNo"]  = store_boxNo   
-    #     else:
-    #         output = iNes_procedure.contractBox(xBounds, model, 
-    #                                     boxNo, dict_options)
- 
-    #         #output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
-    #         #                               [ model.complete_parent_boxes[k]])   
-    #     iNes_procedure.prepare_results_inconsistent_x(model, k, results, cut, 
-    #                                                   output, dict_options) 
-        
-    #     if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) and 
-    #         dict_options["hybrid_approach"] and not sampling_options ==None and 
-    #         not solv_options == None):
-    #             num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
-    #                                                              dict_options, 
-    #                                                              sampling_options, 
-    #                                                              solv_options) 
-               
-    #             if "FoundSolutions" in dict_options.keys():
-    #                 if len(dict_options["FoundSolutions"]) > solNo:
-    #                     newSol = [dict_options["FoundSolutions"][i] for i in 
-    #                               range(solNo, len(dict_options["FoundSolutions"]))] 
-
-
-    #     emptyBoxes = iNes_procedure.prepare_general_resluts(model, k, allBoxes, results, 
-    #                                                     output, dict_options)
-    
-    # #for box in output["xNewBounds"]:
-    # #    allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
-    
-    
-    # if emptyBoxes: 
-    #     #output.__contains__("noSolution"):
-    #     results_tot['%d' %k] = ([], emptyBoxes,[],[],[],[],[], False, [],[])
-    
-    # else: 
-
-    #     allBoxes = [convertMpiToList(numpy.array(box, dtype=object)) for box in 
-    #                              allBoxes]    
-    
-    #     results_tot['%d' %k] = (allBoxes, results["xAlmostEqual"], 
-    #                             results["xSolved"],
-    #                             dict_options["tear_id"], 
-    #                             num_solved, 
-    #                             results["disconti"],
-    #                             results["complete_parent_boxes"], 
-    #                             cut,newSol, results["cut"])
-    
-    # if output.__contains__("uniqueSolutionInBox"):
-    #     results['%d' %k] = (allBoxes, [True], 
-    #                         [True],
-    #                         dict_options["tear_id"], 
-    #                         num_solved,  
-    #                         len(output["xNewBounds"])*[output["disconti"]],
-    #                         output["complete_parent_boxes"], model.cut, newSol)        
-    # else:
-    #     results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
-    #                         output["xSolved"],
-    #                         dict_options["tear_id"], 
-    #                         num_solved, 
-    #                         len(output["xNewBounds"])*[output["disconti"]],
-    #                         output["complete_parent_boxes"], model.cut, newSol)
-    # print(results)
-    # return True
-
 
 def startAndDeleteJobs(jobs, CPU_count):
     """ starts jobs using multiprocessing and deletes finished ones
@@ -360,9 +223,8 @@ def getReducedXBoundsResults(results, model, maxBoxNo, dict_options):
              
         else:
             noOfxBounds -= 1
-
+    print(output["xSolved"])
     if output["cut"]: 
-        print("This is cut in function", output["cut"])
         model.cut = any(output["cut"])
 
     return output, tearVarIds 

@@ -188,7 +188,7 @@ def reduce_box(model, allBoxes, emptyBoxes, k, results, dict_options,
                                                          dict_options, 
                                                          sampling_options, 
                                                          solv_options)
-                               
+                          
     emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
                                          output, dict_options)
     return emptyBoxes
@@ -484,6 +484,9 @@ def checkBoxesForRootInclusion(functions, boxes, dict_options):
     if boxes == []: return []
     nonEmptyboxes = [box for box in boxes if 
                     solutionInFunctionRange(functions, box, dict_options)]
+    #if nonEmptyboxes:
+    #    nonEmptyboxes = [box for box in boxes if 
+    #                solutionInFunctionRangePyibex(functions, box, dict_options)]
     return nonEmptyboxes
 
 
@@ -523,10 +526,34 @@ def split_box(consistentBox, model, dict_options, k, boxNo_split):
         split_var_id = getTearVariableLargestDerivative(model, k)
     else:  split_var_id = None
         
-    new_box = get_best_split(consistentBox, model, k, dict_options, split_var_id)
-    new_box = checkBoxesForRootInclusion(model.functions, new_box, 
-                                            dict_options)    
+    new_box = get_best_split_new(consistentBox, model, k, dict_options, split_var_id)
+    #new_box = check_boxes_for_eq_consistency(model, new_box, dict_options)
+    new_box: new_box = checkBoxesForRootInclusion(model.functions, new_box, 
+                                                     dict_options)    
     return new_box
+
+
+def check_boxes_for_eq_consistency(model, boxes, dict_options):
+    abs_old = dict_options["absTol"]
+    relTol_old = dict_options["relTol"]
+    dict_options["absTol"] *=100
+    dict_options["relTol"] *=100     
+
+    for i, box in enumerate(boxes):
+        unsolved = [i for i in model.colPerm 
+                      if not checkVariableBound(box[i], dict_options)] 
+        if not unsolved:
+            dict_options["absTol"] *=1e-4
+            dict_options["relTol"] *=1e-4 
+            valid_box, cutoff = cut_off_box(model, [box], dict_options)
+            if not cutoff: continue
+            if not valid_box: boxes[i] = []
+            else: boxes[i] = valid_box[0]
+    dict_options["absTol"] = abs_old
+    dict_options["relTol"] = relTol_old
+    
+    return [box for box in boxes if box != []]
+
 
     
 # def splitBox(consistentBox, model, dict_options, k, boxNo_split):
@@ -1046,61 +1073,94 @@ def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
     return new_box
 
 
-# def getBestSplit(xBounds,model, boxNo, dict_options):
-#     '''finds variable, which splitting causes the best reduction
+def get_best_split_new(box, model, boxNo, dict_options, split_var_id=None):
+    '''finds variable, which splitting causes the best reduction
 
-#     Args:
-#         :xBounds:       variable bounds of class momath.iv
-#         :model:         instance of type model
-#         :boxNo:         integer with number of boxes
-#         :dict_options:  dictionary of options
+    Args:
+        :box:           variable bounds of class momath.iv
+        :model:         instance of type model
+        :boxNo:         integer with number of boxes
+        :dict_options:  dictionary of options
+        :split_var_id:  list with global ids of potential split variables
       
-#     Return:
-#         :xNewBounds:    best reduced two variable boxes
+    Return:
+        :new_box:    best reduced two variable boxes
         
-#     '''      
-#     print(dict_options["split_Box"])
-#     oldBounds = list(numpy.array(xBounds)[0])  
-#     oldBounds_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
-#                        for iv in oldBounds]
-#     smallestAvrSide = numpy.Inf
+    '''      
+    print(dict_options["split_Box"])
+    old_box = list(numpy.array(box)[0])  
+    old_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                       for iv in old_box]
+    smallestAvrSide = 2.0
+    new_box = []
+    two_boxes = False
     
-#     #try all splits
-#     for i,x in enumerate(model.xSymbolic):
-#         BoundsToSplit = list(numpy.array(xBounds)[0])
-#         splittedBox = separateBox(BoundsToSplit, [i])
-        
-#         #reduce both boxes
-#         output0, output1 = reduceHC4_orNewton(splittedBox, model, boxNo, 
-#                                               dict_options)
-#         if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
-#             new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
-#                        for iv in output0["xNewBounds"][0]]
-#             avrSide0 = identifyReduction(new_box_float, oldBounds_float)
-#         else:
-#             #if one of splitted boxes is empty always prefer this split
-#             print("This is the current best splitted varID by an empty box ", i)
-#             return [tuple(splittedBox[1])]
-        
-#         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
-#             new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
-#                        for iv in output1["xNewBounds"][0]]            
-#             avrSide1 = identifyReduction(new_box_float, oldBounds_float)
-#         else:
-#             #if one of splitted boxes is empty always prefer this split
-#             print("This is the current best splitted varID by an empty box: ", 
-#                   model.xSymbolic[i])
-#             return [tuple(splittedBox[0])]
-        
-#         # sum of both boxreductions
-#         avrSide = avrSide0 + avrSide1
-#         # find best overall boxredution
-#         if avrSide<smallestAvrSide:
-#             smallestAvrSide = avrSide
-#             print("variable ", model.xSymbolic[i], " is splitted")
-#             xNewBounds = [output0["xNewBounds"][0], output1["xNewBounds"][0]]
+    # bisection and contraction is tested on all unsolved variable intervals from
+    # split_var_id  
+    while not two_boxes:   
+        if split_var_id:     
+            split_var_id = [i for i in split_var_id 
+                            if not checkVariableBound(old_box[i], dict_options)]
             
-#     return xNewBounds
+        # if all variables from split_var_id are solved or all variables shall be
+        # tested for splitting, split_var_id then contains all unsovled variable ids
+        if not split_var_id:
+            split_var_id = model.colPerm
+            split_var_id = [i for i in split_var_id 
+                            if not checkVariableBound(old_box[i], dict_options)]
+        # if split_var_id is still empty then all variables in this box are solved
+        # and the box is returned    
+        if not split_var_id:
+            return [old_box]
+        two_boxes = True
+        #box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+        #               for iv in old_box]
+        #print("Average Length:", analysis.identify_box_reduction(box_float, old_box_float))        
+        split_var_id = [i for i in split_var_id 
+                        if not checkVariableBound(old_box[i], dict_options)]        
+        for i, t in enumerate(split_var_id): 
+            box = list(old_box)
+            #split_box = bisect_box(box, t)
+            split_box = bisect_box_adv(model, box, t, dict_options)
+            #reduce both boxes
+            output0, output1 = reduceHC4_orNewton(split_box, model, boxNo, 
+                                                  dict_options)
+            
+            # if only one variable is split then no best split needs to be found
+            # and the split boxes are directly returned
+            if not new_box and i+1 == len(split_var_id): 
+                return output0["xNewBounds"] + output1["xNewBounds"]
+
+            box0_exists = (output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]])
+            box1_exists = (output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]])
+            if not  box0_exists and not box1_exists: return []  
+            elif not box0_exists:
+                old_box = output1["xNewBounds"][0]
+                smallestAvrSide = 2.0
+                two_boxes = False
+                break
+            elif not box1_exists:
+                old_box = output0["xNewBounds"][0]
+                smallestAvrSide = 2.0
+                two_boxes = False
+                break
+            else:    
+                new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                           for iv in output0["xNewBounds"][0]] 
+                avrSide = analysis.identify_box_reduction(new_box_float, old_box_float)
+                new_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
+                           for iv in output1["xNewBounds"][0]] 
+                avrSide += analysis.identify_box_reduction(new_box_float, old_box_float)
+            
+            # if first split box is not empty average length is calculated
+
+                if avrSide < smallestAvrSide:
+                    smallestAvrSide = avrSide
+                    if dict_options["Debug-Modus"]: 
+                        print("variable ", model.xSymbolic[t], " is splitted")
+                    new_box = output0["xNewBounds"] + output1["xNewBounds"]
+            
+    return new_box
 
 
 def reduceHC4_orNewton(splittedBox, model, boxNo, dict_options):
@@ -1264,7 +1324,15 @@ def bisect_box_adv(model, box, varID, dict_options):
             box_low[varID] = mpmath.mpi(box[varID].a, -dict_options["absTol"])
             box_up[varID] = mpmath.mpi(dict_options["absTol"], box[varID].b)
             return [box_low, box_up]
-        
+    #if box[varID].a == 0:
+    #    mid = box[varID].a + 0.1*box[varID].delta
+    #    box_low[varID] = mpmath.mpi(box[varID].a, mid) 
+    #    box_up[varID] = mpmath.mpi(mid.b,box[varID].b)
+    #elif box[varID].b == 0:
+    #    mid = box[varID].b - 0.1*box[varID].delta
+    #    box_low[varID] = mpmath.mpi(box[varID].a, mid) 
+    #    box_up[varID] = mpmath.mpi(mid,box[varID].b)
+    #else:
     box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)   
     box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
     return [box_low, box_up]
@@ -1412,16 +1480,15 @@ def reduceBox(xBounds, model, boxNo, dict_options):
     hc_enabled = (dict_options['hc_method'] in {'HC4'})                                                 
     bc_enabled = (dict_options['bc_method'] in {'bnormal'})
     dict_options_temp["x_old"] = list(xBounds)
-    [dict_options_temp["unique_nwt"], 
-     dict_options_temp["unique_hc"], 
-     dict_options_temp["unique_bc"]] = set_unique_solution_true(nwt_enabled, 
-                                                                hc_enabled, 
-                                                                bc_enabled)
-                                                                
+                                              
     # cycling through contraction methods until they are all consistent:                                  
     while not consistent: 
         x_last = list(xBounds) # Store box for consistency check
-        
+        [dict_options_temp["unique_nwt"], 
+         dict_options_temp["unique_hc"], 
+         dict_options_temp["unique_bc"]] = set_unique_solution_true(nwt_enabled, 
+                                                                    hc_enabled, 
+                                                                    bc_enabled)
         # if HC4 is active
         if hc_enabled:
             (output, empty, x_HC4) = do_HC4(model, xBounds, output, 
@@ -1437,7 +1504,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
         subBoxNo = 1  
         # update current old x to see progress in each contraction method
         dict_options_temp["x_old"]=list(xBounds) 
-                                                 
+                                       
         for i in model.colPerm:
             y = [xBounds[i]] # currently reduced variable
             if dict_options["Debug-Modus"]: print(i)
@@ -1463,8 +1530,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
                 # Bnormal step:
                 for j in model.dict_varId_fIds[i]:   
                     y = do_bnormal(model.functions[j], xBounds, y, i, 
-                                       dict_options_temp)
-
+                                       dict_options_temp)  
                     if unique_test_bc: # unique solution test
                         (fbc, ubc) = update_for_unique_test(j, 
                                                             model.dict_varId_fIds[i][-1],
@@ -3307,7 +3373,7 @@ def getMonotoneFunctionSections(f, i, xBounds, dict_options):
     org_xiBounds = xBounds[i]
     interval = [xBounds[i]]
 
-    while interval != [] and len(interval) < maxIvNo:
+    while(interval != [] and len(interval) <= maxIvNo):
         curIntervals = []
 
         for xc in interval:
@@ -3321,10 +3387,11 @@ def getMonotoneFunctionSections(f, i, xBounds, dict_options):
                                                           dict_options)
             curIntervals += newIntervals
 
-        if checkIntervalWidth(curIntervals, absEpsX, 0.1*relEpsX) == interval:
+        #if checkIntervalWidth(curIntervals, absEpsX, 0.1*relEpsX) == interval:
+        if joinIntervalSet(curIntervals, relEpsX, absEpsX) == interval:
             interval = joinIntervalSet(interval, relEpsX, absEpsX)
-            break
-        interval = checkIntervalWidth(curIntervals, absEpsX, 0.1*relEpsX)
+            break            
+        interval = curIntervals#checkIntervalWidth(curIntervals, absEpsX, 0.1*relEpsX)
 
     if not len(interval) <= maxIvNo:
         interval = joinIntervalSet(interval, relEpsX, absEpsX)
@@ -3862,7 +3929,7 @@ def get_best_from_all_functions(model, box, i, dict_options, x_c=None):
         if len(y_new)==1: 
             box[i] = y_new[0]
             x_c[i] = convert_mpi_float(y_new[0].mid)
-        if f_for_unique_test: dict_options["unique_nwt"] = True
+    if f_for_unique_test: dict_options["unique_nwt"] = True
         
     return y_new
         
@@ -4148,7 +4215,10 @@ def newton_step(r_i, G_i, x_c, box, i, dict_options):
         dict_options["unique_nwt"] = False
         return [box[i]]
     
-    if y_new == []: return [check_accuracy_newton_step(box[i], N[0], dict_options)]
+    if y_new == []: 
+        print(box[i])
+        print(N[0])
+        return [check_accuracy_newton_step(box[i], N[0], dict_options)]
     
     return y_new
 
@@ -4178,17 +4248,18 @@ def check_accuracy_newton_step(old_iv, new_iv, dict_options):
     if (isinstance(new_iv, mpmath.ctx_iv.ivmpf)):
         new_float = convert_mpi_iv_float(new_iv)
     else: new_float = list(new_iv)
- 
-    if(isclose_ordered(old_float[1], new_float[0], dict_options["relTol"], 
+    if new_float[0] >= old_float[1]:
+        if(isclose_ordered(old_float[1], new_float[0], dict_options["relTol"], 
+                           dict_options["absTol"])):
+            if mpi: return mpmath.mpi(old_float[0], new_float[1])
+            else: return [old_float[0], new_float[1]]
+        else: return []
+    elif(new_float[1] <= old_float[0]):    
+        if(isclose_ordered(new_float[1], old_float[0], dict_options["relTol"], 
                          dict_options["absTol"])):
-       if mpi: return mpmath.mpi(old_float[0], new_float[1])
-       else: return [old_float[0], new_float[1]]
-       
-    elif(isclose_ordered(new_float[1], old_float[0], dict_options["relTol"], 
-                         dict_options["absTol"])):
-       if mpi: return mpmath.mpi(new_float[0], old_float[1])
-       else: return [new_float[0], old_float[1]]    
-    else: return []
+            if mpi: return mpmath.mpi(new_float[0], old_float[1])
+            else: return [new_float[0], old_float[1]]    
+        else: return []
        
 
 def permute_matrix(A, rowPerm, colPerm):
@@ -4275,11 +4346,10 @@ def solutionInFunctionRange(functions, xBounds, dict_options):
     Returns:
         :solutionRange:     boolean that is true if solution in the range
     """
-
+    if xBounds == []: return False 
     absTol = dict_options["absTol"]
-      
-    for f in functions:
-        
+     
+    for f in functions:        
         if dict_options["Affine_arithmetic"]: 
             fInterval = eval_fInterval(f, f.f_mpmath[0], [xBounds[i] for i in f.glb_ID], f.f_aff[0],
                                        dict_options["tight_bounds"],
@@ -4308,6 +4378,7 @@ def solutionInFunctionRangePyibex(functions, xBounds, dict_options):
         boolean that is True if solution is in function range and False otherwise
 
     """
+    if xBounds == []: return False 
     xNewBounds = list(xBounds)
     for i in range(3):
         Intersection = HC4(functions, xNewBounds, dict_options)

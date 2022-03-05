@@ -109,7 +109,36 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
         else: 
             output = iNes_procedure.reduceBoxes(model, dict_options, 
                                                 sampling_options, solv_options)
-        
+        if not output.__contains__("noSolution"):
+            for l, box in enumerate(model.xBounds):
+                new_x = iNes_procedure.check_boxes_for_eq_consistency(model, [box], dict_options) 
+                if new_x:
+                    model.xBounds[l] = new_x[0]
+                else:
+                    model.xBounds[l] = []
+                    output["xSolved"][l] = []
+                    output["xAlmostEqual"][l] = []
+                    output["disconti"][l] = []
+                    output["cut"][l] = []
+                    output["complete_parent_boxes"][l] = []
+             
+            model.xBounds = [x for x in model.xBounds if x!=[]]     
+            if not model.xBounds: 
+                model.xBounds = [box]
+                iNes_procedure.saveFailedSystem(output, model.functions[0], model, 0)
+                newModel.failed = True
+                res_solver["noSolution"] = output["noSolution"]
+                storage.store_time(npzFileName, timeMeasure, iterNo)
+                break
+            else:
+                output["xAlmostEqual"] = [x for x in output["xAlmostEqual"] if x!=[]] 
+                output["disconti"] = [x for x in output["disconti"] if x!=[]] 
+                output["cut"] = [x for x in output["cut"] if x!=[]] 
+                output["xSolved"] = [x for x in output["xSolved"] if x!=[]] 
+                output["complete_parent_boxes"] = [x for x in 
+                                                   output["complete_parent_boxes"]
+                                                   if x!=[]] 
+            
         if len(model.xBounds) > 1: 
             dict_options["mean_residual"] = analysis.calc_residual(model, solv_options) 
            
@@ -119,7 +148,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
         dict_options["cut"] = output["cut"]       
         dict_options["maxBoxNo"] = len(model.xBounds)
         timeMeasure.append(time.time() - tic)
-        #num_solved.append(any(output["num_solved"]))
+
         num_solved.append(output["num_solved"])     
         if output.__contains__("noSolution"):
             newModel.failed = True
@@ -147,22 +176,18 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
             model.complete_parent_boxes = output["complete_parent_boxes"]
         
         if len(model.xBounds) > 1: 
-            #print("residual ",dict_options["mean_residual"])
-            #print("disconti ", dict_options["disconti"])
-            #print("cut ", dict_options["cut"])
-            #print("solved", dict_options["xSolved"])
             change_order_of_boxes_residual(model, output, dict_options) 
-            validBounds = [iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options) for x in model.xBounds]
-            if not all(validBounds):
+            # validBounds = [iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options) for x in model.xBounds]
+            # if not all(validBounds):
                 
-                for i,val in enumerate(validBounds):
-                    if not val: 
-                        model.xBounds.pop(i)
-                        dict_options["xAlmostEqual"].pop(i)
-                        dict_options["disconti"].pop(i)
-                        dict_options["xSolved"].pop(i)
-                        dict_options["mean_residual"].pop(i)
-                        model.complete_parent_boxes.pop(i)
+            #     for i,val in enumerate(validBounds):
+            #         if not val: 
+            #             model.xBounds.pop(i)
+            #             dict_options["xAlmostEqual"].pop(i)
+            #             dict_options["disconti"].pop(i)
+            #             dict_options["xSolved"].pop(i)
+            #             dict_options["mean_residual"].pop(i)
+            #             model.complete_parent_boxes.pop(i)
                     
             # print(model.xBounds)
                
@@ -171,7 +196,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     # Updating model:    
     validXBounds = [x for x in model.xBounds if (
         iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options))]
-       
+
     if validXBounds == []: 
         model.failed = True
         res_solver["Model"] = model
