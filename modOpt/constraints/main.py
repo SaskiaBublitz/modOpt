@@ -109,6 +109,11 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
         else: 
             output = iNes_procedure.reduceBoxes(model, dict_options, 
                                                 sampling_options, solv_options)
+            
+            
+        if True in output["xSolved"]: 
+            for k, solved in enumerate(output["xSolved"]):
+                if solved: print("Box ", k, " is solved.")
         if not output.__contains__("noSolution"):
             for l, box in enumerate(model.xBounds):
                 new_x = iNes_procedure.check_boxes_for_eq_consistency(model, [box], dict_options) 

@@ -7,6 +7,7 @@ import copy
 import numpy
 import sympy
 import mpmath
+import math
 import pyibex
 import itertools
 from modOpt.constraints import affineArithmetic,parallelization, analysis
@@ -420,7 +421,10 @@ def reduceConsistentBox(model, dict_options, k, boxNo):
         if dict_options["cut_Box"] == "all" or dict_options["cut_Box"] == True : 
             #newBox, possibleCutOffs = cutOffBox(model, newBox, dict_options)
             newBox, possibleCutOffs = cut_off_box(model, newBox, dict_options)
-
+        if dict_options["cut_Box"] == "LeastChanged":
+            leastChanged_Id = split_least_changed_variable(newBox, model, k, dict_options)
+            newBox, possibleCutOffs = cut_off_box(model, newBox, dict_options,
+                                                     leastChanged_Id)
         if newBox == [] or newBox ==[[]]: 
             saveFailedSystem(output, model.functions[0], model, 0)
             output["disconti"]=[]
@@ -1324,17 +1328,27 @@ def bisect_box_adv(model, box, varID, dict_options):
             box_low[varID] = mpmath.mpi(box[varID].a, -dict_options["absTol"])
             box_up[varID] = mpmath.mpi(dict_options["absTol"], box[varID].b)
             return [box_low, box_up]
-    #if box[varID].a == 0:
-    #    mid = box[varID].a + 0.1*box[varID].delta
-    #    box_low[varID] = mpmath.mpi(box[varID].a, mid) 
-    #    box_up[varID] = mpmath.mpi(mid.b,box[varID].b)
-    #elif box[varID].b == 0:
-    #    mid = box[varID].b - 0.1*box[varID].delta
-    #    box_low[varID] = mpmath.mpi(box[varID].a, mid) 
-    #    box_up[varID] = mpmath.mpi(mid,box[varID].b)
-    #else:
-    box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)   
-    box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
+        
+    a = convert_mpi_float(box[varID].a)
+    b =  convert_mpi_float(box[varID].b)
+    
+    if a != 0 and b != 0: 
+        oa = math.floor(math.log(abs(a), 10))
+        ob = math.floor(math.log(abs(b), 10))
+        od = ob - oa
+        if od > 0:
+            if oa < ob and a >= 0: 
+                mid = a + 10**(oa + od/2.0)
+                box_low[varID] = mpmath.mpi(a, mid)   
+                box_up[varID] = mpmath.mpi(mid, b)     
+            if oa > ob and b <=0: 
+                mid = b - 10**(ob + od/2.0)
+                box_low[varID] = mpmath.mpi(a, mid)   
+                box_up[varID] = mpmath.mpi(mid, b)
+            else:
+                box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)   
+                box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
+    
     return [box_low, box_up]
     
 
@@ -2471,7 +2485,7 @@ def eval_function_tight_mpmath(f, fInterval, f_mpmath, f_sym, box, resolution):
 
     """
     y_sym = list(f_sym.free_symbols)
-
+    if not resolution: resolution = 8
     for j, var in enumerate(y_sym):
         k = f.x_sym.index(var)
         #f_sym.count(var)
