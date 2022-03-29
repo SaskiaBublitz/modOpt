@@ -17,7 +17,7 @@ Minimization Procedures from scipy.optimization
 
 __all__ = ['minimize']
 
-def objective(functions):
+def objective(functions,a):
     """
     Args:
         :functions:     list with functions
@@ -28,7 +28,7 @@ def objective(functions):
     
     obj = 0
     for f in functions: obj += f**2
-    return obj
+    return a*obj
 
 
 def convert_sympy_vars_to_casadi(x_symbolic):
@@ -92,10 +92,11 @@ def minimize(curBlock, solv_options, dict_options):
             x_L[i] = x_0[i]
             x_U[i] = x_0[i]
             
-    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions))
+    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions,1.0/solv_options["FTOL"]))
     nlp = {'x':casadi.vertcat(*x_casadi), 'f':obj_casadi(*x_casadi)}
     #options={"max_iter": 50000};
-    S = casadi.nlpsol('S', 'ipopt', nlp, {"ipopt":{'max_iter':solv_options["iterMax"]}})
+    S = casadi.nlpsol('S', 'ipopt', nlp, {"ipopt":{'max_iter':solv_options["iterMax"],
+                                                   }})
 
 
     r = S(x0=x_0, lbx=x_L, ubx=x_U, lbg=0, ubg=0)
@@ -103,6 +104,7 @@ def minimize(curBlock, solv_options, dict_options):
     
     if solv_options["FTOL"] < numpy.linalg.norm(curBlock.getScaledFunctionValues()):
         return newton.doNewton(curBlock, solv_options, dict_options)
+        #return scipyMinimization.fsolve(curBlock, solv_options, dict_options)
     else: return 1, solv_options["iterMax"]
     
     

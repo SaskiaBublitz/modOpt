@@ -199,13 +199,34 @@ def calc_residual(model, solv_options=None):
                         mosca.main.scaleSystem(model, solv_options)
             #for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
             try: 
-                residual.append(sum([abs(fi)/model.rowSca[j] for j, fi 
-                                     in enumerate(model.fLamb(*model.stateVarValues[0]))]))
+                fsum = sum([abs(fi)/model.rowSca[j] for j, fi 
+                                     in enumerate(model.fLamb(*model.stateVarValues[0]))])
             except: 
-                residual.append(float('nan'))
+                fsum = numpy.inf
+            if numpy.isnan(fsum): fsum = numpy.inf
+            residual.append(fsum)
         model.stateVarValues[0] = x_old
     return residual
-        
+
+
+def calc_iv_residual(model): 
+    residual = []
+    if model.xBounds != []:
+
+        for k,box in  enumerate(model.xBounds):
+            r_box = 0            
+            for f in model.functions:
+                sbox = [box[i] for i in f.glb_ID]
+                r_iv = float(mpmath.mpf(f.f_mpmath[0](*sbox).delta))
+                if r_iv == numpy.nan or r_iv == numpy.inf:
+                    break
+                else: r_box += r_iv
+            if r_iv == numpy.nan: residual.append(1.0e300)     
+            else: residual.append(r_box)   
+            
+            
+    if set(residual) == set([1.0e300]): return calc_residual(model)
+    else: return residual        
         
 def calc_average_length(dict_options, init_box, boxes):
     avLength = 0

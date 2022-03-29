@@ -82,6 +82,7 @@ class Model:
         self.rowPerm = range(0,len(X))
         self.colPerm = range(0,len(X))
         self.blocks = [self.rowPerm]
+        self.max_block_dim = 1
         self.fSymCasadi = FSYMCASADI 
         self.rowSca = numpy.ones(len(X))
         self.colSca = numpy.ones(len(X))
@@ -298,6 +299,7 @@ class Model:
         self.rowPerm = rowPerm
         self.blocks =  createBlocks(blocks)
         self.xInF = [f.glb_ID for f in self.functions]
+        self.max_block_dim = max([len(block) for block in self.blocks])
         for i in range(len(colPerm)):       
             self.fWithX.append([ j for j,f in enumerate(self.functions) if i in f.glb_ID])
         

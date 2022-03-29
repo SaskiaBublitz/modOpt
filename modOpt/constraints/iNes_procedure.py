@@ -61,60 +61,6 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     for k in range(len(model.xBounds)):
         emptyBoxes = reduce_box(model, allBoxes, emptyBoxes, k, results, 
                                 dict_options, sampling_options, solv_options)
-        
-        
-        
-        # xBounds = model.xBounds[k]
-
-        # if dict_options["Debug-Modus"]: print("Current box index: ", k)
-
-        # if dict_options["xSolved"][k]: 
-        #     prepare_results_constant_x(model, k, results, allBoxes, dict_options)
-        #     continue    
-        
-        # elif dict_options["xAlmostEqual"][k] and not dict_options["disconti"][k]:
-        #     output = reduceConsistentBox(model, dict_options, k, 
-        #                                  dict_options["boxNo"])             
-
-        #     prepare_results_splitted_x(model, cut, k, results, output, 
-        #                                dict_options)
-                
-        # elif (dict_options["xAlmostEqual"][k] and dict_options["disconti"][k] 
-        #       and dict_options["boxNo"]  >= dict_options["maxBoxNo"]):
-            
-
-        #     prepare_results_constant_x(model, k, results, allBoxes, dict_options) 
-        #     cut += [False]
-        #     continue
-
-        # else:
-        #     if dict_options["Debug-Modus"]: print(f'Box {k}')
-        #     if (not dict_options["xAlmostEqual"][k] and 
-        #         dict_options["disconti"][k] and dict_options["consider_disconti"]): 
-                
-        #         store_boxNo = dict_options["boxNo"]
-        #         dict_options["boxNo"] = dict_options["maxBoxNo"]
-        #         output = contractBox(xBounds, model, dict_options["boxNo"] , 
-        #                              dict_options)     
-        #         dict_options["boxNo"]  = store_boxNo             
-        #     else:                                
-        #         output = contractBox(xBounds, model, dict_options["boxNo"] , 
-        #                              dict_options)
-        #     prepare_results_inconsistent_x(model, k, results, cut, output, 
-        #                                    dict_options)    
-                                                                                                                            
-        #     if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
-        #         and dict_options["hybrid_approach"] and not
-        #         sampling_options ==None and not solv_options == None and 
-        #         len(output["xNewBounds"])==1):  
-        #         model.xBounds[k] = output["xNewBounds"][0]
-        #         results["num_solved"] = lookForSolutionInBox(model, k, 
-        #                                                      dict_options, 
-        #                                                      sampling_options, 
-        #                                                      solv_options)
-                                   
-        # emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
-        #                                      output, dict_options)
     check_results_reduction_step(model, allBoxes, emptyBoxes, results)      
       
     return results
@@ -531,89 +477,34 @@ def split_box(consistentBox, model, dict_options, k, boxNo_split):
     else:  split_var_id = None
         
     new_box = get_best_split_new(consistentBox, model, k, dict_options, split_var_id)
-    #new_box = check_boxes_for_eq_consistency(model, new_box, dict_options)
+
     new_box: new_box = checkBoxesForRootInclusion(model.functions, new_box, 
                                                      dict_options)    
     return new_box
 
 
-def check_boxes_for_eq_consistency(model, boxes, dict_options):
+def check_box_for_eq_consistency(model, box, dict_options):
     abs_old = dict_options["absTol"]
     relTol_old = dict_options["relTol"]
     dict_options["absTol"] *=100
     dict_options["relTol"] *=100     
 
-    for i, box in enumerate(boxes):
-        unsolved = [i for i in model.colPerm 
-                      if not checkVariableBound(box[i], dict_options)] 
-        if not unsolved:
-            dict_options["absTol"] *=1e-4
-            dict_options["relTol"] *=1e-4 
-            valid_box, cutoff = cut_off_box(model, [box], dict_options)
-            if not cutoff: continue
-            if not valid_box: boxes[i] = []
-            else: boxes[i] = valid_box[0]
-    dict_options["absTol"] = abs_old
-    dict_options["relTol"] = relTol_old
+    unsolved = [i for i in model.colPerm 
+    if not checkVariableBound(box[i], dict_options)] 
     
-    return [box for box in boxes if box != []]
-
-
-    
-# def splitBox(consistentBox, model, dict_options, k, boxNo_split):
-#     """ box splitting algorithm should be invoked if contraction doesn't work anymore because of consistency.
-#     The user-specified splitting method is executed.
-    
-#     Args:
-#        :xNewBounds:         numpy.array with consistent box
-#        :model:              instance of class model
-#        :dict_options:       dictionary with user-specifications
-#        :k:                  index of currently reduced box
-#        :boxNo_split:        number of possible splits (maxBoxNo-boxNo) could be 
-#                             used for multisection too
-    
-#     Return:
-#         list with split boxes
-        
-#     """
-#     if dict_options["split_Box"]=="TearVar": 
-#         # splits box by tear variables  
-#         if model.tearVarsID == []: getTearVariables(model)  
-        
-#         xNewBounds, dict_options["tear_id"] = splitTearVars(model.tearVarsID, 
-#                            numpy.array(consistentBox[0]), boxNo_split, 
-#                            dict_options)
-#         if isclose_ordered(float(mpmath.mpf(xNewBounds[0][model.tearVarsID[dict_options["tear_id"]-1]].a)),
-#                            float(mpmath.mpf(xNewBounds[0][model.tearVarsID[dict_options["tear_id"]-1]].b)), 
-#                            dict_options["relTol"],
-#                            dict_options["absTol"]):
-#             dict_options["split_Box"] ="forecastSplit"
-#             xNewBounds = getBestSplit(consistentBox, model, k, dict_options)
-
-#     elif dict_options["split_Box"]=="LargestDer":  
-#         #splits box by largest derivative
-#         splitVar = getTearVariableLargestDerivative(model, k)
-#         xNewBounds, dict_options["tear_id"] = splitTearVars(splitVar, 
-#                            numpy.array(consistentBox[0]), boxNo_split, 
-#                            dict_options)
-#     elif dict_options["split_Box"]=="LeastChanged":  
-#         xNewBounds = split_least_changed_variable(consistentBox, model, k, 
-#                                                   dict_options)
-                
-#     elif (dict_options["split_Box"]=="forecastSplit" or 
-#           dict_options["split_Box"]=="forecast_HC4" or 
-#           dict_options["split_Box"]=="forecast_newton"):  
-#         # splits box by best variable
-#         xNewBounds = getBestSplit(consistentBox, model, k, dict_options)
-    
-#     elif dict_options["split_Box"]=="forecastTear":
-#         if model.tearVarsID == []: getTearVariables(model)
-#         xNewBounds = getBestTearSplit(consistentBox, model, k, dict_options)
-
-    
-#     xNewBounds = checkBoxesForRootInclusion(model.functions, xNewBounds, 
-#                                             dict_options)
-#     return xNewBounds
+    if len(unsolved) <= model.max_block_dim:
+        dict_options["absTol"] *=1e-4
+        dict_options["relTol"] *=1e-4 
+        valid_box, cutoff = cut_off_box(model, [box], dict_options)
+        dict_options["absTol"] = abs_old
+        dict_options["relTol"] = relTol_old
+        if not cutoff: return box
+        if not valid_box: return []
+        else: return valid_box[0]
+    else:
+        dict_options["absTol"] = abs_old
+        dict_options["relTol"] = relTol_old        
+        return box
 
 
 def cutOffBox_tear(model, xBounds, dict_options):
@@ -793,6 +684,7 @@ def check_solution_in_edge_box(model, i, cut_id, a, b, cur_box, new_box, step,
     """
     if not solutionInFunctionRangePyibex(model.functions, numpy.array(cur_box), 
                                          dict_options): 
+        if b < a: return False, 1.1
         new_box[i] = mpmath.mpi(a, b)
         rstep = ((rstep*100.0)**0.5 + 1)**2/100.0
         step[cut_id] = (b - a) * rstep
@@ -1329,25 +1221,34 @@ def bisect_box_adv(model, box, varID, dict_options):
             box_up[varID] = mpmath.mpi(dict_options["absTol"], box[varID].b)
             return [box_low, box_up]
         
-    a = convert_mpi_float(box[varID].a)
-    b =  convert_mpi_float(box[varID].b)
+    if (0 <= box[varID].a and box[varID].a < 1.0e-6 and 
+        box[varID].b > 1.0e-6):
+        box_low[varID] = mpmath.mpi(box[varID].a, 1.0e-6)  
+        box_up[varID] = mpmath.mpi(1.0e-6, box[varID].b) 
+    if (0 >= box[varID].b and box[varID].b > -1.0e-6 and 
+        box[varID].a < -1.0e-6):
+        box_low[varID] = mpmath.mpi(box[varID].a, -1.0e-6)  
+        box_up[varID] = mpmath.mpi(-1.0e-6, box[varID].b)
+    else:
+    # a = convert_mpi_float(box[varID].a)
+    # b =  convert_mpi_float(box[varID].b)
     
-    if a != 0 and b != 0: 
-        oa = math.floor(math.log(abs(a), 10))
-        ob = math.floor(math.log(abs(b), 10))
-        od = ob - oa
-        if od > 0:
-            if oa < ob and a >= 0: 
-                mid = a + 10**(oa + od/2.0)
-                box_low[varID] = mpmath.mpi(a, mid)   
-                box_up[varID] = mpmath.mpi(mid, b)     
-            if oa > ob and b <=0: 
-                mid = b - 10**(ob + od/2.0)
-                box_low[varID] = mpmath.mpi(a, mid)   
-                box_up[varID] = mpmath.mpi(mid, b)
-            else:
-                box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)   
-                box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
+    # if a != 0 and b != 0: 
+    #     oa = math.floor(math.log(abs(a), 10))
+    #     ob = math.floor(math.log(abs(b), 10))
+    #     od = ob - oa
+    #     if od > 0:
+    #         if oa < ob and a >= 0: 
+    #             mid = a + 10**(oa + od/2.0)
+    #             box_low[varID] = mpmath.mpi(a, mid)   
+    #             box_up[varID] = mpmath.mpi(mid, b)     
+    #         if oa > ob and b <=0: 
+    #             mid = b - 10**(ob + od/2.0)
+    #             box_low[varID] = mpmath.mpi(a, mid)   
+    #             box_up[varID] = mpmath.mpi(mid, b)
+    #         else:
+        box_low[varID] = mpmath.mpi(box[varID].a, box[varID].mid)   
+        box_up[varID] = mpmath.mpi(box[varID].mid,box[varID].b)
     
     return [box_low, box_up]
     
@@ -1494,15 +1395,17 @@ def reduceBox(xBounds, model, boxNo, dict_options):
     hc_enabled = (dict_options['hc_method'] in {'HC4'})                                                 
     bc_enabled = (dict_options['bc_method'] in {'bnormal'})
     dict_options_temp["x_old"] = list(xBounds)
-                                              
+                                         
     # cycling through contraction methods until they are all consistent:                                  
     while not consistent: 
+
         x_last = list(xBounds) # Store box for consistency check
         [dict_options_temp["unique_nwt"], 
          dict_options_temp["unique_hc"], 
          dict_options_temp["unique_bc"]] = set_unique_solution_true(nwt_enabled, 
                                                                     hc_enabled, 
                                                                     bc_enabled)
+        
         # if HC4 is active
         if hc_enabled:
             (output, empty, x_HC4) = do_HC4(model, xBounds, output, 
@@ -1525,16 +1428,16 @@ def reduceBox(xBounds, model, boxNo, dict_options):
             # if y is already solved tolerances are decreased to contract y 
             #further because other variables may rely on y
             checkIntervalAccuracy(xBounds, i, dict_options_temp)
-       
+
             # if any newton method is active       
-            if (not variableSolved(y, dict_options_temp) and nwt_enabled):             
+            if (not variableSolved(y, dict_options_temp) and nwt_enabled): 
                 # Iv Newton step:
                 y = iv_newton(model, xBounds, i, dict_options_temp)
                 if y == [] or y ==[[]]: 
                     saveFailedSystem(output, model.functions[0], model, i)
                     return output
                 y = check_contracted_set(model, y, i, xBounds, dict_options)
-             
+                
             # if bnormal is active
             if (not variableSolved(y, dict_options_temp) and bc_enabled):                
                 if dict_options_temp["unique_bc"]: unique_test_bc = True
@@ -1543,6 +1446,7 @@ def reduceBox(xBounds, model, boxNo, dict_options):
 
                 # Bnormal step:
                 for j in model.dict_varId_fIds[i]:   
+                    
                     y = do_bnormal(model.functions[j], xBounds, y, i, 
                                        dict_options_temp)  
                     if unique_test_bc: # unique solution test
@@ -2797,10 +2701,13 @@ def getContinuousFunctionSections(f, i, xBounds, dict_options):
     maxIvNo = dict_options["maxBoxNo"]
     absEpsX = dict_options["absTol"]
     relEpsX = dict_options["relTol"]
+    if checkIntervalWidth([xBounds[i]], absEpsX, 0.1*relEpsX) == []: 
+        return [],[]
+    
     continuousZone = []
     orgXiBounds = xBounds[i]
     interval = [xBounds[i]]
-
+    
     while interval != [] and len(interval) <= maxIvNo:
         discontinuousZone = []
 
@@ -4453,9 +4360,17 @@ def HC4_float(functions, box, dict_options):
         else:x_HC4.append(list(iv))
         
     box_old = list(x_HC4)
-
+    
     for f in functions:
-        sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])            
+        #if '**(-3.0)' or '**(-3)' in str(f.f_sym):
+        #    continue
+        sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])   
+
+        #    print("New Reduction")
+        #    print(f.f_sym)
+        #    print(f.glb_ID)
+        #    print(f.x_sym)
+        #    print(sub_box)
         currentIntervalVector = pyibex.IntervalVector(sub_box)
         f.f_pibex.contract(currentIntervalVector)
 
@@ -4470,7 +4385,7 @@ def HC4_float(functions, box, dict_options):
             
         sub_box = sub_box & currentIntervalVector
 
-        if sub_box.is_empty():
+        if sub_box.is_empty():           
             dict_options["failed_subbox"] = pyibex.IntervalVector([x_HC4[i] for 
                                                                    i in f.glb_ID])
             dict_options["failed_function"] = f
@@ -4870,3 +4785,20 @@ def unify_boxes(boxes, dict_options):
         results["var_id"].append(epsilon_uni.index(max(epsilon_uni)))
       
     return boxes, results              
+
+
+def check_box_for_disconti_iv(model, new_x, dict_options):
+    for f in model.functions:
+        box = [new_x[i] for i in f.glb_ID] 
+        if variableSolved(box, dict_options):
+            f_iv = f.f_mpmath[0](*box)
+            print(box)
+            print(f.f_sym)
+            print(f_iv)
+            if (f_iv.a < -1.0e15  or f_iv.b > 1.0e15):
+                return []
+        else: continue
+    return new_x
+    
+    
+    

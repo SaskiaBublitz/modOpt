@@ -184,6 +184,7 @@ def sample_and_solve_one_block(model, b, sampling_options,
     else: 
        moi.sample_box_in_block(cur_block, 0, sampling_options, dict_options, samples)
        model.stateVarValues[0][cur_block.colPerm]=samples[0][0]
+       print("The sample point's residual is: ", model.getFunctionValuesResidual())
        #print ("This is the residual of the whole system:", 
 #              numpy.linalg.norm(numpy.array(model.getFunctionValues())))  
     return solve_samples_block(model, cur_block, b, samples[0], solv_options, 

@@ -122,7 +122,7 @@ def minimize(curBlock, solv_options, dict_options):
                                       args= args,
                                       jac = eval_grad_m,
                                       method= minMethod, #'trust-constr',
-                                      options = {'maxiter': iterMax, 'ftol': 1.0e-20, 'disp': True},
+                                      options = {'maxiter': iterMax, 'ftol': FTOL**2, 'disp': True},
                                       tol = None,
                                       bounds = xBounds,
                                       constraints = ())    

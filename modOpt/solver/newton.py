@@ -39,7 +39,7 @@ def doNewton(curBlock, solv_options, dict_options):
         
         iterNo = iterNo + 1
         tol = numpy.linalg.norm(curBlock.getScaledFunctionValues())
-        #print(tol)
+        print(tol)
         if numpy.isnan(tol): return -1, iterNo
         
     if iterNo == iterMax and tol > FTOL: return 0, iterNo
