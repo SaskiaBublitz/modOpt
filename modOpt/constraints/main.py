@@ -97,7 +97,13 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     model.xBounds[0] = numpy.array(
         [iNes_procedure.remove_zero_and_max_value_bounds(x) 
          for x in model.xBounds[0]])
-         
+     
+    if dict_options["redStepMax"] == 0:
+            res_solver["num_solved"] = iNes_procedure.lookForSolutionInBox(model, 
+                                                                           0, 
+                                                         dict_options, 
+                                                         sampling_options, 
+                                                         solv_options)    
     for iterNo in range(1, dict_options["redStepMax"]+1): 
 
         dict_options["iterNo"] = iterNo
@@ -177,8 +183,14 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     # Updating model:    
     validXBounds = [x for x in model.xBounds if (
         iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options))]
-    validXBounds = filter_out_discontinuous_boxes(validXBounds, model)
-
+    solved = [dict_options["xSolved"][i] for i, x in enumerate(model.xBounds) if (
+        iNes_procedure.solutionInFunctionRange(model.functions, x, dict_options))]
+    if validXBounds != [] and solved !=[]:
+        solved_boxes = [x for i,x in enumerate(validXBounds) if (solved[i])]   
+        solved_boxes = filter_out_discontinuous_boxes(solved_boxes, model)
+        unsolved_boxes = [x for i,x in enumerate(validXBounds) if not (solved[i])]  
+        validXBounds = solved_boxes + unsolved_boxes
+        
     if validXBounds == []: 
         model.failed = True
         res_solver["Model"] = model
@@ -192,7 +204,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
       if all(dict_options["xSolved"]): 
           validXBounds, res_solver["unified"] = iNes_procedure.unify_boxes(validXBounds,
                                                                            dict_options)  
-          
+      storage.store_newBoxes(npzFileName, model, iterNo)    
       newModel.setXBounds(validXBounds)
       res_solver["Model"] = newModel
     storage.store_time(npzFileName, timeMeasure, iterNo)

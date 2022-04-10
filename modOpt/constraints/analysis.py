@@ -59,9 +59,12 @@ def analyseResults(dict_options, res_solver):
         #hypercubicLFraction = getHyperCubicLengthFraction(initLengths, lengths, dim_reduced)
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
+        
+        block_dim_max = max([len(block) for block in modelWithReducedBounds.blocks])
+        
         writeAnalysisResults(dict_options["fileName"], varSymbolic, boundsRatios, 
                              boundRatiosOfVars, initLength, lengthFractions, 
-                             abl, solvedVarsID, density, nonLinRatio)
+                             abl, solvedVarsID, density, nonLinRatio,block_dim_max)
 
 def initialize_with_boxFile(model, textFile_name):
     """reads out bounds and initial values from text file and assigns them
@@ -488,7 +491,7 @@ def getNonLinearityRatio(model):
     
 def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, initVolume,
                          hypercubicLFractions, hypercubicLFraction, solvedVars, density,
-                         nonLinRatio):
+                         nonLinRatio,block_dim_max):
     """ writes anaylsis results to a textfile  <fileName>_analysis.txt
     
     Args:
@@ -514,14 +517,12 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
     
     noOfVarSets = len(boundRatios)
     res_file.write("System Dimension: \t%s\n"%(len(boundRatios[0]))) 
+    res_file.write("Largest Block dimension %s\n"%(block_dim_max))
     res_file.write("Jacobian Nonzero Density: \t%s\n"%(density))
     res_file.write("Jacobian Nonlinearity Ratio: \t%s\n"%(nonLinRatio))
-    res_file.write("Length of initial box: \t%s\n\n"%(initVolume))
-    res_file.write("AverageLengthFraction\t ")
-    #for j in range(0, noOfVarSets):
-    #    res_file.write("%s\t"%(hypercubicLFractions[j]))
-    res_file.write("%s"%(hypercubicLFraction)) 
-    
+    res_file.write("Length of initial box: \t%s\n"%(initVolume))
+    res_file.write("AverageLengthFraction: \t%s"%(hypercubicLFraction))
+        
     if solvedVars != []:
         res_file.write("\n\nFollowing Variables have been solved:\n")
         for solvedVar in solvedVars:

@@ -30,23 +30,25 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
         model = res_solver["Model"]
     
         if model.xBounds !=[]:
-            #absEps = dict_options["absTol"]
-            model.stateVarValues = numpy.empty((len(model.xBounds), len(model.xBounds[0])))
+            model.stateVarValues = numpy.empty((len(model.xBounds), 
+                                                len(model.xBounds[0])))
             for i in range(len(model.xBounds)):
                 for j in range(len(model.xBounds[i])):
                     if isinstance(model.xBounds[i][j], numpy.ndarray):
-                        midPoint = (model.xBounds[i][j][0] + model.xBounds[i][j][1]) / 2.0
+                        midPoint = (model.xBounds[i][j][0] + 
+                                    model.xBounds[i][j][1]) / 2.0
                     else:
                         midPoint = float(mpmath.mpf(model.xBounds[i][j].mid))
                         if midPoint != 0: 
                             model.stateVarValues[i][j]= midPoint
                         else :
-                            #model.stateVarValues[i][j] = absEps
                             if (abs(model.xBounds[i][j].a) > 
                                 abs(model.xBounds[i][j].b)):
-                                model.stateVarValues[i][j] = float(mpmath.mpf(model.xBounds[i][j].a/2.0))
+                                model.stateVarValues[i][j] = float(
+                                    mpmath.mpf(model.xBounds[i][j].a/2.0))
                             else:
-                                model.stateVarValues[i][j] = float(mpmath.mpf(model.xBounds[i][j].b/2.0))
+                                model.stateVarValues[i][j] = float(
+                                    mpmath.mpf(model.xBounds[i][j].b/2.0))
 
     if "Block" in res_solver.keys():
         block = res_solver["Block"]

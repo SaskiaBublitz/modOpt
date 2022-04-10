@@ -164,23 +164,21 @@ def sample_and_solve_one_block(model, b, sampling_options,
                             model.constraints, model.xSymbolic, model.jacobianSympy, 
                             model.functions,model.jacobianLambNumpy
                             )
+    # TODO: test midpoint as initial point and continue without sampling if successful   
+    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": cur_block}, 
+                                                          dict_options)
+    res_blocks, cur_block = solve_block(model, cur_block, b, solv_options, 
+                                        dict_options, res_blocks)
+    res_blocks, solved = check_num_solution(model, cur_block, b, res_blocks)
+    if solved: return res_blocks, solved
     
-   # if sampling_options["init_method"] == "tear_sampling":
-   #     samples = moi.do_tear_sampling(model, cur_block, 0, sampling_options, 
-   #                                       dict_options, solv_options)        
     if sampling_options["sampling method"]== "optuna":
         #samples = [[moi.func_optuna_timeout(cur_block, 0, sampling_options, 
-        #                               dict_options)]]
+        #                               dict_options)]] 
         samples = [[moi.do_optuna_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
         print("The residual of the sample point is: ", 
               numpy.linalg.norm(cur_block.getFunctionValues()))   
-        #try: samples = [[moi.do_optuna_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
-        #except: 
-        #    sampling_options["number of samples"] = 0
-        #    moi
-        #    model.stateVarValues[0][cur_block.colPerm]=samples[0][0]
-    #if sampling_options["sampling method"]== "ax_optimization":
-    #   samples = [[moi.do_ax_optimization_in_block(cur_block, 0, sampling_options, dict_options)]]
+
     else: 
        moi.sample_box_in_block(cur_block, 0, sampling_options, dict_options, samples)
        model.stateVarValues[0][cur_block.colPerm]=samples[0][0]
@@ -212,24 +210,61 @@ def solve_samples_block(model, block, b, samples, solv_options, dict_options, re
 
     for sample in samples:
         block.x_tot[block.colPerm] = sample
+        res_blocks, block = solve_block(model, block, b, solv_options, 
+                                        dict_options, res_blocks)
+        
+    res_blocks, solved = check_num_solution(model, block, b, res_blocks) 
+    return res_blocks, solved
 
-        if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
-                                model, block)
+
+def check_num_solution(model, block, b, res_blocks):
+    """ checks if solution has been found in numerical iterarion
+    
+    Args:
+        :model:         instance of class model
+        :block:         instance of class block
+        :b:             integer with id of block instance
+        :res_blocks:    dictionary with results from all model blocks
         
-        res_solver = startSolver(block, b, solv_options, dict_options)  
-        sort_results_from_solver_to_block(block, b, res_solver, res_blocks, dict_options)
+    Returns:
+        :res_blocks:    updated dictionary
+        :solved:        boolean that is True if numerical solution has been 
+                        found and False otherwise
         
+    """
     if not block.FoundSolutions == []: 
         res_blocks[b]["colPerm"] = block.colPerm
         res_blocks[b]["rowPerm"] = block.rowPerm
         update_model_to_block_results(block, model)
         solved = True
     else:
-        #model.stateVarValues[0] = block.x_tot 
-        #res_solver[b] = res_solver # stores failed system, it has no key "FoundSolutions"
         solved = False
-        
     return res_blocks, solved
+
+
+def solve_block(model, block, b, solv_options, dict_options, res_blocks):
+    """ solves one block numerically and stores the results in dictionary 
+    res_blocks
+    
+    Args:
+        :model:         instance of class model
+        :block:         instance of class block
+        :b:             integer with id of block instance
+        :solv_options:  dictionary with solver settings
+        :dict_options:  dictionary with structural settings of model
+        :res_blocks:    dictionary with results from all model blocks
+        
+    Returns:
+        :res_blocks:    updated dictionary
+        :block:         updated block instance
+        
+    """
+    if dict_options["scaling"] != 'None': getInitialScaling(dict_options, 
+                                model, block)
+    res_solver = startSolver(block, b, solv_options, dict_options)  
+    sort_results_from_solver_to_block(block, b, res_solver, res_blocks, 
+                                      dict_options)
+    return res_blocks, block
 
 
 def update_model_to_block_results(block, model):
@@ -867,7 +902,6 @@ def sort_fId_to_varIds(fId, varIds, dict_varId_fIds):
                             (value) to global id of the variables (key(s))
 
     """
-    
     for varId in varIds:
         if not varId in dict_varId_fIds: dict_varId_fIds[varId]=[fId]
         else: dict_varId_fIds[varId].append(fId)    
