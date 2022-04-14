@@ -71,6 +71,8 @@ def minimize(curBlock, solv_options, dict_options):
         :dict_options:  dictionary with user-specified settings  
         
     """    
+    #if "max_cpu_time" in solv_options.keys(): cpu_max = solv_options["max_cpu_time"]
+    #else: cpu_max = 5.0
     x_Bounds = curBlock.getIterVarBoundValues()    
     functions = [f.f_sym for f in curBlock.functions_block]
     glb_ID = []

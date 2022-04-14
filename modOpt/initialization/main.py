@@ -206,9 +206,10 @@ def do_optuna_optimization_in_block(block, boxID, sampling_options, dict_options
     residual =  numpy.linalg.norm(block.getFunctionValues())
     if residual > dict_options["absTol"]:  
         optuna.logging.set_verbosity(optuna.logging.WARNING)
-        box = block.xBounds_tot
+        #box = block.xBounds_tot
         var_names = [str(var_name)  for var_name in block.x_sym_tot]
-        sampler = optuna.samplers.CmaEsSampler()
+        #sampler = optuna.samplers.CmaEsSampler()
+        sampler = optuna.samplers.TPESampler()
         study = optuna.create_study(direction='minimize', 
                                     sampler=sampler)
         study.optimize(lambda trial: objective_2(trial, var_names, 

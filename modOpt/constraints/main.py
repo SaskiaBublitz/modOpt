@@ -99,11 +99,10 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
          for x in model.xBounds[0]])
      
     if dict_options["redStepMax"] == 0:
-            res_solver["num_solved"] = iNes_procedure.lookForSolutionInBox(model, 
-                                                                           0, 
+            num_solved = [iNes_procedure.lookForSolutionInBox(model, 0, 
                                                          dict_options, 
                                                          sampling_options, 
-                                                         solv_options)    
+                                                         solv_options)  ]  
     for iterNo in range(1, dict_options["redStepMax"]+1): 
 
         dict_options["iterNo"] = iterNo
@@ -117,7 +116,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
             output = iNes_procedure.reduceBoxes(model, dict_options, 
                                                 sampling_options, solv_options)
             
-            
+
         if True in output["xSolved"]: 
             for k, solved in enumerate(output["xSolved"]):
                 if solved: print("Box ", k, " is solved.")
@@ -143,14 +142,15 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
         dict_options["maxBoxNo"] = len(model.xBounds)
         timeMeasure.append(time.time() - tic)
 
-        num_solved.append(output["num_solved"])     
-        #if output.__contains__("noSolution"):
-        #    newModel.failed = True
-        #    res_solver["noSolution"] = output["noSolution"]
-        #    storage.store_time(npzFileName, timeMeasure, iterNo)
-        #    break
-                
+        num_solved.append(output["num_solved"])                 
         storage.store_newBoxes(npzFileName, model, iterNo)
+        
+        if (solv_options != None and "FoundSolutions" in dict_options.keys()):
+            if ("termination" in solv_options.keys()):
+                if (solv_options["termination"] == "one_solution"):
+                    print("Solver terminates because it has found", 
+                          " one solution :)")
+                    break
         
         if all(dict_options["xSolved"]):
             print("All solutions have been found.")
@@ -167,8 +167,6 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
                   dict_options["maxBoxNo"])
             if residuals[-1] == dict_options["mean_residual"][-1]:
                 residuals[-1] = 0.0
-        
-
         else:
             if dict_options["Debug-Modus"]: print("Complete parent boxes: ", 
                                                   output["complete_parent_boxes"])

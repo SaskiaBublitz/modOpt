@@ -83,7 +83,7 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
                 filename += "_pb" + str(dict_options["CPU count Branches"])
 
     # sampling methods and settings:    
-    if sampling_options != None and sampling_options["number of samples"] != 0: 
+    if sampling_options != None and sampling_options["number of samples"] > 0: 
         if sampling_options["sampling method"] == "sobol":
             filename += "_sb"
         elif sampling_options["sampling method"] == "hammersley":
@@ -95,7 +95,10 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
         
     # numerical solvers:
     if not solv_options is None:
-        if solv_options["solver"] == "newton": filename += "_nwt"
+        if solv_options["solver"] == "newton": 
+            filename += "_nwt"
+            if solv_options["scaling"] == "MC77": filename += "_mc77"
+            elif solv_options["scaling"] == "MC29": filename += "_mc29"
         elif solv_options["solver"] == "SLSQP": filename += "_slsqp"
         elif solv_options["solver"] == "TNC": filename += "_tnc"
         elif solv_options["solver"] == "fsolve": filename += "_fslv"
@@ -108,7 +111,7 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
         elif solv_options["solver"] == "broyden1": filename +="_bd1"
         elif solv_options["solver"] == "broyden2": filename +="_bd2"
         elif solv_options["solver"] == "krylov": filename +="_krlv"
-    
+        
     return filename
     
     

@@ -84,12 +84,6 @@ def store_results(res, boxes, dict_options):
 def solveOneBox(model, boxes, l, dict_variables, dict_equations, dict_options, solv_options, sampling_options=None):
     model.xBounds = [boxes[l]]
     dict_options["box_ID"] = l
- 
-    #else:
-    #    initValues = mostg.get_entry_from_npz_dict(dict_options["Sampling_fileName"], l)
-    #    results['%d'%l]  = solveSamples(model, initValues, 
-    #                               dict_equations, 
-    #                               dict_variables, solv_options, dict_options)
 
     return solveBlocksSequence(model, solv_options, dict_options, sampling_options)
 
@@ -164,13 +158,15 @@ def sample_and_solve_one_block(model, b, sampling_options,
                             model.constraints, model.xSymbolic, model.jacobianSympy, 
                             model.functions,model.jacobianLambNumpy
                             )
-    # TODO: test midpoint as initial point and continue without sampling if successful   
-    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": cur_block}, 
+ 
+    if sampling_options["number of samples"] != -1: 
+        arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": cur_block}, 
                                                           dict_options)
     res_blocks, cur_block = solve_block(model, cur_block, b, solv_options, 
                                         dict_options, res_blocks)
     res_blocks, solved = check_num_solution(model, cur_block, b, res_blocks)
-    if solved: return res_blocks, solved
+    if solved or sampling_options["number of samples"] in [-1, 0]: 
+        return res_blocks, solved
     
     if sampling_options["sampling method"]== "optuna":
         #samples = [[moi.func_optuna_timeout(cur_block, 0, sampling_options, 

@@ -1534,12 +1534,13 @@ def check_uniqueness(output, xNewBounds, options):
                         or the list with contracted intervals
 
     """
+    new_box = list(itertools.product(*xNewBounds))
     if ((options["unique_nwt"] or options["unique_bc"]) 
         and "FoundSolutions" in options.keys()):     
-        if test_for_root_inclusion(xNewBounds[0], options["FoundSolutions"], 
+        if test_for_root_inclusion(new_box[0], options["FoundSolutions"], 
                                options["absTol"]):
-            xNewBounds = list(itertools.product(*xNewBounds))
             output["uniqueSolutionInBox"] = True
+            return new_box
             
         else: output["box_has_unique_solution"] = True
         
