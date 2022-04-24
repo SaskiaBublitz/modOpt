@@ -38,11 +38,12 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
             
     """
     output = {}
-    CPU_count = dict_options["CPU count Branches"]
+    
+    CPU_count = min(len(model.xBounds), dict_options["CPU count Branches"])
+    #CPU_count = dict_options["CPU count Branches"]
     jobs = []
     manager = Manager()
     results = manager.dict()
-
     if dict_options["cut_Box"] in {"all", "tear", True}: model.cut = True
     dict_options["ready_for_reduction"] = iNes_procedure.get_index_of_boxes_for_reduction(dict_options["xSolved"],
                                                                           dict_options["cut"], 

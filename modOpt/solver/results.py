@@ -42,8 +42,9 @@ def write_successful_results(res_boxes, dict_options, sampling_options, solv_opt
 
         for solution in solutions:
             model.stateVarValues = [solution]
-            if not model.getFunctionValuesResidual() <= solv_options["FTOL"]:
-                continue
+            #if not (numpy.linalg.norm(model.getScaledFunctionValues()) <= 
+            #        solv_options["FTOL"]):
+            #    continue
             write_solution(xSymbolic, solution, bounds, dict_options, solv_options)
             write_block_analysis(res_box, solution, model, 
                                  dict_options, solv_options)

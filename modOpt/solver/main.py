@@ -116,7 +116,7 @@ def sample_multiple_solutions(model, b,  sampling_options,
     subSolutions = list(model.stateVarValues)
     for x in subSolutions:
         model.stateVarValues= [x]
-        res_blocks,  solved = sample_and_solve_one_block(model, b, sampling_options, dict_options, solv_options,
+        res_blocks,  solved, model = sample_and_solve_one_block(model, b, sampling_options, dict_options, solv_options,
                                             res_blocks)
         if solved: 
             newSubSolutions += model.stateVarValues
@@ -164,9 +164,9 @@ def sample_and_solve_one_block(model, b, sampling_options,
                                                           dict_options)
     res_blocks, cur_block = solve_block(model, cur_block, b, solv_options, 
                                         dict_options, res_blocks)
-    res_blocks, solved = check_num_solution(model, cur_block, b, res_blocks)
+    res_blocks, solved, model = check_num_solution(model, cur_block, b, res_blocks)
     if solved or sampling_options["number of samples"] in [-1, 0]: 
-        return res_blocks, solved
+        return res_blocks, solved, model
     
     if sampling_options["sampling method"]== "optuna":
         #samples = [[moi.func_optuna_timeout(cur_block, 0, sampling_options, 
@@ -209,8 +209,8 @@ def solve_samples_block(model, block, b, samples, solv_options, dict_options, re
         res_blocks, block = solve_block(model, block, b, solv_options, 
                                         dict_options, res_blocks)
         
-    res_blocks, solved = check_num_solution(model, block, b, res_blocks) 
-    return res_blocks, solved
+    res_blocks, solved, model = check_num_solution(model, block, b, res_blocks) 
+    return res_blocks, solved,model
 
 
 def check_num_solution(model, block, b, res_blocks):
@@ -235,7 +235,7 @@ def check_num_solution(model, block, b, res_blocks):
         solved = True
     else:
         solved = False
-    return res_blocks, solved
+    return res_blocks, solved,model
 
 
 def solve_block(model, block, b, solv_options, dict_options, res_blocks):
@@ -472,7 +472,7 @@ def solveBlocksSequence(model, solv_options, dict_options,
                                                        dict_options, solv_options, 
                                                        res_blocks)
             else:      
-                res_blocks, solved = sample_and_solve_one_block(model, b, 
+                res_blocks, solved, model = sample_and_solve_one_block(model, b, 
                                                                 sampling_options,
                                                                 dict_options,
                                                                 solv_options, 
@@ -881,7 +881,7 @@ def getListWithFunctionMembersByGlbID(model):
 def sample_tear_block(model, dict_options, sampling_options, solv_options):
     b = len(model.all_blocks)
     res_blocks={}
-    res_blocks, solved = sample_and_solve_one_block(model, b, sampling_options, 
+    res_blocks, solved, model = sample_and_solve_one_block(model, b, sampling_options, 
                                                     dict_options, solv_options,
                                                     res_blocks)             
     

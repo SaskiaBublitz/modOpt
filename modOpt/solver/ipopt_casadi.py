@@ -8,7 +8,7 @@ import casadi
 import numpy
 import sympy
 from modOpt.solver import newton
-
+import modOpt.solver.scipyMinimization
 """
 ****************************************************
 Minimization Procedures from scipy.optimization
@@ -27,9 +27,9 @@ def objective(functions,a):
     """
     
     obj = 0
-    for f in functions: obj += f**2
-    return a*obj
-
+    #for f in functions: obj += f**2
+    #return a/2.0*obj
+    return (-1)**0.5
 
 def convert_sympy_vars_to_casadi(x_symbolic):
     """ converting sympy symbols to variables in casaid.SX.sym formate. The
@@ -94,19 +94,33 @@ def minimize(curBlock, solv_options, dict_options):
             x_L[i] = x_0[i]
             x_U[i] = x_0[i]
             
-    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions,1.0/solv_options["FTOL"]))
+    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions,1.0))#1.0/solv_options["FTOL"]))
     nlp = {'x':casadi.vertcat(*x_casadi), 'f':obj_casadi(*x_casadi)}
     #options={"max_iter": 50000};
     S = casadi.nlpsol('S', 'ipopt', nlp, {"ipopt":{'max_iter':solv_options["iterMax"],
+                                                   'linear_solver': 'ma27',
+                                                   'tol': solv_options["FTOL"],
+                                                   'linear_system_scaling': 'mc19',
+                                                   'warm_start_init_point':'yes',
+                                                   #'mu_strategy': 'adaptive',
+                                                   'mu_max': 1e-10,
+                                                   'mu_min': 1e-30,
+                                                   'mu_init': 1e-1,
+                                                   #'ma57_automatic_scaling': 'yes',
+                                                   'mu_oracle': 'loqo',
+                                                   #'max_cpu_time':100,
+                                                   #'ma57_pivot_order': 4,
                                                    }})
 
 
     r = S(x0=x_0, lbx=x_L, ubx=x_U, lbg=0, ubg=0)
     curBlock.x_tot[glb_ID] = r['x'].T
-    
-    if solv_options["FTOL"] < numpy.linalg.norm(curBlock.getScaledFunctionValues()):
+    fresidual = numpy.linalg.norm(curBlock.getFunctionValues())
+    if solv_options["FTOL"] < fresidual:        
+        #return modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, dict_options)
         return newton.doNewton(curBlock, solv_options, dict_options)
-        #return scipyMinimization.fsolve(curBlock, solv_options, dict_options)
+    elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]
+    
     else: return 1, solv_options["iterMax"]
     
     

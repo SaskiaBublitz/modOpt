@@ -4537,15 +4537,17 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     
     results = mos.solveBlocksSequence(model, solv_options, dict_options, 
                                       sampling_options)
-    
-    if results != {} and not results["Model"].failed:
+    print("This is the model residual: ", numpy.linalg.norm(results["Model"].getScaledFunctionValues())) 
+    if (results != {} and not results["Model"].failed and 
+        solution_solved_in_tolerance(results["Model"],solv_options) !=[]):
+        solved = True 
         if not "FoundSolutions" in dict_options.keys():  
-            dict_options["FoundSolutions"] = copy.deepcopy(model.stateVarValues)
+            dict_options["FoundSolutions"] = copy.deepcopy(results["Model"].stateVarValues)
             solv_options["sol_id"] = 1
             mos.results.write_successful_results({0: results}, dict_options, 
                                                  sampling_options, solv_options) 
         else:    
-            for new_solution in copy.deepcopy(model.stateVarValues):
+            for new_solution in copy.deepcopy(results["Model"].stateVarValues):
                 sol_exist = False
                 for solution in dict_options["FoundSolutions"]: 
                     if numpy.allclose(numpy.array(new_solution), 
@@ -4561,12 +4563,25 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
                     else: solv_options["sol_id"] += 1
                     mos.results.write_successful_results({0: results}, dict_options, 
                                                  sampling_options, solv_options) 
-            
-    if model.failed: model.failed = False
-    else: solved = True 
+             
+    if model.failed: 
+        model.failed = False
+    #else: solved = True 
     model.xBounds = allBoxes
     return solved
 
+
+def solution_solved_in_tolerance(model,solv_options):
+    old_solutions = list(model.stateVarValues)
+    solutions = []
+    for solution in old_solutions:
+         model.stateVarValues = [solution]
+         if not (numpy.linalg.norm(model.getScaledFunctionValues()) <= 
+                    solv_options["FTOL"]):
+                continue
+         else:
+             solutions += [solution]
+    return solutions
   
 def ConvertMpiBoundsToList(xBounds, boxID):
     """Converts the xBounds, containing mpi to a list for sampling methods
