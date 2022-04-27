@@ -19,7 +19,8 @@ analysis tools
 
 __all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
            'calc_hypercubic_length', 'calc_average_length', 'calc_residual',
-           'identify_average_box_reduction','initialize_with_boxFile']
+           'identify_average_box_reduction','initialize_with_boxFile',
+           'initialize_with_boxFiles']
 
 
 def analyseResults(dict_options, res_solver):
@@ -81,10 +82,26 @@ def initialize_with_boxFile(model, textFile_name):
         elements = line.split()
         i = list(model.xSymbolic).index(sympy.symbols(elements[0]))
         model.stateVarValues[0][i] = float(elements[1])
-        #if float(elements[2]) == 0: elements[2] = str(1.0e-12)
-        #if float(elements[3]) == 0: elements[3] = str(-1.0e-12)
         model.xBounds[0][i] = mpmath.mpi(elements[2], elements[3])
 
+
+def initialize_with_boxFiles(model, textFile_names):
+    x_init = model.stateVarValues[0]
+    box_init = model.xBounds[0]
+    model.stateVarValues = []
+    model.xBounds = []
+    for textFile_name in textFile_names:
+        x = x_init
+        box = box_init
+        box_to_init = open(textFile_name,'r').readlines()
+        for l,line in enumerate(box_to_init):
+            if l < 2: continue
+            elements = line.split()
+            i = list(model.xSymbolic).index(sympy.symbols(elements[0]))
+            x[i] = float(elements[1])
+            box[i] = mpmath.mpi(elements[2], elements[3]) 
+        model.xBounds.append(box)    
+        model.stateVarValues.append(x)
 
 def get_hypercubic_length(dict_options, init_box, reduced_boxes):
     tol = dict_options["absTol"]

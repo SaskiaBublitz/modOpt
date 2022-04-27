@@ -7,6 +7,7 @@ from modOpt.constraints.analysis import (analyseResults, trackErrors,
                                          get_hypercubic_length,calc_hypercubic_length, 
                                          calc_average_length,calc_residual,
                                          identify_average_box_reduction, 
-                                         initialize_with_boxFile)
+                                         initialize_with_boxFile,
+                                         initialize_with_boxFiles)
 from modOpt.constraints.results import writeResults
 

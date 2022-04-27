@@ -72,6 +72,7 @@ def doIntervalNesting(res_solver, dict_options, sampling_options=None,
     iterNo = 0
     dict_options["tear_id"] = 0
     dict_options["splitvar_id"] = -1
+    dict_options["maxBoxNo"] = len(model.xBounds)
     dict_options["disconti"] = [False] * len(model.xBounds)
     dict_options["xAlmostEqual"] = [False] * len(model.xBounds)
     dict_options["cut"] = [True] * len(model.xBounds)

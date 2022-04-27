@@ -625,6 +625,9 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
                 else: break
             if (rstep == rstep_min): xChanged[cut_id] = False
             elif rstep >= 1.0 and not has_solution: 
+                print("variables id: ", i)
+                print("This used to be the old box: ", box[0])
+                print("This is the empty box: ", edge_box)
                 return [], cut_off
             else: 
                 rstep = rstep_min
@@ -647,7 +650,10 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
 
             if not xChanged[cut_id] and not rstep == rstep_min: 
                 xChanged[cut_id] = True
-            elif rstep >= 1.0 and not has_solution: 
+            elif rstep >= 1.0 and not has_solution:
+                print("variables id: ", i)
+                print("This used to be the old box: ", box[0])
+                print("This is the empty box: ", edge_box)
                 return [], cut_off
             
             rstep = rstep_min

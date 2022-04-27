@@ -38,7 +38,8 @@ def fsolve_mscript(curBlock, solv_options, dict_options):
 
     try:
         eng = matlab.engine.start_matlab()
-        results = eval('eng.'+dict_options["matlabName"]+'(matlab.double(x_init.tolist()), matlab.double(colPerm.tolist()), matlab.double(rowPerm.tolist()), varNames, FTOL, iterMax, nargout=4)') #file and function need to have the same name, as System
+        results = eval('eng.'+ dict_options["matlabName"] +
+                       '(matlab.double(x_init.tolist()), matlab.double(colPerm.tolist()), matlab.double(rowPerm.tolist()), varNames, FTOL, iterMax, nargout=4)') #file and function need to have the same name, as System
         if isinstance(results[0], float): x = numpy.array([results[0]])
         else: x = numpy.array(results[0][0])
         exitflag = results[2]
@@ -88,7 +89,8 @@ def fsolve(curBlock, solv_options, dict_options):
     
     eng = matlab.engine.start_matlab()
     eng.addpath(str(pathlib.Path(__file__).parent.absolute()))
-    results = eng.matlabScript(list_of_functions, xSymbolic_string, matlab.double(x0)[0], FTOL, iterMax, nargout=4)
+    results = eng.matlabScript(list_of_functions, xSymbolic_string, 
+                               matlab.double(x0)[0], FTOL, iterMax, nargout=4)
     if isinstance(results[0], float): x = numpy.array([results[0]])
     else: x = numpy.array(results[0][0])
     exitflag = results[2]
@@ -116,7 +118,9 @@ def get_sym_iter_functions_and_vars(curBlock):
             y_sym.append(curBlock.x_sym_tot[glbID])
             y.append(curBlock.x_tot[glbID])  
             
-    fSymbolic = numpy.array(curBlock.allConstraints(curBlock.x_sym_tot, curBlock.parameter))[curBlock.rowPerm].tolist()
+    fSymbolic = numpy.array(curBlock.allConstraints(curBlock.x_sym_tot, 
+                                                    curBlock.parameter)
+                            )[curBlock.rowPerm].tolist()
 
     if y != []: 
         for i in range(0, len(fSymbolic)):

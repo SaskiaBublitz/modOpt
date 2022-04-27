@@ -27,9 +27,9 @@ def objective(functions,a):
     """
     
     obj = 0
-    #for f in functions: obj += f**2
-    #return a/2.0*obj
-    return (-1)**0.5
+    for f in functions: obj += f**2
+    return a/2.0*obj
+
 
 def convert_sympy_vars_to_casadi(x_symbolic):
     """ converting sympy symbols to variables in casaid.SX.sym formate. The
@@ -94,7 +94,7 @@ def minimize(curBlock, solv_options, dict_options):
             x_L[i] = x_0[i]
             x_U[i] = x_0[i]
             
-    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions,1.0))#1.0/solv_options["FTOL"]))
+    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions,1.0/solv_options["FTOL"]))#1.0/solv_options["FTOL"]))
     nlp = {'x':casadi.vertcat(*x_casadi), 'f':obj_casadi(*x_casadi)}
     #options={"max_iter": 50000};
     S = casadi.nlpsol('S', 'ipopt', nlp, {"ipopt":{'max_iter':solv_options["iterMax"],
