@@ -165,9 +165,10 @@ def sample_and_solve_one_block(model, b, sampling_options,
     res_blocks, cur_block = solve_block(model, cur_block, b, solv_options, 
                                         dict_options, res_blocks)
     res_blocks, solved, model = check_num_solution(model, cur_block, b, res_blocks)
+    print("came here")
     if solved or sampling_options["number of samples"] in [-1, 0]: 
         return res_blocks, solved, model
-    
+    print("came here as well")
     if sampling_options["sampling method"]== "optuna":
         #samples = [[moi.func_optuna_timeout(cur_block, 0, sampling_options, 
         #                               dict_options)]] 

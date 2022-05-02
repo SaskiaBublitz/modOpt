@@ -42,7 +42,7 @@ def minimize(curBlock, solv_options, dict_options):
         nlp.addOption('print_level', 5)    
         nlp.addOption('warm_start_init_point','yes') # try: yes
         #nlp.addOption('hsllib', '/home/sassibub/anaconda2/envs/dev_python37/lib/libhsl.so')
-        nlp.addOption('linear_solver', 'ma97')     # ma57 oder ma77, ma86, ma97, mumps
+        nlp.addOption('linear_solver', 'ma57')     # ma57 oder ma77, ma86, ma97, mumps
         #nlp.addOption('ma57_pivot_order', 4)
         #nlp.addOption('ma57_automatic_scaling', 'yes')
         nlp.addOption('mu_init', 1e-10)    # 1e-10

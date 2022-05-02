@@ -4544,6 +4544,7 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     results = mos.solveBlocksSequence(model, solv_options, dict_options, 
                                       sampling_options)
     print("This is the model residual: ", numpy.linalg.norm(results["Model"].getScaledFunctionValues())) 
+    print("This are the x values at the solver's termination: ", model.stateVarValues)
     if (results != {} and not results["Model"].failed and 
         solution_solved_in_tolerance(results["Model"],solv_options) !=[]):
         solved = True 

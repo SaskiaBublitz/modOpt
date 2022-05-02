@@ -259,7 +259,8 @@ def objective_2(trial, var_names, block):
                                                  block.xBounds_tot[c][0],
                                                  block.xBounds_tot[c][1])) 
     block.x_tot[block.colPerm] = iter_vars
-    return sum([fi**2 for fi in block.getFunctionValues()])
+    return sum([fi**2 for fi in block.get_functions_values()])
+    #return sum([fi**2 for fi in block.getFunctionValues()])
     
         
 

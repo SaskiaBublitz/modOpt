@@ -94,7 +94,7 @@ def minimize(curBlock, solv_options, dict_options):
             x_L[i] = x_0[i]
             x_U[i] = x_0[i]
             
-    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions,1.0/solv_options["FTOL"]))#1.0/solv_options["FTOL"]))
+    obj_casadi= lambdifyToCasadi(x_sympy, objective(functions, 1.0/solv_options["FTOL"]))#1.0/solv_options["FTOL"]))
     nlp = {'x':casadi.vertcat(*x_casadi), 'f':obj_casadi(*x_casadi)}
     #options={"max_iter": 50000};
     S = casadi.nlpsol('S', 'ipopt', nlp, {"ipopt":{'max_iter':solv_options["iterMax"],
@@ -103,9 +103,10 @@ def minimize(curBlock, solv_options, dict_options):
                                                    'linear_system_scaling': 'mc19',
                                                    'warm_start_init_point':'yes',
                                                    #'mu_strategy': 'adaptive',
-                                                   'mu_max': 1e-10,
+                                                   'mu_max': 1e-1,
                                                    'mu_min': 1e-30,
                                                    'mu_init': 1e-1,
+                                                   'warm_start_mult_bound_push': 1e-10,
                                                    #'ma57_automatic_scaling': 'yes',
                                                    'mu_oracle': 'loqo',
                                                    #'max_cpu_time':100,
@@ -119,7 +120,7 @@ def minimize(curBlock, solv_options, dict_options):
     if solv_options["FTOL"] < fresidual:        
         #return modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, dict_options)
         return newton.doNewton(curBlock, solv_options, dict_options)
-    elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]
+    #elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]
     
     else: return 1, solv_options["iterMax"]
     
