@@ -5,9 +5,9 @@ Import packages
 """
 import pathlib
 import numpy
-from modOpt.solver import block
+#from modOpt.solver import block
 import sympy
-from sympy.parsing.sympy_parser import parse_expr
+#from sympy.parsing.sympy_parser import parse_expr
 """
 ****************************************************
 Newton Solver Procedure

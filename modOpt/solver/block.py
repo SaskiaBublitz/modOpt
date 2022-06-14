@@ -225,6 +225,17 @@ class Block:
         if res_scaling.__contains__("Variables"):
             self.colSca = res_scaling["Variables"]
             
+    def get_nonzeros_of_jacobian(self):
+        jac = self.getSympySymbolicJacobian()[self.rowPerm, self.colPerm]
+        nnz = 0
+        for row_id in range(len(self.rowPerm)):
+            row = list(jac[row_id,:])
+            for entry in row: 
+                if entry != 0: nnz +=1
+        return nnz
+            
+        
+            
     def createBlocks(self,blocks):
         """ creates blocks for permutation order 1 to n based on block border list
         from preordering algorithm

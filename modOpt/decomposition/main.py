@@ -5,7 +5,6 @@
 Import packages
 ***************************************************
 """
-from numba import jit
 from modOpt.decomposition import dM
 from modOpt.decomposition import MC33
 import numpy

@@ -63,9 +63,35 @@ def analyseResults(dict_options, res_solver):
         
         block_dim_max = max([len(block) for block in modelWithReducedBounds.blocks])
         
+        if "largest_block_analysis" in dict_options.keys():
+            nonzero_ratio, nonlin_ratio = get_largest_block_analytics(modelWithReducedBounds, 
+                                                                      block_dim_max)
+            write_analysis_largestBlock(dict_options["fileName"], nonzero_ratio, 
+                                        nonlin_ratio, block_dim_max)
+
+            
+            
+            
+            
         writeAnalysisResults(dict_options["fileName"], varSymbolic, boundsRatios, 
                              boundRatiosOfVars, initLength, lengthFractions, 
                              abl, solvedVarsID, density, nonLinRatio,block_dim_max)
+
+def get_largest_block_analytics(model, block_dim_max):
+    block_dim_max_id =  [model.blocks.index(block) for block in 
+                         model.blocks if len(block) == block_dim_max]
+    complex_grade = 0
+    for block_id in block_dim_max_id:
+        cur_block = model.all_blocks[block_id]
+        cur_nonzero_ratio = cur_block.get_nonzeros_of_jacobian()/block_dim_max**2
+        cur_nonlinearity_ratio = getNonLinearityRatio_block(cur_block)
+    
+        if (cur_nonzero_ratio + cur_nonlinearity_ratio) > complex_grade: 
+            complex_grade = cur_nonzero_ratio + cur_nonlinearity_ratio
+            nonzero_ratio = cur_nonzero_ratio
+            nonlinearity_ratio = cur_nonlinearity_ratio
+    return nonzero_ratio, nonlinearity_ratio
+
 
 def initialize_with_boxFile(model, textFile_name):
     """reads out bounds and initial values from text file and assigns them
@@ -505,7 +531,39 @@ def getNonLinearityRatio(model):
                 
     return nonLin / float(model.getJacobian().nnz())            
     
+
+def getNonLinearityRatio_block(block):
+    """ identifies nonlinear dependencies of variables in jacobian matrix by 
+    second derrivate and counts all nonlinear entries to calculate the ratio
+    of nonlinear entries to total number of entries in jacobian.
     
+    Args:
+        :model:     istance of class Model
+    
+    Return:         float of ratio: nonlinear entries / total entries
+        
+    """
+
+    nonLin = 0
+
+    for curX in block.getSymbolicVariablesOfBlock():
+        for curF in block.functions_block:
+            if curX in curF.x_sym:
+                d2fdx = sympy.diff(sympy.diff(curF.f_sym, curX), curX)
+                if d2fdx != 0: nonLin += 1
+                
+    return nonLin / float(block.get_nonzeros_of_jacobian()) 
+
+
+def write_analysis_largestBlock(fileName, nonzero_ratio, nonlin_ratio, block_dim_max):
+    res_file = open(''.join([fileName,"_largestBlock_analysis.txt"]), "w") 
+    res_file.write("***** Results of Largest Block Analysis *****\n\n") 
+    
+    res_file.write("Largest Block dimension: \t%s\n"%(block_dim_max))
+    res_file.write("Block's Jacobian Nonzero Density: \t%s\n"%(nonzero_ratio))
+    res_file.write("block's Jacobian Nonlinearity Ratio: \t%s\n"%(nonlin_ratio))
+   
+
 def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, initVolume,
                          hypercubicLFractions, hypercubicLFraction, solvedVars, density,
                          nonLinRatio,block_dim_max):
@@ -638,7 +696,9 @@ def trackErrors(res_solver, dict_options):
         var_crit = failed_sys.critVar 
         init_box = moc.analysis.convert_mpi_box_float(res_solver["init_box"][0])
         init_failed_box = numpy.array([list(init_box[glb_id]) for glb_id in f_crit.glb_ID])
-        failed_box = failed_mod.getXBoundsOfCertainVariablesFromIntervalSet(f_crit.x_sym, 0)
+        if hasattr(failed_sys, "critBox"): failed_box = failed_sys.critBox
+        else: 
+            failed_box = failed_mod.getXBoundsOfCertainVariablesFromIntervalSet(f_crit.x_sym, 0)
         
         writeErrorAnalysis(file_name, f_crit.f_sym, var_crit, f_crit.x_sym, 
                            init_failed_box, failed_box)

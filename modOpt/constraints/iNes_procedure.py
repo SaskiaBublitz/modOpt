@@ -7,11 +7,9 @@ import copy
 import numpy
 import sympy
 import mpmath
-import math
 import pyibex
 import itertools
 from modOpt.constraints import affineArithmetic,parallelization, analysis
-#from modOpt.constraints import function
 from modOpt.constraints.FailedSystem import FailedSystem
 from modOpt.decomposition import MC33
 from modOpt.decomposition import dM
@@ -625,9 +623,6 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
                 else: break
             if (rstep == rstep_min): xChanged[cut_id] = False
             elif rstep >= 1.0 and not has_solution: 
-                print("variables id: ", i)
-                print("This used to be the old box: ", box[0])
-                print("This is the empty box: ", edge_box)
                 return [], cut_off
             else: 
                 rstep = rstep_min
@@ -651,9 +646,6 @@ def cut_off_box(model, box, dict_options, cut_var_id=None):
             if not xChanged[cut_id] and not rstep == rstep_min: 
                 xChanged[cut_id] = True
             elif rstep >= 1.0 and not has_solution:
-                print("variables id: ", i)
-                print("This used to be the old box: ", box[0])
-                print("This is the empty box: ", edge_box)
                 return [], cut_off
             
             rstep = rstep_min
@@ -833,62 +825,6 @@ def getTearVariableLargestDerivative(model, boxNo):
     return splitVar
 
 
-# def getBestTearSplit(xBounds,model, boxNo, dict_options, w_max_ids=None):
-#     '''finds variable, which splitting causes the best reduction
-
-#     Args:
-#         :xBounds:           variable bounds of class momath.iv
-#         :model:             instance of type model
-#         :boxNo:             integer with number of boxes
-#         :dict_options:      dictionary of options
-#         :w_max_ids:         ids of intervals with maximum widths
-        
-#     Return:
-#         :xNewBounds:    best reduced two variable boxes
-        
-#     '''
-#     oldBounds = list(numpy.array(xBounds)[0])  
-#     smallestAvrSide = numpy.Inf
-#     if w_max_ids: a = w_max_ids
-#     else: a = model.tearVarsID
-    
-#     #try all splits
-#     for i, value in enumerate(a):
-#         BoundsToSplit = list(numpy.array(xBounds)[0])
-#         splittedBox = separateBox(BoundsToSplit, [value])
-        
-#         #reduce both boxes
-
-#         output0, output1 = reduceHC4_orNewton(splittedBox, model, boxNo, 
-#                                               dict_options)
-
-#         if output0["xNewBounds"] != [] and output0["xNewBounds"] != [[]]:
-#             avrSide0 = identifyReduction(output0["xNewBounds"], oldBounds)
-#         else:
-#             #if one of splitted boxes is empty always prefer this split
-#             print("This is the current best splitted varID by an empty box ", 
-#                   model.xSymbolic[value])
-#             return [tuple(splittedBox[1])]
-        
-#         if output1["xNewBounds"] != [] and output1["xNewBounds"] != [[]]:
-#             avrSide1 = identifyReduction(output1["xNewBounds"], oldBounds)
-#         else:
-#             #if one of splitted boxes is empty always prefer this split
-#             print("This is the current best splitted varID by an empty box ", 
-#                   model.xSymbolic[value])
-#             return [tuple(splittedBox[0])]
-        
-#         # sum of both boxreductions
-#         avrSide = avrSide0 + avrSide1
-#         # find best overall boxredution
-#         if avrSide<smallestAvrSide:
-#             smallestAvrSide = avrSide
-#             print("variable ", model.xSymbolic[value], " is splitted")
-#             xNewBounds = [output0["xNewBounds"][0], output1["xNewBounds"][0]]
-            
-#     return xNewBounds
-
-
 def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
     '''finds variable, which splitting causes the best reduction
 
@@ -903,7 +839,6 @@ def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
         :new_box:    best reduced two variable boxes
         
     '''      
-    print(dict_options["split_Box"])
     old_box = list(numpy.array(box)[0])  
     old_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
                        for iv in old_box]
@@ -948,7 +883,7 @@ def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
         else:
             # if first split box is empty the second box is returned
             if dict_options["Debug-Modus"]:
-                print("This is the current best splitted varID by an empty box ", 
+                print("This is the current best splitted variable by an empty box ", 
                   model.xSymbolic[t])
             return [tuple(split_box[1])]
         # if second split box is not empty average length is calculated
@@ -960,7 +895,7 @@ def get_best_split(box, model, boxNo, dict_options, split_var_id=None):
         else:
             # if second split box is empty the first box is returned
             if dict_options["Debug-Modus"]:
-                print("This is the current best splitted varID by an empty box: ", 
+                print("This is the current best splitted variable by an empty box: ", 
                   model.xSymbolic[t])
             return [tuple(split_box[0])]     
         # sum of both boxreductions
@@ -989,7 +924,6 @@ def get_best_split_new(box, model, boxNo, dict_options, split_var_id=None):
         :new_box:    best reduced two variable boxes
         
     '''      
-    print(dict_options["split_Box"])
     old_box = list(numpy.array(box)[0])  
     old_box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
                        for iv in old_box]
@@ -1952,7 +1886,8 @@ def do_HC4(model, xBounds, output, dict_options):
 
         if box.is_empty():
             saveFailedSystem(output, dict_options["failed_function"], model, 
-                             dict_options["failed_function"].glb_ID[0])
+                             dict_options["failed_function"].glb_ID[0],
+                              dict_options["failed_subbox"])
             empty = True
             break   
         elif dict_options["unique_hc"] and "FoundSolutions" in dict_options.keys():
@@ -2110,7 +2045,7 @@ def assignIvsWithoutSplit(output, i, xUnchanged, xBounds, xNewBounds):
     output["xNewBounds"] = list(itertools.product(*xNewBounds))
                 
                                
-def saveFailedSystem(output, f, model, i):
+def saveFailedSystem(output, f, model, i, sub_box_failed=None):
     """ saves output of failed box reduction 
     
     Args:
@@ -2121,7 +2056,7 @@ def saveFailedSystem(output, f, model, i):
    
     """     
     output["xNewBounds"] = []
-    failedSystem = FailedSystem(f.f_sym, model.xSymbolic[i])
+    failedSystem = FailedSystem(f.f_sym, model.xSymbolic[i],sub_box_failed)
     output["noSolution"] = failedSystem
     output["xAlmostEqual"] = [False] 
     output["xSolved"] = [False]
@@ -4144,8 +4079,7 @@ def newton_step(r_i, G_i, x_c, box, i, dict_options):
         return [box[i]]
     
     if y_new == []: 
-        print(box[i])
-        print(N[0])
+        #print(N[0])
         return [check_accuracy_newton_step(box[i], N[0], dict_options)]
     
     return y_new
@@ -4369,15 +4303,8 @@ def HC4_float(functions, box, dict_options):
     box_old = list(x_HC4)
     
     for f in functions:
-        #if '**(-3.0)' or '**(-3)' in str(f.f_sym):
-        #    continue
         sub_box = pyibex.IntervalVector([x_HC4[i] for i in f.glb_ID])   
 
-        #    print("New Reduction")
-        #    print(f.f_sym)
-        #    print(f.glb_ID)
-        #    print(f.x_sym)
-        #    print(sub_box)
         currentIntervalVector = pyibex.IntervalVector(sub_box)
         f.f_pibex.contract(currentIntervalVector)
 
@@ -4525,7 +4452,6 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     """
     if dict_options["Debug-Modus"]: print("Box no. ", boxID, 
                                           "is now numerically iterated.")
-    print("box no. ", boxID, "is now numerically iterated")
     
     if solv_options.__contains__("scaling"): 
         dict_options["scaling"] = solv_options["scaling"]
@@ -4543,8 +4469,6 @@ def lookForSolutionInBox(model, boxID, dict_options, sampling_options, solv_opti
     
     results = mos.solveBlocksSequence(model, solv_options, dict_options, 
                                       sampling_options)
-    print("This is the model residual: ", numpy.linalg.norm(results["Model"].getScaledFunctionValues())) 
-    print("This are the x values at the solver's termination: ", model.stateVarValues)
     if (results != {} and not results["Model"].failed and 
         solution_solved_in_tolerance(results["Model"],solv_options) !=[]):
         solved = True 
@@ -4815,9 +4739,6 @@ def check_box_for_disconti_iv(model, new_x, dict_options):
         box = [new_x[i] for i in f.glb_ID] 
         if variableSolved(box, dict_options):
             f_iv = f.f_mpmath[0](*box)
-            print(box)
-            print(f.f_sym)
-            print(f_iv)
             if (f_iv.a < -1.0e15  or f_iv.b > 1.0e15):
                 return []
         else: continue

@@ -8,7 +8,7 @@ import casadi
 import numpy
 import sympy
 from modOpt.solver import newton
-import modOpt.solver.scipyMinimization
+#import modOpt.solver.scipyMinimization
 """
 ****************************************************
 Minimization Procedures from scipy.optimization
@@ -104,11 +104,11 @@ def minimize(curBlock, solv_options, dict_options):
                                                    'warm_start_init_point':'yes',
                                                    #'mu_strategy': 'adaptive',
                                                    'mu_max': 1e-1,
-                                                   'mu_min': 1e-30,
+                                                   'mu_min': 1e-10,
                                                    'mu_init': 1e-1,
                                                    'warm_start_mult_bound_push': 1e-10,
                                                    #'ma57_automatic_scaling': 'yes',
-                                                   'mu_oracle': 'loqo',
+                                                   #'mu_oracle': 'logo',
                                                    #'max_cpu_time':100,
                                                    #'ma57_pivot_order': 4,
                                                    }})
