@@ -3,12 +3,12 @@ Test report from module: CSTR_nonisothermal
 Tolerance:	 1e-09
 
 Case	 Status	 CPU in s	 Hypercubic Length
-CSTR_nonisothermal_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.11461949348449707	 2.6488491594003745e-16
-CSTR_nonisothermal_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100	 Ok	 0.11269259452819824	 Identical to reference
-CSTR_nonisothermal_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.09757733345031738	 3.216215590540515e-16
-CSTR_nonisothermal_bc_hc4_ncaf_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.05222654342651367	 2.6488491594003745e-16
-CSTR_nonisothermal_bc_hc4_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.11921501159667969	 3.053049729497079e-16
-CSTR_nonisothermal_bc_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.13141155242919922	 2.835193392098003e-06
-CSTR_nonisothermal_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r100_pb2	 Ok	 0.11128377914428711	 2.6488491594003745e-16
-CSTR_nonisothermal_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r100_pb2	 Ok	 0.05907130241394043	 2.6488491594003745e-16
-CSTR_nonisothermal_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r100_pb2	 Ok	 0.13121438026428223	 2.6488491594003745e-16
+CSTR_nonisothermal_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.10129404067993164	 8.63116479520863e-16
+CSTR_nonisothermal_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100	 Ok	 0.10134148597717285	 Identical to reference
+CSTR_nonisothermal_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.10070967674255371	 8.63116479520863e-16
+CSTR_nonisothermal_bc_hc4_ncaf_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.10030555725097656	 8.63116479520863e-16
+CSTR_nonisothermal_bc_hc4_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.09963750839233398	 8.63116479520863e-16
+CSTR_nonisothermal_bc_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.11012125015258789	 2.3933078919965693e-19
+CSTR_nonisothermal_bc_hc4_ncaf_tb_cbtv_dm_rs8_r100_pb2	 Ok	 0.16142773628234863	 8.63116479520863e-16
+CSTR_nonisothermal_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r100_pb2	 Ok	 0.10228705406188965	 8.63116479520863e-16
+CSTR_nonisothermal_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r100_pb2	 Ok	 0.10080075263977051	 8.63116479520863e-16

@@ -65,7 +65,7 @@ def main():
                 "mode": 1, # relevant for ipopt 1 = minimization of function residuals, 2 = equality constraints, constant objective
                 "FTOL": 1e-8,
                 "iterMax": 100,
-                "scaling": "MC77",
+                "scaling": "None",
                 "scalingProcedure": "block_iter", #"tot_init", "block_init", "tot_iter", "block_iter",
                 "termination": "all_solutions", # "one_solution"
                 }
@@ -97,11 +97,11 @@ def main():
     moc.updateDictToModel(dict_variables, res_solver)
 
  # Result export:         
-    moc.trackErrors(initialModel, res_solver, bxrd_options)
+    moc.trackErrors(res_solver, bxrd_options)
     moc.writeResults(bxrd_options, dict_variables, res_solver)
             
     if bxrd_options['analysis'] == True:
-        moc.analyseResults(bxrd_options, initialModel, res_solver)
+        moc.analyseResults(bxrd_options, res_solver)
 
 
 """

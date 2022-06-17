@@ -58,6 +58,7 @@ def main():
                     "considerDisconti": [0],
                     'cutBox': ["tear", "all"],
                     "cpuCountBoxes": [2],
+                    "decomp": ["DM"],
 }
 
     dict_options_ref = {
@@ -77,6 +78,7 @@ def main():
                     "considerDisconti": 0,
                     'cutBox': "tear",
                     "cpuCountBoxes": 2,
+                    "decomp": "DM",
 }
 
     if dict_file['modus'] == "single": testMethods(dict_options_ref, dict_file)

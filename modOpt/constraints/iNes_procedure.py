@@ -358,7 +358,7 @@ def reduceConsistentBox(model, bxrd_options, k, boxNo):
     if bxrd_options["cutBox"] in {"tear", "all", True} and bxrd_options["cut"][k]:
         if bxrd_options["debugMode"]: print("Now box ", k, "is cutted")
         if bxrd_options["cutBox"] == "tear": 
-            if model.tearVarsID == []: gettearVariables(model)
+            if model.tearVarsID == []: getTearVariables(model)
             newBox, possibleCutOffs = cut_off_box(model, newBox, bxrd_options,
                                                      model.tearVarsID)
             #newBox, possibleCutOffs = cutOffBox_tear(model, newBox, bxrd_options)
@@ -1515,7 +1515,9 @@ def check_contracted_set(model, y, i, box, bxrd_options):
         if len(y)>1:
             y_float = [[convert_mpi_float(iv.a),convert_mpi_float(iv.b)] for iv in y]
             box[i] = mpmath.mpi(min(min(y_float)), max(max(y_float)))
-    if len(y)==1 and y[0]!=box[i]: box[i] = y[0]
+    if len(y)==1 and y[0]!=box[i]: 
+        box = list(box)
+        box[i] = y[0]
     return y
 
 
@@ -3789,7 +3791,8 @@ def get_best_from_pivotAll(model, box, i, bxrd_options, x_c=None):
                                                                       bxrd_options["unique_nwt"])
         if y_new == [] or y_new==[[]]: break
         y_new = setOfIvSetIntersection([y_new, y_old])   
-        if len(y_new)==1: 
+        if len(y_new)==1:
+            box = list(box)
             box[i] = y_new[0]
             x_c[i] = convert_mpi_float(y_new[0].mid)
     if f_for_unique_test: bxrd_options["unique_nwt"] = True
