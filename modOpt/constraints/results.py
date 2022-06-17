@@ -24,50 +24,50 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     
     # contraction methods:
     if dict_options["redStepMax"] != 0:
-        if "bc_method" in dict_options.keys(): 
-            if dict_options["bc_method"] == "bnormal": filename += "_bc"
-        if "hc_method" in dict_options.keys(): 
-            if dict_options["hc_method"] == "HC4": filename += "_hc4" 
-        if "newton_method" in dict_options.keys():       
-            if dict_options["newton_method"] == "newton": 
+        if "bcMethod" in dict_options.keys(): 
+            if dict_options["bcMethod"] == "bnormal": filename += "_bc"
+        if "hcMethod" in dict_options.keys(): 
+            if dict_options["hcMethod"] == "HC4": filename += "_hc4" 
+        if "newtonMethod" in dict_options.keys():       
+            if dict_options["newtonMethod"] == "newton": 
                 filename += "_n"
                 # interval newton preconditioning:
-                if dict_options["newton_point"] == "center": filename += "c"
-                elif dict_options["newton_point"] == "3P": filename +="3P"
-                elif dict_options["newton_point"] == "condJ": filename +="cJ"
+                if dict_options["newtonPoint"] == "center": filename += "c"
+                elif dict_options["newtonPoint"] == "3P": filename +="3P"
+                elif dict_options["newtonPoint"] == "condJ": filename +="cJ"
                 
-                if dict_options["preconditioning"] == "all_functions": 
+                if dict_options["preconditioning"] == "pivotAll": 
                     filename += "af"
-                elif dict_options["preconditioning"] == "inverse_centered": 
+                elif dict_options["preconditioning"] == "inverseCentered": 
                     filename +="ic"
-                elif dict_options["preconditioning"] == "inverse_point": 
+                elif dict_options["preconditioning"] == "inversePoint": 
                     filename +="ip"        
-                elif dict_options["preconditioning"] == "diag_inverse_centered": 
+                elif dict_options["preconditioning"] == "diagInverseCentered": 
                     filename +="dic" 
                     
         # tightening bounds:                     
-        if "Affine_arithmetic" in dict_options.keys(): 
-            if dict_options["Affine_arithmetic"]: filename += "_aff"
-        if "tight_bounds" in dict_options.keys(): 
-            if dict_options["tight_bounds"]: filename += "_tb"
+        if "affineArithmetic" in dict_options.keys(): 
+            if dict_options["affineArithmetic"]: filename += "_aff"
+        if "tightBounds" in dict_options.keys(): 
+            if dict_options["tightBounds"]: filename += "_tb"
         
         # splitting methods:
-        if "split_Box" in dict_options.keys(): 
-            if dict_options["split_Box"] == "TearVar": filename += "_tv"
-            if dict_options["split_Box"] == "LargestDer": filename += "_ld"
-            if dict_options["split_Box"] == "forecastSplit": filename += "_fcs"
-            if dict_options["split_Box"] == "LeastChanged": filename += "_lc"
-            if dict_options["split_Box"] == "forecastTear": filename += "_ftv"
+        if "splitBox" in dict_options.keys(): 
+            if dict_options["splitBox"] == "TearVar": filename += "_tv"
+            if dict_options["splitBox"] == "largestDer": filename += "_ld"
+            if dict_options["splitBox"] == "forecastSplit": filename += "_fcs"
+            if dict_options["splitBox"] == "leastChanged": filename += "_lc"
+            if dict_options["splitBox"] == "forecastTear": filename += "_ftv"
         
         # cutting methods:
-        if "cut_Box" in dict_options.keys(): 
-            if dict_options["cut_Box"]== "tear": filename += "_cbtv"
-            if dict_options["cut_Box"]== "all": 
+        if "cutBox" in dict_options.keys(): 
+            if dict_options["cutBox"]== "tear": filename += "_cbtv"
+            if dict_options["cutBox"]== "all": 
                 filename += "_cba"
         
         # considering gaps in splitting:    
-        if "consider_disconti" in dict_options.keys():     
-            if dict_options["consider_disconti"]: filename += "_gap"
+        if "considerDisconti" in dict_options.keys():     
+            if dict_options["considerDisconti"]: filename += "_gap"
     
     # decomposition for solving:
     if "decomp" in dict_options.keys():
@@ -78,20 +78,20 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
     if dict_options["redStepMax"] != 0:
         filename += "_rs" + str(dict_options["resolution"])
         filename += "_r" + str(dict_options["redStepMax"])
-        if "Parallel Branches" in dict_options.keys():
-            if dict_options["Parallel Branches"]:
-                filename += "_pb" + str(dict_options["CPU count Branches"])
+        if "parallelBoxes" in dict_options.keys():
+            if dict_options["parallelBoxes"]:
+                filename += "_pb" + str(dict_options["cpuCountBoxes"])
 
-    # sampling methods and settings:    
-    if sampling_options != None and sampling_options["number of samples"] > 0: 
-        if sampling_options["sampling method"] == "sobol":
+    # smplMethods and settings:    
+    if sampling_options != None and sampling_options["smplNo"] > 0: 
+        if sampling_options["smplMethod"] == "sobol":
             filename += "_sb"
-        elif sampling_options["sampling method"] == "hammersley":
+        elif sampling_options["smplMethod"] == "hammersley":
             filename += "_hs"      
-        elif sampling_options["sampling method"] == "latin_hypercube":
+        elif sampling_options["smplMethod"] == "latin_hypercube":
             filename += "_lhc"            
-        filename += "_s" +str(sampling_options["number of samples"])
-        filename += "_smin" +str(sampling_options["sampleNo_min_resiudal"])
+        filename += "_s" +str(sampling_options["smplNo"])
+        filename += "_smin" +str(sampling_options["smplBest"])
         
     # numerical solvers:
     if not solv_options is None:

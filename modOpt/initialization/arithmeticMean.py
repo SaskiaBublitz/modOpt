@@ -14,14 +14,14 @@ sets initials to arithemtic mean value of an interval
 
 __all__ = ['setStateVarValuesToMidPointOfIntervals']
 
-def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
+def setStateVarValuesToMidPointOfIntervals(res_solver, bxrd_options):
     """ Set all state variable values of a model to the midpoint of their related
     interval
     
     Args:
         :res_solver:     dictionary with resulting model after variable bounds 
                         reduction
-        :dict_options:   dictionary with user settings used because of absEps. 
+        :bxrd_options:   dictionary with user settings used because of absEps. 
                         if mean value is 0, the inital value is set to the absEps
                         value
         
@@ -54,7 +54,7 @@ def setStateVarValuesToMidPointOfIntervals(res_solver, dict_options):
         block = res_solver["Block"]
     
         if block.xBounds_tot !=[]:
-            #absEps = dict_options["absTol"]
+            #absEps = bxrd_options["absTol"]
             for i in block.colPerm:
                 if isinstance(block.xBounds_tot[i], numpy.ndarray):
                     midPoint = (block.xBounds_tot[i][0] + block.xBounds_tot[i][1]) / 2.0

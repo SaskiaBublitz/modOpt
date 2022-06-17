@@ -18,13 +18,13 @@ Main that invokes scaling methods
 __all__ = ['scaleSystem']
 
 
-def scaleSystem(model, dict_options):
+def scaleSystem(model, num_options):
     """ equation system is scaled by user-defined input
     
     Args:
         :model:         object of class model in modOpt.model that contains all
                         information of the NLE-evaluation from MOSAICm.                     
-        :dict_options:  dictionary with user-specified information
+        :num_options:  dictionary with user-specified information
         
     """
     
@@ -32,19 +32,19 @@ def scaleSystem(model, dict_options):
     #F = [model.getFunctionValues()[i] for i in model.rowPerm]
     F = model.getPermutedFunctionValues()
 
-    if dict_options["scaling"] == 'MC77':
+    if num_options["scaling"] == 'MC77':
         res_scaling = MC77.doMC77(jacobian, F)
   
-    if dict_options["scaling"] == 'MC29':
+    if num_options["scaling"] == 'MC29':
         res_scaling = MC29.doMC29(jacobian, F)
     
-    if dict_options["scaling"] == 'Inf RowSca and Mean ColSca':
+    if num_options["scaling"] == 'Inf RowSca and Mean ColSca':
         res_scaling = {}
         colScalingMean(jacobian, res_scaling)
         jacobian = res_scaling["Matrix"]
         rowScaling(jacobian, F, res_scaling)
  
-    if dict_options["scaling"] == 'Inf RowSca and gMean ColSca':
+    if num_options["scaling"] == 'Inf RowSca and gMean ColSca':
         res_scaling = {}
         colScalingGmean(jacobian, res_scaling)
         jacobian = res_scaling["Matrix"]

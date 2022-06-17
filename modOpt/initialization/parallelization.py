@@ -15,23 +15,23 @@ Algorithm for parallelization in sampling
 ***************************************************
 """
 
-def sample_box(model, sampling_options, dict_options):
-    """ samples all boxes in parallel by selected method from sampling_options 
+def sample_box(model, smpl_options, bxrd_options):
+    """ samples all boxes in parallel by selected method from smpl_options 
     and stores the samples with the minimum functional residual.
     
     Args:
         :model:             instance of class model
-        :sampling_options:  dictionary with number of samples to generate and 
+        :smpl_options:  dictionary with number of samples to generate and 
                             sampleNo_min_residual which is the number of candidates
                             with lowest residuals that are stored
-        :dict_options:      dictionary with user-settings regarding parallelization
+        :bxrd_options:      dictionary with user-settings regarding parallelization
                             and box reduction steps applied before
 
     Returns:                dictionary for storage of samples with minimum residual
                             for all boxes
     """
     
-    CPU_count = dict_options["CPU count"]
+    CPU_count = bxrd_options["cpuCount"]
     jobs = []
     manager = Manager()
     res = manager.dict()
@@ -41,7 +41,7 @@ def sample_box(model, sampling_options, dict_options):
     
     for boxID in range(0,len(model.xBounds)):  
         p = Process(target=main.sample_box, args=(model, boxID, 
-                                                  sampling_options, dict_options, res))
+                                                  smpl_options, bxrd_options, res))
         jobs.append(p)
         
     startAndDeleteJobs(actNum, jobs, started, done, len(model.xBounds), CPU_count)

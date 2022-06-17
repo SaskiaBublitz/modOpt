@@ -13,15 +13,15 @@ import sympy
 Newton Solver Procedure
 ****************************************************
 """
-def fsolve_mscript(curBlock, solv_options, dict_options):
+def fsolve_mscript(curBlock, solv_options, num_options):
     """ matlab is invoked on model-specific matlab script that needs to be created by UDLS 
     from MOSAICmodeling. The name of the matlab file needs to be identical to the output 
-    file name set by the user in dict_options.
+    file name set by the user in num_options.
     
     Args:
         :curBlock:          instance of class Block
         :solv_options:      dictionary with settings for the solver
-        :dict_options:      dictionary containing the output file's name
+        :num_options:      dictionary containing the output file's name
         
     Return:
         :exitflag:          1 = solved, 0 is not solved
@@ -38,7 +38,7 @@ def fsolve_mscript(curBlock, solv_options, dict_options):
 
     try:
         eng = matlab.engine.start_matlab()
-        results = eval('eng.'+ dict_options["matlabName"] +
+        results = eval('eng.'+ num_options["matlabName"] +
                        '(matlab.double(x_init.tolist()), matlab.double(colPerm.tolist()), matlab.double(rowPerm.tolist()), varNames, FTOL, iterMax, nargout=4)') #file and function need to have the same name, as System
         if isinstance(results[0], float): x = numpy.array([results[0]])
         else: x = numpy.array(results[0][0])
@@ -58,7 +58,7 @@ def fsolve_mscript(curBlock, solv_options, dict_options):
         print("Error: The system could not be parsed to Matlab.")
         return 0, -1
     
-def fsolve(curBlock, solv_options, dict_options):
+def fsolve(curBlock, solv_options, num_options):
     """ matlab is invoked using a general matlab script included in modOpt. 
     This general script invokes the python function systemToSolve to iterate 
     the python model. This option takes in general longer than fsolve_mscript 
@@ -69,7 +69,7 @@ def fsolve(curBlock, solv_options, dict_options):
     Args:
         :curBlock:          instance of class Block
         :solv_options:      dictionary with settings for the solver
-        :dict_options:      dictionary containing the output file's name
+        :num_options:      dictionary containing the output file's name
     
     Return:
         :exitflag:          1 = solved, 0 is not solved

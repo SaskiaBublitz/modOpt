@@ -23,12 +23,12 @@ __all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
            'initialize_with_boxFiles']
 
 
-def analyseResults(dict_options, res_solver):
+def analyseResults(bxrd_options, res_solver):
     """ volume fractions of resulting soltuion area(s) to initial volume are
     calculated and stored in a textfile <fileName>_analysis.txt
     
     Args:
-        :dict_options:     dictionary with user settings
+        :bxrd_options:     dictionary with user settings
         :res_solver:       dictionary with resulting model after variable bounds 
                            reduction 
         
@@ -36,7 +36,7 @@ def analyseResults(dict_options, res_solver):
     
     modelWithReducedBounds = res_solver["Model"]
     varSymbolic = res_solver["Model"].xSymbolic
-    tol = dict_options["absTol"]
+    tol = bxrd_options["absTol"]
     init_box = res_solver["init_box"]
     initLength = calc_length(init_box, tol)
     #initLength = calcVolumeLength(initVarBounds, len(varSymbolic),tol) # volume calculation failed for large systems with large initial volumes
@@ -53,7 +53,7 @@ def analyseResults(dict_options, res_solver):
         boundRatiosOfVars = getBoundRatiosOfVars(boundsRatios)
 
         lengthFractions = 0#getLengthFractions(initLengths, lengths)
-        #hypercubicLFraction = get_hypercubic_length(dict_options, 
+        #hypercubicLFraction = get_hypercubic_length(bxrd_options, 
         #                                            initVarBounds, 
         #                                            reducedVarBounds)
         abl = identify_average_box_reduction(reduced_boxes, init_box[0])
@@ -63,17 +63,17 @@ def analyseResults(dict_options, res_solver):
         
         block_dim_max = max([len(block) for block in modelWithReducedBounds.blocks])
         
-        if "largest_block_analysis" in dict_options.keys():
+        if "largest_block_analysis" in bxrd_options.keys():
             nonzero_ratio, nonlin_ratio = get_largest_block_analytics(modelWithReducedBounds, 
                                                                       block_dim_max)
-            write_analysis_largestBlock(dict_options["fileName"], nonzero_ratio, 
+            write_analysis_largestBlock(bxrd_options["fileName"], nonzero_ratio, 
                                         nonlin_ratio, block_dim_max)
 
             
             
             
             
-        writeAnalysisResults(dict_options["fileName"], varSymbolic, boundsRatios, 
+        writeAnalysisResults(bxrd_options["fileName"], varSymbolic, boundsRatios, 
                              boundRatiosOfVars, initLength, lengthFractions, 
                              abl, solvedVarsID, density, nonLinRatio,block_dim_max)
 
@@ -129,8 +129,8 @@ def initialize_with_boxFiles(model, textFile_names):
         model.xBounds.append(box)    
         model.stateVarValues.append(x)
 
-def get_hypercubic_length(dict_options, init_box, reduced_boxes):
-    tol = dict_options["absTol"]
+def get_hypercubic_length(bxrd_options, init_box, reduced_boxes):
+    tol = bxrd_options["absTol"]
     initLength = calc_length(init_box, tol)
     length = calc_length(reduced_boxes, tol)
     return length / initLength
@@ -274,7 +274,7 @@ def calc_iv_residual(model):
     if set(residual) == set([1.0e300]): return calc_residual(model)
     else: return residual        
         
-def calc_average_length(dict_options, init_box, boxes):
+def calc_average_length(bxrd_options, init_box, boxes):
     avLength = 0
     avLength_0 = 0
     
@@ -287,8 +287,8 @@ def calc_average_length(dict_options, init_box, boxes):
             box = [[float(mpmath.mpf(iv.a)), float(mpmath.mpf(iv.b))] 
                   for iv in list(box)]
         for i, iv in enumerate(box):
-            if numpy.isclose(iv[0], iv[1], dict_options["relTol"], 
-                             dict_options["absTol"]):
+            if numpy.isclose(iv[0], iv[1], bxrd_options["relTol"], 
+                             bxrd_options["absTol"]):
                 nvar -= 1
             else:
                 if not j == 0: al_box += (iv[1] - iv[0])
@@ -302,8 +302,8 @@ def calc_average_length(dict_options, init_box, boxes):
     return avLength/len(boxes)/ avLength_0
     
 
-def calc_hypercubic_length(dict_options, init_box, boxes):
-    tol = dict_options["absTol"]
+def calc_hypercubic_length(bxrd_options, init_box, boxes):
+    tol = bxrd_options["absTol"]
     tot_vol_fraction = 0
     
     for box in boxes:
@@ -677,18 +677,18 @@ def calcBoundFraction(initVarBound, curVarBound):
     return bratio
 
 
-def trackErrors(res_solver, dict_options):
+def trackErrors(res_solver, bxrd_options):
     """ proofs if current state of model is correctly and write the error that
     occured in case the model failed to an error text file.
     
     Args:
         :initialModel:      instance of type Model at initial point
         :res_solver:        dictionary with solver output
-        :dict_options:      dictionary with user specified settings
+        :bxrd_options:      dictionary with user specified settings
         
     """
     if res_solver["Model"].failed:
-        file_name = dict_options["fileName"] + "_errorAnalysis.txt"
+        file_name = bxrd_options["fileName"] + "_errorAnalysis.txt"
         failed_mod = res_solver["Model"]
         failed_sys = res_solver["noSolution"]
         f_crit_sym = failed_sys.critF    

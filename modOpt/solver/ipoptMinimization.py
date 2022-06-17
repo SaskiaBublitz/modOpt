@@ -16,13 +16,13 @@ Minimization Procedures from scipy.optimization
 
 __all__ = ['minimize']
 
-def minimize(curBlock, solv_options, dict_options):
+def minimize(curBlock, solv_options, num_options):
     """ This function calls the ipopt solver.
     
     Args:
         :curBlock:      object of class Block with block information
         :solv_options:  dictionary with solver settings
-        :dict_options:  dictionary with user-specified settings  
+        :num_options:  dictionary with user-specified settings  
         
     """
     
@@ -63,7 +63,7 @@ def minimize(curBlock, solv_options, dict_options):
         else: return 1, solv_options["iterMax"]  
 
 
-def minimize27(curBlock, solv_options, dict_options):
+def minimize27(curBlock, solv_options, num_options):
     """  solves nonlinear algebraic equation system (NLE) with ipopt in python27 
     based on Erik's interface
     
@@ -73,7 +73,7 @@ def minimize27(curBlock, solv_options, dict_options):
     """
     
     # TODO: Add scaling
-    #if dict_options["scaling"] != 'None': 
+    #if num_options["scaling"] != 'None': 
     #    x0 = curBlock.getScaledIterVarValues()
     #    xBounds = curBlock.getScaledIterVarBoundValues()
     #else:     

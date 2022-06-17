@@ -3,12 +3,11 @@ Test report from module: VanDerWaals
 Tolerance:	 1e-09
 
 Case	 Status	 CPU in s	 Hypercubic Length
-VanDerWaals_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.27027058601379395	 2.4340822969522733e-05
-VanDerWaals_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100	 Ok	 0.24757003784179688	 Identical to reference
-VanDerWaals_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.4042215347290039	 2.4751351012120866e-05
-VanDerWaals_bc_hc4_ncaf_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.2307600975036621	 2.4320802934064832e-05
-VanDerWaals_bc_hc4_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.2989990711212158	 2.4340822969522733e-05
-VanDerWaals_bc_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 2.920245409011841	 6.65330197222857e-17
-VanDerWaals_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r100_pb2	 Ok	 0.4367799758911133	 2.4340822969522733e-05
-VanDerWaals_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r100_pb2	 Ok	 0.31914782524108887	 2.4340822969522733e-05
-VanDerWaals_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r100_pb2	 Ok	 0.29206371307373047	 2.4340822969522733e-05
+VanDerWaals_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100	 Failed	 Failed	 Failed
+VanDerWaals_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100	 Failed	 Failed	 Failed
+VanDerWaals_bc_hc4_ncaf_lc_cbtv_dm_rs8_r100	 Failed	 Failed	 Failed
+VanDerWaals_bc_hc4_tb_lc_cbtv_dm_rs8_r100	 Failed	 Failed	 Failed
+VanDerWaals_bc_ncaf_tb_lc_cbtv_dm_rs8_r100	 Failed	 Failed	 Failed
+VanDerWaals_bc_hc4_ncaf_tb_cbtv_dm_rs8_r100	 Failed	 Failed	 Failed
+VanDerWaals_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r100	 Failed	 Failed	 Failed
+VanDerWaals_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r100	 Failed	 Failed	 Failed

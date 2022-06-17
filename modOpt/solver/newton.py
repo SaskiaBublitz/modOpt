@@ -13,7 +13,7 @@ Newton Solver Procedure
 """
 __all__ = ['doNewton']
 
-def doNewton(curBlock, solv_options, dict_options):
+def doNewton(curBlock, solv_options, num_options):
     """  solves nonlinear algebraic equation system (NLE) by Newton
     Raphson procedure
     
@@ -30,12 +30,12 @@ def doNewton(curBlock, solv_options, dict_options):
     if numpy.isnan(tol): return -1, iterNo # nan
 
     while not tol <= FTOL and iterNo < iterMax:
-        J, x, F = getLinearSystem(dict_options, curBlock)
+        J, x, F = getLinearSystem(num_options, curBlock)
         dx = - numpy.dot(numpy.linalg.inv(J), F)
         x = x + dx
         
-        updateIterVars(dict_options, curBlock, x)
-        scaleBlockInIteration(dict_options, curBlock)
+        updateIterVars(num_options, curBlock, x)
+        scaleBlockInIteration(num_options, curBlock)
         
         iterNo = iterNo + 1
         tol = numpy.linalg.norm(curBlock.getScaledFunctionValues())
@@ -47,9 +47,9 @@ def doNewton(curBlock, solv_options, dict_options):
     else: return 1, iterNo
 
  
-def getLinearSystem(dict_options, curBlock):
+def getLinearSystem(num_options, curBlock):
     
-    if dict_options["scaling"] != 'None':
+    if num_options["scaling"] != 'None':
         J = curBlock.getScaledJacobian()
         F = curBlock.getScaledFunctionValues()    
         x = curBlock.getScaledIterVarValues()
@@ -62,29 +62,29 @@ def getLinearSystem(dict_options, curBlock):
     return J, x, F
  
     
-def updateIterVars(dict_options, curBlock, x): 
+def updateIterVars(num_options, curBlock, x): 
     """ update iteration variables in newton procedure
     
     Args:
-        :dict_options:          dictionary with user specified settings
+        :num_options:          dictionary with user specified settings
         :curBlock:              instance of class Block
         :x:                     iteration variable values after Newton step
         
     """
     
-    if dict_options["scaling"] != 'None': 
+    if num_options["scaling"] != 'None': 
         curBlock.x_tot[curBlock.colPerm] = x*curBlock.colSca
     else:
         curBlock.x_tot[curBlock.colPerm] = x
 
     
-def scaleBlockInIteration(dict_options, curBlock):
+def scaleBlockInIteration(num_options, curBlock):
     """ if chosen, scales block during iteration
     
     Args:
-        :dict_options:          dictionary with user specified settings
+        :num_options:          dictionary with user specified settings
         :curBlock:              instance of class Block          
     """    
     
-    if dict_options["scaling"] != 'None' and dict_options["scaling procedure"] == 'block_iter':
-                mos.scaleSystem(curBlock, dict_options) 
+    if num_options["scaling"] != 'None' and num_options["scaling procedure"] == 'block_iter':
+                mos.scaleSystem(curBlock, num_options) 

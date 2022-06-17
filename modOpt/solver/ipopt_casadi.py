@@ -62,13 +62,13 @@ def lambdifyToCasadi(x, f):
     return sympy.lambdify(x,f, toCasadi) 
 
 
-def minimize(curBlock, solv_options, dict_options):
+def minimize(curBlock, solv_options, num_options):
     """ This function calls the ipopt solver.
     
     Args:
         :curBlock:      object of class Block with block information
         :solv_options:  dictionary with solver settings
-        :dict_options:  dictionary with user-specified settings  
+        :num_options:  dictionary with user-specified settings  
         
     """    
     #if "max_cpu_time" in solv_options.keys(): cpu_max = solv_options["max_cpu_time"]
@@ -118,8 +118,8 @@ def minimize(curBlock, solv_options, dict_options):
     curBlock.x_tot[glb_ID] = r['x'].T
     fresidual = numpy.linalg.norm(curBlock.getFunctionValues())
     if solv_options["FTOL"] < fresidual:        
-        #return modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, dict_options)
-        return newton.doNewton(curBlock, solv_options, dict_options)
+        #return modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, num_options)
+        return newton.doNewton(curBlock, solv_options, num_options)
     #elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]
     
     else: return 1, solv_options["iterMax"]

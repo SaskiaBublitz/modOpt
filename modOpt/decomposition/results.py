@@ -121,9 +121,9 @@ def getFileName(dict_options, solv_options=None):
     if dict_options["scaling"] =='Inf RowSca and Mean ColSca': name = ''.join([name,'_InfMean'])
     if dict_options["scaling"] =='Inf RowSca and gMean ColSca': name = ''.join([name,'_InfgMean'])
     if dict_options["scaling"] != 'None':
-        if dict_options["scaling procedure"] =='tot_init': name = ''.join([name,'_totInit'])  
-        if dict_options["scaling procedure"] =='block_init': name = ''.join([name,'_blcInit']) 
-        if dict_options["scaling procedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
+        if dict_options["scalingProcedure"] =='tot_init': name = ''.join([name,'_totInit'])  
+        if dict_options["scalingProcedure"] =='block_init': name = ''.join([name,'_blcInit']) 
+        if dict_options["scalingProcedure"] =='block_iter': name = ''.join([name,'_blcIter']) 
     if solv_options:
         if solv_options["solver"]=='newton': name = ''.join([name,'_newton'])
         if solv_options["solver"]=='SLSQP': name = ''.join([name,'_SLSQP_', str(solv_options["mode"])])
