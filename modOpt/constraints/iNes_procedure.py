@@ -948,15 +948,11 @@ def get_best_split_new(box, model, boxNo, bxrd_options, split_var_id=None):
         # and the box is returned    
         if not split_var_id:
             return [old_box]
-        two_boxes = True
-        #box_float = [[convert_mpi_float(iv.a), convert_mpi_float(iv.b)]  
-        #               for iv in old_box]
-        #print("Average Length:", analysis.identify_box_reduction(box_float, old_box_float))        
+        two_boxes = True  
         split_var_id = [i for i in split_var_id 
                         if not checkVariableBound(old_box[i], bxrd_options)]        
         for i, t in enumerate(split_var_id): 
             box = list(old_box)
-            #splitBox = bisect_box(box, t)
             splitBox = bisect_box_adv(model, box, t, bxrd_options)
             #reduce both boxes
             output0, output1 = reduceHC4_orNewton(splitBox, model, boxNo, 
@@ -2761,7 +2757,7 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, bxrd_options):
                                                         xBounds))
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
-                intersection = ivIntersection(curInterval, newInterval)
+                #intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
@@ -2803,7 +2799,7 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, bxrd_options):
              
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
-                intersection = ivIntersection(curInterval, newInterval)
+                #intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
@@ -2868,7 +2864,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, bxrd_options):
                                                         xBounds, False, tb, reso))
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
-                intersection = ivIntersection(curInterval, newInterval)
+                #intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
@@ -2907,7 +2903,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, bxrd_options):
                                                         xBounds,tb,reso))
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
-                intersection = ivIntersection(curInterval, newInterval)
+                #intersection = ivIntersection(curInterval, newInterval)
             else: 
                 newInterval = x - mpmath.mpi([min(
                     [float(mpmath.mpf(element.a)) for element in quotient]),
