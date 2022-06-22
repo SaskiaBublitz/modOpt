@@ -1512,7 +1512,7 @@ def check_contracted_set(model, y, i, box, bxrd_options):
             y_float = [[convert_mpi_float(iv.a),convert_mpi_float(iv.b)] for iv in y]
             box[i] = mpmath.mpi(min(min(y_float)), max(max(y_float)))
     if len(y)==1 and y[0]!=box[i]: 
-        box = list(box)
+        #box = list(box)
         box[i] = y[0]
     return y
 

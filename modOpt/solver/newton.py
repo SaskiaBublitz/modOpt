@@ -31,7 +31,8 @@ def doNewton(curBlock, solv_options, num_options):
 
     while not tol <= FTOL and iterNo < iterMax:
         J, x, F = getLinearSystem(num_options, curBlock)
-        dx = - numpy.dot(numpy.linalg.inv(J), F)
+        #dx = - numpy.dot(numpy.linalg.inv(J), F)
+        dx = - numpy.linalg.solve(J,F)
         x = x + dx
         
         updateIterVars(num_options, curBlock, x)
@@ -86,5 +87,5 @@ def scaleBlockInIteration(num_options, curBlock):
         :curBlock:              instance of class Block          
     """    
     
-    if num_options["scaling"] != 'None' and num_options["scaling procedure"] == 'block_iter':
+    if num_options["scaling"] != 'None' and num_options["scalingProcedure"] == 'block_iter':
                 mos.scaleSystem(curBlock, num_options) 
