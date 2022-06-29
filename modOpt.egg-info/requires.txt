@@ -3,8 +3,6 @@ sympy
 mpmath
 casadi
 matplotlib
-pyibex
 ipopt
-pyDOE
+pyibex
 scipy
-optuna
