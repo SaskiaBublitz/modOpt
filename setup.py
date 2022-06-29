@@ -6,11 +6,11 @@ def readme():
 
 
 setup(name='modOpt',
-      version='0.1',
+      version='3.2',
       description='restructure NLE in order to find its solution(s)',
       long_description = readme(),
-      classifiers = ['Programming Language :: Python :: 2.7'],
-      url='https://gitlab.tubit.tu-berlin.de/dbta/modOpt.git',
+      classifiers = ['Programming Language :: Python :: 3.7'],
+      url='https://git.tubit.tu-berlin.de/dbta/modOpt.git',
       author='Saskia Bublitz',
       author_email='saskia.bublitz@tu-berlin.de',
       license='TU Berlin',
@@ -31,7 +31,9 @@ setup(name='modOpt',
 			'affapy',
                         'pyDOE',
                         'scipy',
-                        'table',
+                        'optuna',
+			'ipopt',
+			'scipy',
 			],
                         #TODO: What to do with copy, itertools, time, multiprocessing
       zip_safe=False)
