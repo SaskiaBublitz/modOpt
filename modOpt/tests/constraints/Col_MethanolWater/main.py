@@ -27,6 +27,7 @@ Output:
     
 @author: sassibub
 """
+import copy
 import os
 import mpmath
 from modOpt.constraints import results
@@ -43,41 +44,41 @@ def main():
     dict_options_all = {
                     'fileName': ["Col_MethanolWater"],   # requires python module with this name                  
                     'tol': [1e-9],
-                    'redStepMax': [22],
+                    'redStepMax': [5],
                     'resolution': [8],
-                    'Parallel Branches': [0,1],
-                    'bc_method': ["None", "bnormal"],
-                    "Affine_arithmetic": [0],
-                    "tight_bounds": [0, 1],
-                    'newton_method': ["None", "newton"],
-                    "newton_point": ["center"],
-                    "preconditioning": ["all_functions"],
-                    'hc_method': ["None", "HC4"],
-                    'split_Box': ["TearVar", "LeastChanged", "forecastSplit"],
-                    "consider_disconti": [0],
-                    'cut_Box': ["tear", "all"],
-                    "decomp": ['DM'],
-                    "CPU count Branches": [2],
+                    'parallelBoxes': [0,1],
+                    'bcMethod': ["None", "bnormal"],
+                    "affineArithmetic": [0],
+                    "tightBounds": [0, 1],
+                    'newtonMethod': ["None", "newton"],
+                    "newtonPoint": ["center"],
+                    "preconditioning": ["pivotAll"],
+                    'hcMethod': ["None", "HC4"],
+                    'splitBox': ["tearVar", "leastChanged", "forecastSplit"],
+                    "considerDisconti": [0],
+                    'cutBox': ["tear", "all"],
+                    "cpuCountBoxes": [2],
+                    "decomp": ["DM"],
 }
 
     dict_options_ref = {
                     'fileName': "Col_MethanolWater",   # requires python module with this name
                     'tol': 1e-9,
-                    'redStepMax': 22,
+                    'redStepMax': 5,
                     'resolution': 8,
-                    'Parallel Branches': 1,
-                    'bc_method': "bnormal",
-                    "Affine_arithmetic": 0,
-                    "tight_bounds": 1,
-                    'newton_method': "newton",
-                    "newton_point": "center",
-                    "preconditioning": "all_functions",
-                    'hc_method': "HC4",
-                    'split_Box': "LeastChanged",
-                    "consider_disconti": 0,
-                    'cut_Box': "tear",
-                    "decomp": 'DM',
-                    "CPU count Branches": 2,
+                    'parallelBoxes': 1,
+                    'bcMethod': "bnormal",
+                    "affineArithmetic": 0,
+                    "tightBounds": 1,
+                    'newtonMethod': "newton",
+                    "newtonPoint": "center",
+                    "preconditioning": "pivotAll",
+                    'hcMethod': "HC4",
+                    'splitBox': "leastChanged",
+                    "considerDisconti": 0,
+                    'cutBox': "tear",
+                    "cpuCountBoxes": 2,
+                    "decomp": "DM",
 }
 
     if dict_file['modus'] == "single": testMethods(dict_options_ref, dict_file)
@@ -119,7 +120,7 @@ def testMethods(dict_options_ref, dict_file, dict_options=None):
                 
                 if caseName != ref_caseName:
                     noOfCase += 1
-                    if key == "Parallel Branches":
+                    if key == "parallelBoxes":
                         res = compareHypercubicLenghts(res, ref_caseName, caseName,
                                                        dict_options_ref["tol"])
                         
@@ -154,19 +155,18 @@ def executeOneCase(cur_dict_options, res, ref_caseName=None):
                     [cur_dict_options['fileName'],
                     cur_dict_options['redStepMax'], 
                     cur_dict_options['resolution'], 
-                    cur_dict_options['Parallel Branches'],
-                    cur_dict_options['bc_method'],
-                    cur_dict_options['Affine_arithmetic'], 
-                    cur_dict_options['tight_bounds'],
-                    cur_dict_options['hc_method'],                                                
-                    cur_dict_options['newton_method'],
-                    cur_dict_options['newton_point'], 
+                    cur_dict_options['parallelBoxes'],
+                    cur_dict_options['bcMethod'],
+                    cur_dict_options['affineArithmetic'], 
+                    cur_dict_options['tightBounds'],
+                    cur_dict_options['hcMethod'],                                                
+                    cur_dict_options['newtonMethod'],
+                    cur_dict_options['newtonPoint'], 
                     cur_dict_options['preconditioning'],
-                    cur_dict_options['split_Box'], 
-                    cur_dict_options['consider_disconti'],
-                    cur_dict_options['cut_Box'],
-                    cur_dict_options["CPU count Branches"],
-                    cur_dict_options['decomp']])
+                    cur_dict_options['splitBox'], 
+                    cur_dict_options['considerDisconti'],
+                    cur_dict_options['cutBox'],
+                    cur_dict_options["cpuCountBoxes"]])
         res = storeOutput(res, caseName)                                                  
     except: 
         res[caseName]=["Failed", "Failed", "Failed"]
@@ -197,7 +197,7 @@ def testOneCase(modulName, args):
     Args:
         :modulName:   string with module name
         :args:        list with input parameters for module call: 
-                      [caseName, bc_method, newton_method, par_var, par_branch]
+                      [caseName, bcMethod, newtonMethod, par_var, par_branch]
     """
     
     modul_call = getModulCall(modulName, args)
@@ -256,7 +256,7 @@ def getModulCall(modulName, args):
     Args:
         :modulName:   string with module name
         :args:        list with input parameters for module call: 
-                      [caseName, bc_method, newton_method, par_var, par_branch]
+                      [caseName, bcMethod, newtonMethod, par_var, par_branch]
 
     """
     

@@ -20,12 +20,12 @@ Algorithm for parallelization in iNes procedure
 ***************************************************
 """
                                           
-def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
+def reduceBoxes(model, bxrd_options, sampling_options=None, solv_options=None):
     """ reduction of multiple boxes
     
     Args:
         :model:                 object of type model 
-        :dict_options:          dictionary with user specified algorithm settings
+        :bxrd_options:          dictionary with user specified algorithm settings
         :sampling_options:      dictionary with sampling settings
         :solv_options:          dicionary with settings for numerical solver
     
@@ -38,45 +38,33 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
             
     """
     output = {}
-    foundSolutions = []
-    CPU_count = dict_options["CPU count Branches"]
+    
+    CPU_count = min(len(model.xBounds), bxrd_options["cpuCountBoxes"])
+    #CPU_count = bxrd_options["cpuCountBoxes"]
     jobs = []
     manager = Manager()
     results = manager.dict()
-    done = numpy.zeros(len(model.xBounds))
-    started = numpy.zeros(len(model.xBounds))
-    output["xSolved"]  = dict_options["xSolved"]
-    output["xAlmostEqual"] = dict_options["xAlmostEqual"]  
-    output["disconti"] = dict_options["disconti"]
-    if dict_options["cut_Box"] in {"all", "tear", True}: model.cut = True
-    dict_options["ready_for_reduction"] = get_index_of_boxes_for_reduction(dict_options["xSolved"],
-                                                                           dict_options["xAlmostEqual"], 
-                                                                           dict_options["maxBoxNo"])    
+    if bxrd_options["cutBox"] in {"all", "tear", True}: model.cut = True
+    bxrd_options["ready_for_reduction"] = iNes_procedure.get_index_of_boxes_for_reduction(bxrd_options["xSolved"],
+                                                                          bxrd_options["cut"], 
+                                                                           bxrd_options["maxBoxNo"])    
     for k,x in enumerate(model.xBounds):  
-        p = Process(target=reduceBoxes_Worker, args=(k, model, dict_options,
+        p = Process(target=reduce_boxes_worker, args=(k, model, bxrd_options,
                                                                results,
                                                                sampling_options,
                                                                solv_options))
         jobs.append(p)
     
-    startAndDeleteJobs(jobs, started, done, len(model.xBounds), CPU_count)
+    startAndDeleteJobs(jobs, CPU_count)
     
-    (output["newXBounds"], 
-     output["xAlmostEqual"], 
-     output["xSolved"], tearVarIds, 
-     output["num_solved"], 
-     output["disconti"], 
-     output["complete_parent_boxes"], 
-     output["complete_boxes"]) = getReducedXBoundsResults(results, model, 
-                                                          dict_options["maxBoxNo"],
-                                                          foundSolutions)
-                                                          
-    if foundSolutions != []:  dict_options["FoundSolutions"] = foundSolutions        
-                                             
+    output, tearVarIds = getReducedXBoundsResults(results, model, 
+                                                  bxrd_options["maxBoxNo"],
+                                                  bxrd_options)
+                                                                                                       
     if tearVarIds != []: 
         for curId in tearVarIds:
-            if curId != dict_options["tear_id"]:
-                dict_options["tear_id"] = curId
+            if curId != bxrd_options["tear_id"]:
+                bxrd_options["tear_id"] = curId
                 break
     
     if output["newXBounds"] == [] and not any(output["xSolved"]):
@@ -96,175 +84,89 @@ def reduceBoxes(model, dict_options, sampling_options=None, solv_options=None):
     
     return output
 
-
-def reduceBoxes_Worker(k, model, dict_options, results, sampling_options=None, 
+def reduce_boxes_worker(k, model, bxrd_options, results_tot, sampling_options=None, 
                        solv_options=None):
-    """ contains work that can be done in parallel during the reduction of multiple 
-    solution interval sets stored in xBounds. The package multiprocessing is used 
-    for parallelization.
+    """ wrapping function for reducing a box in parallel
     
     Args:
-        :k:                     index of current job
-        :model:                 object of type model
-                                with function's glb id they appear in           
-        :dict_options:          dictionary with user specified algorithm settings
-        :results:               dictionary from multiprocessing where results are 
-                                stored after a job is done   
+        :k:                     index of currently reduced box
+        :model:                 object of type model 
+        :bxrd_options:          dictionary with user specified algorithm settings
+        :results_tot:           dictionary from multiprocessing for output from reduce_box
         :sampling_options:      dictionary with sampling settings
         :solv_options:          dicionary with settings for numerical solver
-                                
-    Return:                     True if method finishes ordinary
-                             
-    """
-
-    if "FoundSolutions" in dict_options.keys(): 
-        solNo = len(dict_options["FoundSolutions"])
-    else: solNo = 0
-    newSol = []
-    model.interval_jac = None  
-    model.jac_center = None
-    disconti = dict_options["disconti"][k]
-    if dict_options["cut_Box"] in {"all", "tear", True}: model.cut = True
     
-    allBoxes = []
-    newtonMethods = {'newton', 'detNewton', '3PNewton'}
-    boxNo = len(model.xBounds)
-    xBounds = model.xBounds[k]
-    num_solved = False
-    xAlmostEqual = dict_options["xAlmostEqual"][k]
-    xSolved = dict_options["xSolved"][k]
-    
-    if xSolved: 
-        output = {"xNewBounds": [xBounds],
-                  "xAlmostEqual": [xAlmostEqual],
-                  "xSolved": [xSolved],
-                  "disconti": disconti,
-                  "complete_parent_boxes":[model.complete_parent_boxes[k]]
-            }
-        model.cut = False
-    elif xAlmostEqual and not disconti:    
-        output = {"xNewBounds": [xBounds],
-                  "xAlmostEqual": [xAlmostEqual],
-                  "xSolved": [xSolved]                      
-            }
-        output = iNes_procedure.reduceConsistentBox(output, model, dict_options, 
-                                     k, boxNo,
-                                     newtonMethods)
-        model.cut = output["cut"]
-        #print(model.cut)
-        if model.teared: 
-            output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
-                                               [[dict_options["iterNo"]-1, k]])
-            model.teared = False
-        else: 
-            output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
-                                           [ model.complete_parent_boxes[k]])               
-    elif ((xAlmostEqual and disconti and boxNo >= dict_options["maxBoxNo"]) or 
-          (not dict_options["ready_for_reduction"][k])):
-        output = {"xNewBounds": [xBounds],
-                  "xAlmostEqual": [xAlmostEqual],
-                  "xSolved": [xSolved],
-                  "disconti": disconti,
-                  "complete_parent_boxes": [model.complete_parent_boxes[k]],
-            }
-        model.cut = False
-    else:
-        if dict_options["Debug-Modus"]: print(f'Box {k+1}')
-        if not xAlmostEqual and disconti and dict_options["consider_disconti"]: 
-            store_boxNo = dict_options["boxNo"]
-            dict_options["boxNo"] = dict_options["maxBoxNo"]
-            output = iNes_procedure.contractBox(xBounds, model, 
-                                                dict_options["boxNo"] , 
-                                                dict_options)
-            dict_options["boxNo"]  = store_boxNo   
-        else:
-            output = iNes_procedure.contractBox(xBounds, model, 
-                                        boxNo, dict_options)
-        
-        output["complete_parent_boxes"] = (len(output["xNewBounds"]) * 
-                                           [ model.complete_parent_boxes[k]])   
-        
-        if output["xSolved"][0] and len(output["xNewBounds"]) == 1:
-            model.xBounds[k] = output["xNewBounds"][0]
-
-            num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
-                                                                  dict_options, 
-                                                                  sampling_options, 
-                                                                  solv_options) 
+    Return:
+        :output:                dictionary with newXBounds and a list of booleans
+                                that marks all non reducable variable bounds with 
+                                True. If solver terminates because of a NoSolution 
+                                case the critical equation is also stored in 
+                                results for the error analysis.
             
-            if num_solved:    
-                if not iNes_procedure.test_for_root_inclusion(output["xNewBounds"][0], 
-                                        dict_options["FoundSolutions"], 
-                                        dict_options["absTol"]):
-                    num_solved = False
-            #if not num_solved: 
-            #    output["xSolved"][0] = False
-                #model.cut = True
-        elif all(output["xAlmostEqual"]) and not all(output["xSolved"]): 
+    """    
+    
+    newSol = []
+    output = {"num_solved": False, "disconti": [], "complete_parent_boxes": [],
+        "xSolved": [], "xAlmostEqual": [], "cut": [],
+        }
+    allBoxes = []
+    emptyBoxes = []
+    bxrd_options["boxNo"] = len(model.xBounds)
+    if "FoundSolutions" in bxrd_options.keys(): 
+        solNo = len(bxrd_options["FoundSolutions"])
+    else: solNo = 0
+    
+    emptyboxes = iNes_procedure.reduce_box(model, allBoxes, emptyBoxes, 
+                                       k, output, bxrd_options,
+                                       sampling_options, solv_options)
+    
+    if "FoundSolutions" in bxrd_options.keys():   
+        if len(bxrd_options["FoundSolutions"]) > solNo:
+            newSol = [bxrd_options["FoundSolutions"][i] for i in 
+                      range(solNo, len(bxrd_options["FoundSolutions"]))]     
 
-            if not sampling_options ==None and not solv_options == None:
-                num_solved = iNes_procedure.lookForSolutionInBox(model, k, 
-                                                                 dict_options, 
-                                                                 sampling_options, 
-                                                                 solv_options) 
-                if "FoundSolutions" in dict_options.keys():
-                    if len(dict_options["FoundSolutions"]) > solNo:
-                        newSol = [dict_options["FoundSolutions"][i] 
-                                  for i in range(solNo, 
-                                                 len(dict_options["FoundSolutions"]))] 
-                    
-    for box in output["xNewBounds"]:
-        allBoxes.append(convertMpiToList(numpy.array(box, dtype=object)))
-    if output.__contains__("noSolution"):
-        results['%d' %k] = ([], output["noSolution"],[],[],[],[],[], False, [])
-        
-    elif output.__contains__("uniqueSolutionInBox"):
-        results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
-                            [True],
-                            dict_options["tear_id"], 
-                            num_solved,  
-                            len(output["xNewBounds"])*[output["disconti"]],
-                            output["complete_parent_boxes"], model.cut, newSol)        
-        
-    else:        
-        results['%d' %k] = (allBoxes, output["xAlmostEqual"], 
-                            output["xSolved"],
-                            dict_options["tear_id"], 
-                            num_solved, 
-                            len(output["xNewBounds"])*[output["disconti"]],
-                            output["complete_parent_boxes"], model.cut, newSol)
+    if emptyboxes:
+        results_tot['%d' %k] = ([], emptyboxes,[],[],[],[],[], False, [],[])
+    else:
+        list_box = [convertMpiToList(numpy.array(box, dtype=object)) for box in 
+                                 allBoxes]
+        results_tot['%d' %k] = (list_box, output["xAlmostEqual"], 
+                                output["xSolved"],
+                                bxrd_options["tear_id"], 
+                                output["num_solved"], 
+                                output["disconti"],
+                                output["complete_parent_boxes"], 
+                                output["cut"], newSol)
     return True
 
 
-def startAndDeleteJobs(jobs, started, done, jobNo, CPU_count):
+def startAndDeleteJobs(jobs, CPU_count):
     """ starts jobs using multiprocessing and deletes finished ones
     
     Args:
         :jobs:          list with all jobs from process
-        :started:       jobNo dimensional numpy array. The entries are binaries 
-                        (1 = job started, 0 = job not started)
-        :done:          jobNo dimensional numpy array. The entries are binaries 
-                        (1 = job done, 0 = job not done)
-        :jobNo:         integer with total number of jobs
         :CPU_count:     number of cores
                            
     """    
     actNum = 0
+    started = [False] * len(jobs)
+    done = [False] * len(jobs)
     
-    while numpy.sum(done) < jobNo:
-        for jobId in range(0, jobNo):
+    while numpy.sum(done) < len(jobs):
+        for jobId in range(len(jobs)):
             actNum = addNotStartedJobs(actNum, jobs, started, done, jobId, CPU_count)
             actNum = deleteFinishedJobs(actNum, jobs, started, done, jobId)
 
 
-def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions=None):
+def getReducedXBoundsResults(results, model, maxBoxNo, bxrd_options):
     """ extracts quantities from multiprocessing results
     
     Args:
         :results:           dictionary from multiprocessing, where results are stored
                             after a job is done
         :model:             instance of type model                    
-        :noOfxBounds:       number of solution interval sets in xBounds
+        :maxBoxNo:          maximum number of boxes
+        :bxrd_options:      dictionary with results from former reduction step
 
 
     Return:
@@ -275,88 +177,68 @@ def getReducedXBoundsResults(results, model, maxBoxNo, foundSolutions=None):
                                  
     """
     noOfxBounds = len(model.xBounds)
-    xAlmostEqual = [[]] * noOfxBounds 
-    xSolved = [[]] * noOfxBounds  
-    newXBounds = []
+    output = {"num_solved": False, "disconti": [], "complete_parent_boxes": [],
+              "xSolved": [], "xAlmostEqual": [], "cut": [],"newXBounds":[],
+              }
+    
     tearVarIds = []
-    num_solved = False
-    disconti = [False] * noOfxBounds 
-    complete_parent_boxes = []
     cut = []
 
     for k in range(noOfxBounds):
         if results['%d' %k][8] != []:
-            if not foundSolutions:
-                foundSolutions = results['%d' %k][8]            
+            if not bxrd_options.__contains__("FoundSolutions"):
+                bxrd_options["FoundSolutions"] = results['%d' %k][8]            
             else:
                 for new_sol in results['%d' %k][8]:
-                    for old_sol in foundSolutions:
+                    for old_sol in bxrd_options["FoundSolutions"]:
                         if (new_sol == old_sol).all(): break
                     else:
-                        foundSolutions.append(new_sol)  
+                        bxrd_options["FoundSolutions"].append(new_sol)  
                        
         if noOfxBounds < 1: return [], [], [], []             
         if results['%d' %k][0] != []: 
             curNewXBounds = results['%d' %k][0] # [[[a1], [b1], [c1]], [[a2], [b2], [c2]]]
-            boxNo = len(newXBounds) + len(curNewXBounds) + (noOfxBounds - (k+1))
+            boxNo = (len(output["newXBounds"]) + len(curNewXBounds) + 
+                     (noOfxBounds - (k+1)))
             if boxNo <= maxBoxNo:
                 for curNewXBound in curNewXBounds:
-                    newXBounds.append(numpy.array(convertListToMpi(curNewXBound), 
-                                                  dtype=object))
-                xAlmostEqual[k] = (results['%d' %k][1])
-                xSolved[k] = (results['%d' %k][2])   
+                    output["newXBounds"].append(numpy.array(convertListToMpi(
+                        curNewXBound), dtype=object))
+                output["xAlmostEqual"] += results['%d' %k][1]
+                output["xSolved"] += results['%d' %k][2]   
                 tearVarIds.append(results['%d' %k][3])
-                disconti[k] = results['%d' %k][5]
-                complete_parent_boxes += results['%d' %k][6]
-                if results['%d' %k][4]==True: num_solved=True
-                cut += [results['%d' %k][7]]
-            else:
-                newXBounds.append(model.xBounds[k])
-                xAlmostEqual[k] = [True]
-                xSolved[k] = [False]
-                disconti[k] = [True]#results['%d' %k][5]
-                complete_parent_boxes += [model.complete_parent_boxes[k]]
-                cut += [results['%d' %k][7]]
+                output["disconti"] += results['%d' %k][5]
 
-        elif xSolved[k] ==True:
-             noOfxBounds -= 1
-             
-             xAlmostEqual[k] = (False)
-             xSolved[k] = (True) 
-             disconti[k] = [] 
-             complete_parent_boxes +=results['%d' %k][6]
-             if results['%d' %k][4]==True: num_solved=True
-             cut += [results['%d' %k][7]]
+                output["cut"] += results['%d' %k][7]
+                output["complete_parent_boxes"] += results['%d' %k][6]
+                if results['%d' %k][4]==True: output["num_solved"] = True
+                if results['%d' %k][7] != []: cut += results['%d' %k][7]
+            else:
+                output["newXBounds"].append(model.xBounds[k])
+                output["xAlmostEqual"] += [True]
+                output["xSolved"] += [False]
+                output["cut"] += [False]
+                output["disconti"] += [bxrd_options["disconti"][k]]#results['%d' %k][5]
+                output["complete_parent_boxes"] += [model.complete_parent_boxes[k]]
+                if results['%d' %k][7] != []: cut += results['%d' %k][7]
              
         else:
             noOfxBounds -= 1
-            xAlmostEqual[k] = []
-            xSolved[k] = [] 
-            disconti[k] = []
-            complete_parent_boxes += []
-            
-    disconti_cleaned = []
-    if not cut == []: model.cut = all(cut)
-    for cb in disconti:
-            if isinstance(cb, list): # if interval splits
-                disconti_cleaned += cb
-            elif cb == []:
-                continue
-            else:
-                disconti_cleaned.append(cb)
-    
-    return (newXBounds, xAlmostEqual, xSolved, tearVarIds, num_solved, 
-            disconti_cleaned, complete_parent_boxes, cut)
-    
+    print(output["xSolved"])
+    if output["cut"]: 
+        model.cut = any(output["cut"])
 
-def reduceBox(xBounds, model, boxNo, dict_options): #boundsAlmostEqual):
+    return output, tearVarIds 
+
+
+def reduceBox(xBounds, model, boxNo, bxrd_options): #boundsAlmostEqual):
     """ reduce box spanned by current intervals of xBounds.
      
     Args: 
         :xBounds:            numpy array with box
         :model:              instance of class Model
         :boxNo:              number of boxes as integer  
-        :dict_options:       dictionary with user specified algorithm settings
+        :bxrd_options:       dictionary with user specified algorithm settings
         
     Return:
         :output:            dictionary with new interval sets(s) in a list and
@@ -367,11 +249,11 @@ def reduceBox(xBounds, model, boxNo, dict_options): #boundsAlmostEqual):
     output = {}
     dim = len(model.xSymbolic)
     xNewBounds = copy.deepcopy(xBounds)
-    CPU_count = dict_options["CPU count Variables"] 
+    CPU_count = bxrd_options["cpuCountVariables"] 
     xUnchanged = []
     xSolved = []
     
-    if dict_options['hc_method']=='HC4':
+    if bxrd_options['hcMethod']=='HC4':
         output, empty = iNes_procedure.doHC4(model, xBounds, xNewBounds, output)
         if empty: return output
           
@@ -383,7 +265,7 @@ def reduceBox(xBounds, model, boxNo, dict_options): #boundsAlmostEqual):
     
     for i in range(0, dim):
         p = Process(target=reduceBox_Worker, args=(model, xBounds, xNewBounds, 
-                                                   i, dict_options, results))
+                                                   i, bxrd_options, results))
         jobs.append(p)        
         
     startAndDeleteJobs(jobs, started, done, dim, CPU_count)
@@ -408,7 +290,7 @@ def reduceBox(xBounds, model, boxNo, dict_options): #boundsAlmostEqual):
     return output
 
 
-def reduceBox_Worker(model, xBounds, xNewBounds, i, dict_options, results):
+def reduceBox_Worker(model, xBounds, xNewBounds, i, bxrd_options, results):
     """ contains work that can be done in parallel during the reduction of one 
     solution interval sets stored in xBounds. The package multiprocessing is 
     used for parallelization.
@@ -421,7 +303,7 @@ def reduceBox_Worker(model, xBounds, xNewBounds, i, dict_options, results):
                                 mpmath.mpi logic
         :i:                     index of current job (equals global iteration 
                                                       variable index)
-        :dict_options:          dictionary with user specified algorithm settings                              
+        :bxrd_options:          dictionary with user specified algorithm settings                              
         :results:               dictionary from multiprocessing where results 
                                 are stored after a job is done    
                                 
@@ -432,15 +314,15 @@ def reduceBox_Worker(model, xBounds, xNewBounds, i, dict_options, results):
     xUnchanged = True
     xSolved = True
     y = [xNewBounds[i]]   
-    dict_options_temp = copy.deepcopy(dict_options)
+    bxrd_options_temp = copy.deepcopy(bxrd_options)
     newtonMethods = {'newton', 'detNewton', '3PNewton'}
     
-    if dict_options["Debug-Modus"]: print(i)
-    iNes_procedure.checkIntervalAccuracy(xNewBounds, i, dict_options_temp) 
+    if bxrd_options["Debug-Modus"]: print(i)
+    iNes_procedure.checkIntervalAccuracy(xNewBounds, i, bxrd_options_temp) 
 
-    if (not iNes_procedure.variableSolved(y, dict_options_temp) 
-        and dict_options['newton_method'] in newtonMethods): 
-        y = iNes_procedure.doIntervalNewton(y, xBounds, i, dict_options_temp)
+    if (not iNes_procedure.variableSolved(y, bxrd_options_temp) 
+        and bxrd_options['newtonMethod'] in newtonMethods): 
+        y = iNes_procedure.doIntervalNewton(y, xBounds, i, bxrd_options_temp)
                     
         if y == [] or y ==[[]]: 
             j=model.dict_varId_fIds[i][0]
@@ -450,12 +332,12 @@ def reduceBox_Worker(model, xBounds, xNewBounds, i, dict_options, results):
                                  False, False)  
             return True  
            
-    if (not iNes_procedure.variableSolved(y, dict_options_temp) 
-        and dict_options['bc_method']=='b_normal'):
+    if (not iNes_procedure.variableSolved(y, bxrd_options_temp) 
+        and bxrd_options['bcMethod']=='b_normal'):
         for j in model.dict_varId_fIds[i]:
             f = model.functions[j]
             y = iNes_procedure.doBoxReduction(f, xBounds, y, i, 
-                                              dict_options_temp)                    
+                                              bxrd_options_temp)                    
             if y == [] or y ==[[]]: 
                 results['%d' % i] = ([], 
                                      FailedSystem(f.f_sym, 
@@ -464,10 +346,10 @@ def reduceBox_Worker(model, xBounds, xNewBounds, i, dict_options, results):
                 return True      
     
     # Update quantities        
-    if not iNes_procedure.variableSolved(y, dict_options): xSolved = False 
+    if not iNes_procedure.variableSolved(y, bxrd_options): xSolved = False 
     xNewBounds[i] = y
     xUnchanged = iNes_procedure.checkXforEquality(xBounds[i], xNewBounds[i], 
-                                                  xUnchanged, dict_options_temp)    
+                                                  xUnchanged, bxrd_options_temp)    
     results['%d' % i] = (convertMpiToList(xNewBounds[i]),[], xUnchanged, xSolved)
     
     return True
@@ -551,7 +433,7 @@ def convertMpiToList(listWitMpiIntervals):
              float(mpmath.mpf(iv.b))] for iv in listWitMpiIntervals]
 
 
-def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
+def get_index_of_boxes_for_reduction(xSolved, cut, maxBoxNo):
     """ creates list for all boxes that can still be reduced
     Args:
         :xAlmostEqual:      list with boolean that is true for complete boxes
@@ -566,25 +448,24 @@ def get_index_of_boxes_for_reduction(xSolved, xAlmostEqual, maxBoxNo):
     incomplete = []
     solved =[]
     not_solved_but_complete=[]
-    ready_for_reduction = len(xAlmostEqual) * [False]
+    ready_for_reduction = len(cut) * [False]
     
     for i, val in enumerate(xSolved):
         if val: solved +=[i]
     
-    for i,val in enumerate(xAlmostEqual):
-        if val: 
+    for i,val in enumerate(cut):
+        if not val: 
             complete += [i]
             if not i in solved: not_solved_but_complete +=[i] 
         else: incomplete += [i]
    
-    nl = max(0, min(len(not_solved_but_complete), maxBoxNo - len(xAlmostEqual)))
-    
+    nl = max(0, min(len(not_solved_but_complete), maxBoxNo - len(cut)))
     
     for i in range(nl): ready_for_reduction[not_solved_but_complete[i]] = True
     for i in incomplete: ready_for_reduction[i] = True
     
     return ready_for_reduction
-    
+
 
 def convertListToMpi(listWithIntervalBounds):
     """ converts list with intervals lists into lists with intervals in the

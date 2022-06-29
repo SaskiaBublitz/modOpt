@@ -12,7 +12,7 @@ Minimization Procedures from scipy.optimization
 ****************************************************
 """
 
-__all__ = ['minimize', 'fsolve']
+__all__ = ['minimize', 'fsolve', 'root']
 
 def fsolve(curBlock, solv_options, dict_options):
     """  solves nonlinear algebraic equation system (NLE) by fsolve method
@@ -40,15 +40,53 @@ def fsolve(curBlock, solv_options, dict_options):
     else: return -1, infodict['nfev']
     
     
+def root(curBlock, solv_options, dict_options):
+    """  solves nonlinear algebraic equation system (NLE) by fsolve method
+    from scipy.optimize package
     
+    Args:
+        :curBlock:      object of class Block with block information
+        :solv_options:  dictionary with solver settings
+        :dict_options:  dictionary with user-specified settings
+          
+    """
+    FTOL = solv_options["FTOL"]
+    #iterMax = solv_options["iterMax"]
+    maxfev = solv_options["iterMax"]*len(curBlock.rowPerm)
+    
+    
+    #if dict_options["scaling"] != 'None': 
+    #    x0 = list(curBlock.getScaledIterVarValues())
+    #else:
+    x0 = list(curBlock.getIterVarValues())
+    
+    args = (curBlock, dict_options)
+    sol = scipy.optimize.root(fun = iter_functions, x0 = x0, 
+                                                 args = args, 
+                                                 tol = FTOL,
+                                                 #jac = curBlock.get_jacobian_at_x,
+                                                 method = solv_options["solver"],
+                                                 options = {"maxfev":maxfev})
+    
+    #if dict_options["scaling"] != 'None': 
+    #    curBlock.x_tot[curBlock.colPerm] = sol.x*curBlock.colSca
+    #else:
+    curBlock.x_tot[curBlock.colPerm] = sol.x
+    if sol.success or sol.nfev>=maxfev: 
+        residual = list(curBlock.getFunctionValues())
+        tol = sum([abs(r) for r in residual])
+        if tol <= FTOL: return 1, int(sol.nfev/len(curBlock.rowPerm))
+        else: return 0, int(sol.nfev/len(curBlock.rowPerm))
+    else: return -1, int(sol.nfev/len(curBlock.rowPerm))
 
+  
 def iter_functions(x, curBlock, dict_options):
-    #block_funs = []
+  
     curBlock.x_tot[curBlock.colPerm] = x
     #allFun = curBlock.allConstraints(curBlock.x_tot, curBlock.parameter) 
     #for glbID in curBlock.rowPerm:
-    if dict_options["scaling"] != "None": return curBlock.getScaledFunctionValues()    
-    return curBlock.getPermutedFunctionValues()     
+    #if dict_options["scaling"] != "None": return list(curBlock.getScaledFunctionValues())    
+    return list(curBlock.getPermutedFunctionValues())     
 
 
 def minimize(curBlock, solv_options, dict_options):
@@ -84,7 +122,7 @@ def minimize(curBlock, solv_options, dict_options):
                                       args= args,
                                       jac = eval_grad_m,
                                       method= minMethod, #'trust-constr',
-                                      options = {'maxiter': iterMax, 'ftol': 1.0e-20, 'disp': True},
+                                      options = {'maxiter': iterMax, 'ftol': FTOL**2, 'disp': True},
                                       tol = None,
                                       bounds = xBounds,
                                       constraints = ())    

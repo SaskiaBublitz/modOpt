@@ -16,7 +16,7 @@ Algorithm for parallelization in iNes procedure
 ***************************************************
 """
 
-def solveBoxesParallel(model, boxes, dict_variables, dict_equations, dict_options, solv_options) :
+def solveBoxesParallel(model, boxes, dict_variables, dict_equations, num_options, solv_options) :
     CPU_count = solv_options["CPU count"]
     nBoxes = len(boxes)
     jobs = []
@@ -27,7 +27,7 @@ def solveBoxesParallel(model, boxes, dict_variables, dict_equations, dict_option
     actNum = 0  
     for l in range(0, nBoxes): 
         p = Process(target=main.solveOneBox, args=(model, boxes, l, dict_variables,
-                                                   dict_equations, dict_options,
+                                                   dict_equations, num_options,
                                                                solv_options, 
                                                                results))
         jobs.append(p)
@@ -36,7 +36,7 @@ def solveBoxesParallel(model, boxes, dict_variables, dict_equations, dict_option
     return results
 
 
-def solveMultipleSamples(model, sampleData, dict_equations, dict_variables, dict_options, solv_options, sampling_option):
+def solveMultipleSamples(model, sampleData, dict_equations, dict_variables, num_options, solv_options, sampling_option):
     """ solve samples from array sampleData in parallel and returns number of converged samples. The converged
     samples and their solutions are written into text files.
 
@@ -46,9 +46,9 @@ def solveMultipleSamples(model, sampleData, dict_equations, dict_variables, dict
         :sampleData:        array with samples
         :dict_equations:    dictionary with information about equations
         :dict_variables:    dictionary with information about iteration variables                            
-        :dict_options:      dictionary with user specified settings
+        :num_options:      dictionary with user specified settings
         :solv_options:      dictionary with user defined solver settings
-        :sampling_options:  dictionary with sampling options
+        :smpl_options:  dictionary with sampling options
 
     Return:
         :converged:         integer with number of converged runs
@@ -69,7 +69,7 @@ def solveMultipleSamples(model, sampleData, dict_equations, dict_variables, dict
                                                                model,
                                                                dict_equations,
                                                                dict_variables, 
-                                                               dict_options,
+                                                               num_options,
                                                                solv_options,
                                                                sampling_option,
                                                                res))
@@ -82,7 +82,7 @@ def solveMultipleSamples(model, sampleData, dict_equations, dict_variables, dict
     return converged
 
 
-def solveMultipleSamples_Worker(sampleData, k, model, dict_equations, dict_variables, dict_options, solv_options, sampling_options, res):
+def solveMultipleSamples_Worker(sampleData, k, model, dict_equations, dict_variables, num_options, solv_options, smpl_options, res):
     """ contains work that can be done in parallel during solving multiple samples. The package multiprocessing is used 
     for parallelization.
     
@@ -92,9 +92,9 @@ def solveMultipleSamples_Worker(sampleData, k, model, dict_equations, dict_varia
         :sampleData:        array with samples
         :dict_equations:    dictionary with information about equations
         :dict_variables:    dictionary with information about iteration variables                            
-        :dict_options:      dictionary with user specified settings
+        :num_options:      dictionary with user specified settings
         :solv_options:      dictionary with user defined solver settings
-        :sampling_options:  dictionary with sampling options
+        :smpl_options:  dictionary with sampling options
         :res:               dictionary from multiprocessing where convergence results are stored 
                             after a job is done    
     Return:                 True if method finishes ordinary
@@ -105,12 +105,12 @@ def solveMultipleSamples_Worker(sampleData, k, model, dict_equations, dict_varia
     initial_sample = copy.deepcopy(model)
     #cpModel = copy.deepcopy(model)
     
-    res_solver = main.solveSystem_NLE(model, dict_equations, dict_variables, solv_options, dict_options)
+    res_solver = main.solveSystem_NLE(model, dict_equations, dict_variables, solv_options, num_options)
 
     # Results:  
     if not model.failed:
         res['%d' %k] = 1
-        results.writeConvergedSample(initial_sample, k, dict_options, res_solver, sampling_options, solv_options)
+        results.writeConvergedSample(initial_sample, k, num_options, res_solver, smpl_options, solv_options)
     
     else: res['%d' %k] = 0
     

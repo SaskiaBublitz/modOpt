@@ -29,84 +29,79 @@ User specifications
 def main():
 
 # Solver settings:
-    dict_options = {"fileName": str(sys.argv[1]),
-                    "save_path": './results',
+    bxrd_options = {"fileName": str(sys.argv[1]),
+                    "savePath": './results',
                     "redStepMax": int(sys.argv[2]),
                     "maxBoxNo": 1,
                     "absTol": 1.0e-8, #numpy.finfo(numpy.float).eps
                     "relTol": 1.0e-3,
                     "resolution": int(sys.argv[3]),
-                    "Parallel Branches": bool(int(sys.argv[4])),
-                    "Parallel Variables": False,
-                    "Parallel b's": False,
-                    "bc_method": str(sys.argv[5]),#'bnormal',
-                    "Affine_arithmetic": bool(int(sys.argv[6])),
-		            "tight_bounds": bool(int(sys.argv[7])),
-                    "hc_method": str(sys.argv[8]), # 'HC4', 'None'
-                    "newton_method": str(sys.argv[9]), # 'newton', 'detNewton', 'newton3P'
-                    "newton_point": str(sys.argv[10]),  
+                    "parallelBoxes": bool(int(sys.argv[4])),
+                    "parallelVariables": False,
+                    "bcMethod": str(sys.argv[5]),#'bnormal',
+                    "affineArithmetic": bool(int(sys.argv[6])),
+		            "tightBounds": bool(int(sys.argv[7])),
+                    "hcMethod": str(sys.argv[8]), # 'HC4', 'None'
+                    "newtonMethod": str(sys.argv[9]), # 'newton', 'detNewton', 'newton3P'
+                    "newtonPoint": str(sys.argv[10]),  
                     "preconditioning": str(sys.argv[11]),
-                    "InverseOrHybrid": 'Hybrid', # 'Hybrid', 'both', 'None'
-                    "combined_algorithm": False, #'None', 'HC4_bnormal', 'detNewton_HC4', 'HC4_3PNewton_bnormal'
-                    "split_Box": str(sys.argv[12]), # 'TearVar', 'LargestDer', 'forecastSplit', 'LeastChanged'
-                    "consider_disconti": bool(int(sys.argv[13])),
-                    "cut_Box": str(sys.argv[14]),
-                    "Debug-Modus": False,
+                    "splitBox": str(sys.argv[12]), # 'tearVar', 'largestDer', 'forecastSplit', 'leastChanged'
+                    "considerDisconti": bool(int(sys.argv[13])),
+                    "cutBox": str(sys.argv[14]),
+                    "debugMode": False,
                     "timer": True,
                     "analysis": True,
-                    "CPU count Branches": int(sys.argv[15]),
-                    "CPU count Variables": 2,
-                    "CPU count b's":2,
-                    "decomp": str(sys.argv[16]), # DM, None
-                    "hybrid_approach": True,
+                    "cpuCountBoxes": int(sys.argv[15]),
+                    "cpuCountVariables": 2,
+                    "hybridApproach": True,
 }
 
-    sampling_options = {"number of samples": 0,
-                    "sampleNo_min_resiudal": 1,
-                    "sampling method": 'sobol', #sobol, hammersley, latin_hypercube, ax_optimization
-                    "max_iter": 10,
+    sampling_options = {"smplNo": 0,
+                    "smplBest": 1,
+                    "smplMethod method": 'sobol', #sobol, hammersley, latin_hypercube, optuna
 }
 
     solv_options = {"solver": 'newton', # 'newton', 'SLSQP', 'trust-constr', 'ipopt, fsolve, TNC', 'matlab-fsolve', 'matlab-fsolve-mscript'
                 "mode": 1, # relevant for ipopt 1 = minimization of function residuals, 2 = equality constraints, constant objective
                 "FTOL": 1e-8,
                 "iterMax": 100,
-                "iterMax_tear": 10,
-                "parallel_boxes": False,
-                "CPU count": 2}   
+                "scaling": "None",
+                "scalingProcedure": "block_iter", #"tot_init", "block_init", "tot_iter", "block_iter",
+                "termination": "all_solutions", # "one_solution"
+                }
 
 
 # Hybrid approach or box reduction only:
-    if not dict_options["hybrid_approach"]:
+    if not bxrd_options["hybridApproach"]:
         sampling_options = None
         solv_options = None
 
 # Model initialization:
-    initialModel, dict_variables, dict_equations = getEquationsVariablesAndParameters(dict_options)
+    initialModel, dict_variables, dict_equations = getEquationsVariablesAndParameters(bxrd_options)
 
 # Decomposition:
-    if dict_options["decomp"] != 'None':     
-        mod.decomposeSystem(initialModel, dict_equations, dict_variables, dict_options)
-    else: initialModel.updateToPermutation(rowPerm = range(len(initialModel.xSymbolic)), 
-                                           colPerm = range(len(initialModel.xSymbolic)), 
-                                           blocks = [range(len(initialModel.xSymbolic))])
+    bxrd_options["decomp"] = 'DM'     
+    mod.decomposeSystem(initialModel, dict_equations, dict_variables, bxrd_options)
+    #else: initialModel.updateToPermutation(rowPerm = range(len(initialModel.xSymbolic)), 
+    #                                       colPerm = range(len(initialModel.xSymbolic)), 
+    #                                       blocks = [range(len(initialModel.xSymbolic))])
 
 # Bound reduction:   
-    res_solver = moc.reduceVariableBounds(initialModel, dict_options, 
+    res_solver = moc.reduceVariableBounds(initialModel, bxrd_options, 
                                           sampling_options, solv_options)
   
 # Start value generation:    
     moi.setStateVarValuesToMidPointOfIntervals(res_solver,
-                                                              dict_options)
+                                                              bxrd_options)
     
     moc.updateDictToModel(dict_variables, res_solver)
 
  # Result export:         
-    moc.trackErrors(initialModel, res_solver, dict_options)
-    moc.writeResults(dict_options, dict_variables, res_solver)
+    moc.trackErrors(res_solver, bxrd_options)
+    moc.writeResults(bxrd_options, dict_variables, res_solver)
             
-    if dict_options['analysis'] == True:
-        moc.analyseResults(dict_options, initialModel, res_solver)
+    if bxrd_options['analysis'] == True:
+        moc.analyseResults(bxrd_options, res_solver)
 
 
 """
@@ -436,7 +431,7 @@ def getEquationsVariablesAndParameters(dict_options):
         
 
     for i, f in enumerate(model.fSymbolic):
-        model.functions.append(Function(f, model.xSymbolic, dict_options["Affine_arithmetic"], True))
+        model.functions.append(Function(f, model.xSymbolic, dict_options["affineArithmetic"], True))
         moc.sort_fId_to_varIds(i, model.functions[i].glb_ID, model.dict_varId_fIds)
         
     return model, dict_variables, dict_equations

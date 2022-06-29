@@ -20,7 +20,7 @@ class FailedSystem:
                             
     """
     
-    def __init__(self, CRITF, CRITVAR):
+    def __init__(self, CRITF, CRITVAR, CRITBOX=None):
         """ Initialization method for class model
         
         Args:
@@ -31,7 +31,8 @@ class FailedSystem:
         
         self.critF = CRITF # critical equation
         self.critVar = CRITVAR # critical variable
-        self.varsInF = self.getVarsInF()
+        self.critBox = CRITBOX
+        #self.varsInF = self.getVarsInF()
 
         
     def getVarsInF(self):

@@ -37,7 +37,7 @@ class Function:
                             
     """
     
-    def __init__(self, f_sym, x_symbolic, aff=None, numpy=None, casadi=None):
+    def __init__(self, f_sym, x_symbolic, aff=None, numpy=None, casadi=None, dfdx=None):
         """ Initialization method for class Block
         
         Args:
@@ -55,9 +55,10 @@ class Function:
         
         self.f_sym = f_sym
         self.x_sym = list(f_sym.free_symbols)
+        self.var_count = [self.f_sym.count(x) for x in self.x_sym]
         self.glb_ID = self.get_glb_ID(x_symbolic)
         self.g_sym, self.b_sym = self.get_g_b_functions()
-        self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions()
+        self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions(dfdx)
         self.vars_of_deriv = self.get_vars_of_deriv()
         self.deriv_is_constant = self.is_deriv_constant()
         self.f_mpmath = self.get_mpmath_functions(self.x_sym, [self.f_sym])
@@ -118,8 +119,15 @@ class Function:
 
         for i, x in enumerate(self.x_sym):
             if not x in self.vars_of_deriv[i] and self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
+                #and self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
                 # TODO: One could include the case self.dgdx_sym[i] * self.x_sym[i] != self.g_sym[i] 
                 # but then had to add the constant bit dgdx*x - dgdx to bInterval
+                #if not self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
+                #    self.b_sym[i] = sympy.simplify(self.dgdx_sym[i]*self.x_sym[i]-self.f_sym)
+                #    self.g_sym[i] = self.dgdx_sym[i] * self.x_sym[i]
+                #    self.dbdx_sym[i] = []
+                #    for x in self.x_sym:                    
+                #        self.dbdx_sym[i] += [sympy.diff(self.b_sym[i], x)]      
                 deriv_is_constant.append(True)
             else: deriv_is_constant.append(False)
         return deriv_is_constant
@@ -127,7 +135,7 @@ class Function:
                    
     def get_vars_of_deriv(self):
         vars_of_deriv = []
-        for cur_deriv in self.dgdx_sym: vars_of_deriv.append(cur_deriv.free_symbols)
+        for cur_deriv in self.dgdx_sym: vars_of_deriv.append(list(cur_deriv.free_symbols))
         return vars_of_deriv
     
     
@@ -181,12 +189,13 @@ class Function:
         return glb_ID
     
     
-    def get_deriv_functions(self):
+    def get_deriv_functions(self, dfdx=None):
         dgdx =[]
         dbdx = []
+        if dfdx: dgdx = [dfdx[i] for i in self.glb_ID]
         
         for i, g in enumerate(self.g_sym):
-            dgdx.append(sympy.diff(g, self.x_sym[i]))          
+            if not dfdx: dgdx.append(sympy.diff(g, self.x_sym[i]))          
             dbdxi = [] 
             
             for x in self.x_sym:

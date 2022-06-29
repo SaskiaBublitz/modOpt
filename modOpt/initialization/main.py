@@ -11,27 +11,27 @@ import numpy
 from modOpt.initialization import parallelization, VarListType, Sampling, arithmeticMean, axOptimization
 import modOpt.storage as mostge
 
-
 """
 ********************************************************
 All methods to specify a specific sample point selection
 ********************************************************
 """
 __all__ = ['get_samples_with_n_lowest_residuals', 'doSampling', 'sample_box',
-           'sample_box_in_block', 'do_ax_optimization_in_block', 'do_tear_sampling']
+           'sample_box_in_block', 'do_ax_optimization_in_block', 'do_tear_sampling',
+           'do_optuna_optimization_in_block', 'func_optuna_timeout']
 
-def do_ax_optimization(model, dict_options, sampling_options):
-    sampling_options["max_iter"] = 1000
+def do_ax_optimization(model, bxrd_options, smpl_options):
+    smpl_options["max_iter"] = 1000
     axObj = axOptimization.AxOptimization(model)
-    axObj.tune_model_ax(sampling_options["max_iter"])
+    axObj.tune_model_ax(smpl_options["max_iter"])
 
 
-def do_tear_sampling(model, cur_block, box_id, sampling_options, dict_options,functions,solv_options):
+def do_tear_sampling(model, cur_block, box_id, smpl_options, bxrd_options,functions,solv_options):
     from modOpt.decomposition import MC33
     import modOpt.solver as mos
     samples = {}
     if (len(cur_block.colPerm) <= 1.0):      
-        return sample_box_in_block(cur_block, box_id, sampling_options, dict_options, samples)
+        return sample_box_in_block(cur_block, box_id, smpl_options, bxrd_options, samples)
     else:
         block_model = copy.deepcopy(model)
         res_permutation = MC33.doMC33(cur_block.getPermutedJacobian())
@@ -44,10 +44,10 @@ def do_tear_sampling(model, cur_block, box_id, sampling_options, dict_options,fu
         block_model.rowPerm = org_fun_id_resorted
         block_model.colPerm = org_var_id_resorted       
         fun_tear = [functions[i] for i in id_tear_fun]
-        sampling_options["sampleNo_min_resiudal"]=1
+        smpl_options["smplBest"]=1
         tear_block = create_tear_block(fun_tear, id_tear_fun, cur_block)
-        #samples = sample_box_in_block(cur_block, box_id, sampling_options, dict_options, samples)
-        #samples = sample_box_in_block(tear_block, box_id, sampling_options, dict_options, samples)
+        #samples = sample_box_in_block(cur_block, box_id, smpl_options, bxrd_options, samples)
+        #samples = sample_box_in_block(tear_block, box_id, smpl_options, bxrd_options, samples)
         #tear_block.x_tot[tear_block.colPerm]=samples[0][0]
         #cur_block.x_tot[cur_block.colPerm] = samples[0][0]
         #print ("This is the residual after sampling of the block: ", 
@@ -56,7 +56,7 @@ def do_tear_sampling(model, cur_block, box_id, sampling_options, dict_options,fu
         #print ("This is the residual after sampling of the whole system: ", 
         #       numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
         #tear_block.colPerm = id_tear_var
-        sample = do_ax_optimization_in_block(cur_block, 0, sampling_options, dict_options)
+        sample = do_ax_optimization_in_block(cur_block, 0, smpl_options, bxrd_options)
         #tear_block.x_tot[tear_block.colPerm]=sample
         cur_block.x_tot[cur_block.colPerm] =sample
         print ("This is the residual after using ax on the tear variables of the block: ", 
@@ -64,8 +64,8 @@ def do_tear_sampling(model, cur_block, box_id, sampling_options, dict_options,fu
         block_model.stateVarValues[0][cur_block.colPerm]=sample
         print ("This is the residual after sampling and using ax of the whole system: ", 
                numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
-        del dict_options["sampling"]
-        res_solver = mos.solveBlocksSequence(block_model, solv_options, dict_options) 
+        del bxrd_options["sampling"]
+        res_solver = mos.solveBlocksSequence(block_model, solv_options, bxrd_options) 
         block_model = res_solver["Model"] 
         print ("This is the residual of the block after sampling, using ax and solving all block functions", 0," :", 
                numpy.linalg.norm(numpy.array(block_model.getFunctionValues())[block_model.rowPerm])) 
@@ -74,7 +74,7 @@ def do_tear_sampling(model, cur_block, box_id, sampling_options, dict_options,fu
         
         cur_block.x_tot =block_model.stateVarValues
         tear_block.x_tot=block_model.stateVarValues
-        sample = do_ax_optimization_in_block(tear_block, 0, sampling_options, dict_options)
+        sample = do_ax_optimization_in_block(tear_block, 0, smpl_options, bxrd_options)
         
         tear_block.x_tot[tear_block.colPerm]=sample
         cur_block.x_tot[tear_block.colPerm]=sample
@@ -85,7 +85,7 @@ def do_tear_sampling(model, cur_block, box_id, sampling_options, dict_options,fu
         print ("This is the residual after sampling, using ax and solving all block functions of the whole system: ", 
                numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
         
-        dict_options["sampling"] = True
+        bxrd_options["sampling"] = True
         return [[block_model.stateVarValues[0][cur_block.colPerm]]]
 
 def create_tear_block(fun_tear, id_tear_fun, block):
@@ -98,15 +98,15 @@ def create_tear_block(fun_tear, id_tear_fun, block):
     return tear_block
 
 
-def doSampling(model, dict_options, sampling_options):
-    """ samples multiple boxes with selected method from sampling_options and stores
+def doSampling(model, bxrd_options, smpl_options):
+    """ samples multiple boxes with selected method from smpl_options and stores
     the ones with the minimum functional residual.
     
     Args:
         :model:             instance of class model
-        :dict_options:      dictionary with user-settings regarding parallelization
+        :bxrd_options:      dictionary with user-settings regarding parallelization
                             and box reduction steps applied before
-        :sampling_options:  dictionary with number of samples to generate and 
+        :smpl_options:  dictionary with number of samples to generate and 
                             sampleNo_min_residual which is the number of candidates
                             with lowest residuals that are stored
 
@@ -118,48 +118,48 @@ def doSampling(model, dict_options, sampling_options):
     tic = time.time()
     
 
-    if sampling_options["number of samples"] == 0:
-        fileName = dict_options["fileName"]\
-            +"_r"+str(dict_options["redStep"])\
-            +"_s"+str(sampling_options["number of samples"])\
+    if smpl_options["smplNo"] == 0:
+        fileName = bxrd_options["fileName"]\
+            +"_r"+str(bxrd_options["redStep"])\
+            +"_s"+str(smpl_options["smplNo"])\
             +".npz"
-        arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Model": model}, dict_options)
+        arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Model": model}, bxrd_options)
         allx = copy.deepcopy(model.stateVarValues)
         for boxID in range(0, len(model.xBounds)):
             model.stateVarValues = numpy.array([allx[boxID]])
             print ("Function residuals of sample points:\t", model.getFunctionValuesResidual())
             mostge.store_list_in_npz_dict(fileName, model.stateVarValues, boxID)
     else:
-        fileName = dict_options["fileName"]\
-            +"_r"+str(dict_options["redStep"])\
-            +"_s"+str(sampling_options["number of samples"])\
-            +"_smin"+str(sampling_options["sampleNo_min_resiudal"])\
+        fileName = bxrd_options["fileName"]\
+            +"_r"+str(bxrd_options["redStep"])\
+            +"_s"+str(smpl_options["smplNo"])\
+            +"_smin"+str(smpl_options["smplBest"])\
             +".npz"
-        if dict_options["parallelization"]: 
-            res =parallelization.sample_box(model, sampling_options, dict_options)
+        if bxrd_options["parallelization"]: 
+            res =parallelization.sample_box(model, smpl_options, bxrd_options)
         else:
             for boxID in range(0, len(model.xBounds)):
-                res = sample_box(model, boxID, sampling_options, dict_options, res)
+                res = sample_box(model, boxID, smpl_options, bxrd_options, res)
                 
         for boxID in range(0,len(model.xBounds)):     
             mostge.store_list_in_npz_dict(fileName, res[boxID], boxID)
 
-    if dict_options["timer"]:  
+    if bxrd_options["timer"]:  
         print("Time: ", time.time() - tic, " sec.")
         mostge.store_time(fileName, [time.time() - tic], len(model.xBounds))
 
 
-def sample_box(model, boxID, sampling_options, dict_options, res):
-    """ samples one box with ID boxID by selected method from sampling_options and 
+def sample_box(model, boxID, smpl_options, bxrd_options, res):
+    """ samples one box with ID boxID by selected method from smpl_options and 
     stores the samples with the minimum functional residual.
     
     Args:
         :model:             instance of class model
         :boxID:             ID of current box as integer
-        :sampling_options:  dictionary with number of samples to generate and 
+        :smpl_options:  dictionary with number of samples to generate and 
                             sampleNo_min_residual which is the number of candidates
                             with lowest residuals that are stored
-        :dict_options:      dictionary with user-settings regarding parallelization
+        :bxrd_options:      dictionary with user-settings regarding parallelization
                             and box reduction steps applied before
         :res:               dictionary for storage of samples with minimum residual
                             for all boxes
@@ -169,8 +169,8 @@ def sample_box(model, boxID, sampling_options, dict_options, res):
     """
 
     iterVars = VarListType.VariableList(performSampling=True, 
-                                  numberOfSamples=sampling_options["number of samples"],
-                                  samplingMethod=sampling_options["sampling method"], 
+                                  numberOfSamples=smpl_options["smplNo"],
+                                  samplingMethod=smpl_options["smplMethod"], 
                                   samplingDistribution='uniform',
                                   seed=None,
                                   distributionParams=(),
@@ -179,20 +179,20 @@ def sample_box(model, boxID, sampling_options, dict_options, res):
     iterVarsSampler = Sampling.Variable_Sampling(iterVars, number_of_samples=iterVars.numberOfSamples)
 
     iterVars.sampleData = numpy.array(iterVarsSampler.create_samples())
-    sampleNo = sampling_options['sampleNo_min_resiudal']   
+    sampleNo = smpl_options['sampleNo_min_resiudal']   
     
     res[boxID] = get_samples_with_n_lowest_residuals(model, sampleNo, iterVars.sampleData)
     return res
     
 
-def do_ax_optimization_in_block(block, boxID, sampling_options, dict_options):
-    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, dict_options)
+def do_ax_optimization_in_block(block, boxID, smpl_options, bxrd_options):
+    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, bxrd_options)
     residual =  numpy.linalg.norm(block.getFunctionValues())
     if not residual == 0:
-        #sampling_options["max_iter"] = 10
+        #smpl_options["max_iter"] = 10
         axObj = axOptimization.AxOptimization(block)
-        sampling_options["max_iter"] = len(block.colPerm)*3
-        sample = axObj.tune_model_ax(sampling_options["max_iter"])
+        smpl_options["max_iter"] = len(block.colPerm)*3
+        sample = axObj.tune_model_ax(smpl_options["max_iter"])
         block.x_tot[block.colPerm] = sample
     else:
         sample = block.x_tot[block.colPerm]
@@ -200,18 +200,82 @@ def do_ax_optimization_in_block(block, boxID, sampling_options, dict_options):
     return sample
     
 
+def do_optuna_optimization_in_block(block, boxID, smpl_options, bxrd_options):
+    import optuna
+    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, bxrd_options) 
+    residual =  numpy.linalg.norm(block.getFunctionValues())
+    if residual > bxrd_options["absTol"]:  
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        #box = block.xBounds_tot
+        var_names = [str(var_name)  for var_name in block.x_sym_tot]
+        #sampler = optuna.samplers.CmaEsSampler()
+        sampler = optuna.samplers.TPESampler()
+        study = optuna.create_study(direction='minimize', 
+                                    sampler=sampler)
+        study.optimize(lambda trial: objective_2(trial, var_names, 
+                                           block), 
+                   n_trials=smpl_options["smplNo"])
+        sample = [study.best_params[var_names[c]] for c in block.colPerm]
+    else:
+        sample = block.x_tot[block.colPerm]
+    return sample
+
+
+def func_optuna_timeout(block, boxID, smpl_options, bxrd_options):
+    from func_timeout import func_timeout, FunctionTimedOut
+    args = (block, boxID, smpl_options, bxrd_options)
+    try:
+        sample = func_timeout(0.5, do_optuna_optimization_in_block, args)
+    except FunctionTimedOut:
+        print("Sampling took too long, hence midpoint of box is taken")
+        samples = {}
+        old_val = smpl_options["smplNo"]
+        smpl_options["smplNo"]= 0
+        sample_box_in_block(block, boxID, smpl_options, bxrd_options, samples)
+        sample =  samples[0][0]
+        smpl_options["smplNo"]=old_val
+        
+    return sample
+
     
-def sample_box_in_block(block, boxID, sampling_options, dict_options, res):
-    """ samples one box with ID boxID by selected method from sampling_options and 
+def objective(trial, box, var_names, functions):
+    variables = []
+    quadratic_error_sum = 0
+    for i, var in enumerate(var_names):  
+        variables.append(trial.suggest_float(var, box[i][0], box[i][1])) 
+    
+    for f in functions: 
+        f_vars = [variables[i] for i in f.glb_ID]        
+        quadratic_error_sum += f.f_numpy(*f_vars)**2
+        
+    return quadratic_error_sum
+
+
+def objective_2(trial, var_names, block):
+    iter_vars = []
+    
+    for c in block.colPerm:
+        iter_vars.append(trial.suggest_float(var_names[c], 
+                                                 block.xBounds_tot[c][0],
+                                                 block.xBounds_tot[c][1])) 
+    block.x_tot[block.colPerm] = iter_vars
+    return sum([fi**2 for fi in block.get_functions_values()])
+    #return sum([fi**2 for fi in block.getFunctionValues()])
+    
+        
+
+    
+def sample_box_in_block(block, boxID, smpl_options, bxrd_options, res):
+    """ samples one box with ID boxID by selected method from smpl_options and 
     stores the samples with the minimum functional residual.
     
     Args:
         :model:             instance of class model
         :boxID:             ID of current box as integer
-        :sampling_options:  dictionary with number of samples to generate and 
+        :smpl_options:  dictionary with number of samples to generate and 
                             sampleNo_min_residual which is the number of candidates
                             with lowest residuals that are stored
-        :dict_options:      dictionary with user-settings regarding parallelization
+        :bxrd_options:      dictionary with user-settings regarding parallelization
                             and box reduction steps applied before
         :res:               dictionary for storage of samples with minimum residual
                             for all boxes
@@ -219,17 +283,17 @@ def sample_box_in_block(block, boxID, sampling_options, dict_options, res):
     Returns:                updated dictionary res by samples of current box
 
     """
-    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, dict_options)
+    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, bxrd_options)
     residual =  numpy.linalg.norm(block.getFunctionValues())
-    if sampling_options["number of samples"] == 0 or residual < 1e-6:
+    if smpl_options["smplNo"] == 0 or residual < 1e-6:
         
         res[boxID] = [block.x_tot[block.colPerm]]
         #print("Function resiudals of sample point: ", residual)
 
     else:        
         iterVars = VarListType.VariableList(performSampling=True, 
-                                  numberOfSamples=sampling_options["number of samples"],
-                                  samplingMethod=sampling_options["sampling method"], 
+                                  numberOfSamples=smpl_options["smplNo"],
+                                  samplingMethod=smpl_options["smplMethod"], 
                                   samplingDistribution='uniform',
                                   seed=None,
                                   distributionParams=(),
@@ -238,7 +302,7 @@ def sample_box_in_block(block, boxID, sampling_options, dict_options, res):
         iterVarsSampler = Sampling.Variable_Sampling(iterVars, number_of_samples=iterVars.numberOfSamples)
 
         iterVars.sampleData = numpy.array(iterVarsSampler.create_samples())
-        sampleNo = sampling_options['sampleNo_min_resiudal']   
+        sampleNo = smpl_options['sampleNo_min_resiudal']   
     
         res[boxID] = get_samples_with_n_lowest_residuals_in_block(block, sampleNo, iterVars.sampleData)
     return res
@@ -259,7 +323,7 @@ def get_samples_with_n_lowest_residuals_in_block(block, n, sampleData):
     residuals = []
     
     # Calc residuals:
-    #if dict_options != parallel: 
+    #if bxrd_options != parallel: 
     for curSample in sampleData:
         block.x_tot[block.colPerm]=curSample
         
@@ -290,7 +354,7 @@ def get_samples_with_n_lowest_residuals(model, n, sampleData):
     residuals = []
     
     # Calc residuals:
-    #if dict_options != parallel: 
+    #if bxrd_options != parallel: 
     for curSample in sampleData:
         model.stateVarValues=[curSample]
         
