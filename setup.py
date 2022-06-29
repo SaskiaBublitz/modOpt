@@ -1,4 +1,5 @@
 from setuptools import setup
+import re
 
 def readme():
     with open('README.md') as f:
