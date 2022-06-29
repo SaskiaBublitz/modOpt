@@ -4,9 +4,13 @@ def readme():
     with open('README.md') as f:
         return f.read()
 
+def get_property(prop, project):
+    result = re.search(r'{}\s*=\s*[\'"]([^\'"]*)[\'"]'.format(prop), open(project + '/__init__.py').read())
+    return result.group(1)
+project_name = 'modOpt'
 
-setup(name='modOpt',
-      version='3.2',
+setup(name=project_name,
+      version=get_property('__version__', project_name),
       description='restructure NLE in order to find its solution(s)',
       long_description = readme(),
       classifiers = ['Programming Language :: Python :: 3.7'],
