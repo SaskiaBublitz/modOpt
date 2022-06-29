@@ -1,0 +1,14 @@
+Test report from module: Flash_Reactive
+
+Tolerance:	 1e-09
+
+Case	 Status	 CPU in s	 Hypercubic Length
+Flash_Reactive_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r125_pb4	 Ok	 927.1853926181793	 0.0
+Flash_Reactive_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r125	 Ok	 1707.7818412780762	 Identical to reference
+Flash_Reactive_hc4_ncaf_tb_lc_cbtv_dm_rs8_r125_pb4	 Ok	 135.4656217098236	 0.0
+Flash_Reactive_bc_hc4_ncaf_lc_cbtv_dm_rs8_r125_pb4	 Ok	 210.8412585258484	 0.0
+Flash_Reactive_bc_hc4_tb_lc_cbtv_dm_rs8_r125_pb4	 Ok	 878.8483276367188	 0.0
+Flash_Reactive_bc_ncaf_tb_lc_cbtv_dm_rs8_r125_pb4	 Ok	 817.4942231178284	 0.056867400115286335
+Flash_Reactive_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r125_pb4	 Ok	 954.6779315471649	 0.0
+Flash_Reactive_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r125_pb4	 Ok	 1593.8508434295654	 0.0
+Flash_Reactive_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r125_pb4	 Ok	 652.0218396186829	 0.0

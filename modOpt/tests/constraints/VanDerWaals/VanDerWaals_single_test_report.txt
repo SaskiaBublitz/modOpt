@@ -1,0 +1,6 @@
+Test report from module: VanDerWaals
+
+Tolerance:	 1e-09
+
+Case	 Status	 CPU in s	 Hypercubic Length
+VanDerWaals_bc_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 1.3068342208862305	 5.5981239261050445e-12
