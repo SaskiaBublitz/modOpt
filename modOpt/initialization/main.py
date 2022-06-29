@@ -17,7 +17,7 @@ All methods to specify a specific sample point selection
 ********************************************************
 """
 __all__ = ['get_samples_with_n_lowest_residuals', 'doSampling', 'sample_box',
-           'sample_box_in_block', 'do_tear_sampling', 'func_optuna_timeout']
+           'sample_box_in_block', 'func_optuna_timeout']
 
 #def do_ax_optimization(model, bxrd_options, smpl_options):
 #    smpl_options["max_iter"] = 1000
