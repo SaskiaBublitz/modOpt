@@ -6,3 +6,4 @@ matplotlib
 ipopt
 pyibex
 scipy
+affapy

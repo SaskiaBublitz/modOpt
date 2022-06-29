@@ -1,7 +1,7 @@
 from setuptools import setup
 
 def readme():
-    with open('README.rst') as f:
+    with open('README.md') as f:
         return f.read()
 
 
@@ -33,6 +33,7 @@ setup(name='modOpt',
                         'scipy',
 			'ipopt',
 			'scipy',
+			'affapy',
 			],
                         #TODO: What to do with copy, itertools, time, multiprocessing
       zip_safe=False)
