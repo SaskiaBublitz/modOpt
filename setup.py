@@ -34,6 +34,6 @@ setup(name='modOpt',
 			'ipopt',
 			'scipy',
 			'affapy',
-			'ax'],
+			],
                         #TODO: What to do with copy, itertools, time, multiprocessing
       zip_safe=False)
