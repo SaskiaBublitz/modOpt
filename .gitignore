@@ -69,4 +69,4 @@ results/
 .vscode/
 
 # fortran routines
-.f
+*.f
