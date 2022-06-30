@@ -1,3 +1,4 @@
+
 # Introduction
 
 modOpt is a python package for solving nonlinear algebraic systems
@@ -7,24 +8,40 @@ Following subpackages are included:
 * Decomposition (Subsystem identification by block matrix decomposition methods)
 * Initialization (Sampling methods for multi start procedures)
 * Scaling (Row/colum scaling methods for linear systems, i.e. equation scaling and variable unit transformation)
-* Solver (State-of-the-art numerical solvers such as ipopt, scipy's SLSQP, matlab's fsolve method and self-implemented Newton)
+* Solver (Connection to state-of-the-art numerical solvers such as ipopt, scipy's SLSQP, matlab's fsolve method and self-implemented Newton)
 
 # Installation Guide for Users
 
 ##  Prerequisites
 * Python 3.7 with pip installed 
 
-## Instructions
+
+## Instructions for Installation of
+### ModOpt
 
 1. Open the terminal and type in following command:
 
-        pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@modOpt_v_3.0
+        pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@modOpt_v_X.Y
 
 2. Open python in terminal and check if package is imported:
 
         python
         import modOpt
 
+### Dynamic linked libraries from HSL
+You will probably get an "*ImportError: DLL load failed"* when you try to import modOpt because the provided **.pyd** and **.so** files might not
+be compatible to your operating system and python version. In this case:
+1. Get acess and download the fortran routines: MC29, MC33 and MC77 from the HSL website https://www.hsl.rl.ac.uk/
+2. Copy the mc29d.f, MC33AD.f, mc77d.f from the routine packages to the hsl_for_modOpt directory in your modOpt installation package, for example in
+ 
+	  <path-to-your-envs>`/envs/your_env/libs/site-packages/modOpt/hsl_for_modOpt`  
+
+Note: you also get the path to the modOpt package from the ImportError
+
+3. Open the README.md in the hsl_for_modOpt directory and follow the installation instructions to create **.pyd**-files for Windows and **.so**-files for Linux and iOS.
+They are automatically moved to the required position in modOpt
+4. Check if ImportError is fixed by repeating step 2 from the "Installation of modOpt section"
+ 
 ## Create scripts for your MOSAICmodeling evaluations  
 1. Open, initialize and save your model as an evaluation in MOSAICmodeling > Simulation
 2. Change to MOSAICmodeling > Simulation > Evaluation > Code Generation and select *User-defined LangSepc*
@@ -37,7 +54,7 @@ Following subpackages are included:
 Current **UDLS-ID's** for public use:
 | ID   |      Name      | Description |
 |----------|:-------------:|:------:|
-| 147948 | UDLS_modOpt_constraints_V2.6.lsp  | Box Redcution + Sampling + Solver |
+| 167855 | UDLS_modOpt_constraints_V2.9.lsp  | Box Redcution + Sampling + Solver |
 
 # Installation Guide for Developers
 
@@ -124,5 +141,3 @@ Here for a example a commit with multiple changes:
     Fix: In the existing method <cde> fixed subtraction error
     Style: Add function descripton to method <cde>
     Style: Rewrote method <fgh> in order to use it in methd <hij>
-
-
