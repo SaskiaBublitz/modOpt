@@ -1,0 +1,23 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module MC29AD ! in 
+    interface  ! in :mc29ad
+        subroutine mc29ad(m,n,ne,a,irn,icn,r,c,w,lp,ifail) ! in :mc29ad:mc29d.f
+            integer intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: ne
+            double precision dimension(ne), depend(ne), intent(in) :: a
+            integer dimension(ne),depend(ne), intent(in) :: irn
+            integer dimension(ne),depend(ne), intent(in) :: icn
+            double precision dimension(m), depend(m), intent(out) :: r
+            double precision dimension(n), depend(n), intent(out) :: c
+            double precision dimension(m*2+n*3),depend(m,n), intent(hide) :: w
+            integer, intent(in) :: lp
+            integer, intent(out) :: ifail
+        end subroutine mc29ad
+    end interface 
+end python module MC29AD
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/

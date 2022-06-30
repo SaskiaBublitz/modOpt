@@ -1,0 +1,269 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module MC77D ! in 
+    interface  ! in :MC77D
+        subroutine mc77id(icntl,cntl) ! in :MC77D:mc77d.f
+            integer dimension(10), intent(out) :: icntl
+            double precision dimension(10), intent(out) :: cntl
+        end subroutine mc77id
+        subroutine mc77ad(job,m,n,nnz,jcst,irn,a,iw,liw,dw,ldw,icntl,cntl,info,rinfo) ! in :MC77D:mc77d.f
+            integer, intent(in) :: job
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(n + 1), depend(n), intent(in) :: jcst
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            integer dimension(liw), depend(liw), intent(hide) :: iw
+            integer, intent(in) :: liw
+            double precision dimension(ldw), depend(ldw), intent(out) :: dw
+            integer, intent(in) :: ldw
+            integer dimension(10), intent(in) :: icntl
+            double precision dimension(10), intent(in) :: cntl
+            integer dimension(10), intent(out) :: info
+            double precision dimension(10), intent(out) :: rinfo
+        end subroutine mc77ad
+        subroutine mc77nd(m,n,nnz,jcst,irn,a,d,e,check,thresh,err,maxit,niter,iw,jw,dw,ew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(n + 1), depend(n), intent(in) :: jcst
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            double precision dimension(m), depend(m), intent(out) :: d
+            double precision dimension(n),depend(n), intent(out) :: e
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(m),depend(m), intent(out) :: iw
+            integer dimension(n),depend(n), intent(out) :: jw
+            double precision dimension(m),depend(m), intent(out) :: dw
+            double precision dimension(n),depend(n), intent(out) :: ew
+            integer, intent(out) :: info
+        end subroutine mc77nd
+        subroutine mc77od(m,n,nnz,jcst,irn,a,d,e,check,thresh,err,maxit,niter,iw,jw,dw,ew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(n + 1), depend(n), intent(in) :: jcst
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            double precision dimension(m), depend(m), intent(in) :: d
+            double precision dimension(n),depend(n), intent(in) :: e
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(in) :: niter
+            integer dimension(m),depend(m), intent(in) :: iw
+            integer dimension(n),depend(n), intent(in) :: jw
+            double precision dimension(m),depend(m), intent(out) :: dw
+            double precision dimension(n),depend(n), intent(out) :: ew
+            integer, intent(out) :: info
+        end subroutine mc77od
+        subroutine mc77pd(n,nnz,jcst,irn,a,de,check,thresh,err,maxit,niter,ijw,dew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(n + 1), depend(n), intent(in) :: jcst
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            double precision dimension(n),depend(n), intent(out) :: de
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(n),depend(n), intent(out) :: ijw
+            double precision dimension(n),depend(n), intent(out) :: dew
+            integer, intent(out) :: info
+        end subroutine mc77pd
+        subroutine mc77qd(n,nnz,jcst,irn,a,de,check,thresh,err,maxit,niter,ijw,dew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(n + 1), depend(n), intent(in) :: jcst
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            double precision dimension(n),depend(n), intent(out) :: de
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(n),depend(n), intent(out) :: ijw
+            double precision dimension(n),depend(n), intent(out) :: dew
+            integer, intent(out) :: info
+        end subroutine mc77qd
+        subroutine mc77bd(job,m,n,nnz,irn,jcn,a,iw,liw,dw,ldw,icntl,cntl,info,rinfo) ! in :MC77D:mc77d.f
+            integer, intent(in) :: job
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(nnz), depend(nnz), intent(in) :: jcn
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            integer dimension(liw), depend(liw), intent(hide) :: iw
+            integer, intent(in) :: liw
+            double precision dimension(ldw), intent(out) :: dw
+            integer, intent(in) :: ldw
+            integer dimension(10), intent(in) :: icntl
+            double precision dimension(10), intent(in) :: cntl
+            integer dimension(10), intent(out) :: info
+            double precision dimension(10), intent(out) :: rinfo
+        end subroutine mc77bd
+        subroutine mc77rd(m,n,nnz,jcn,irn,a,d,e,check,thresh,err,maxit,niter,iw,jw,dw,ew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer, dimension(nnz), depend(nnz), intent(in) :: jcn
+            integer, dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision, dimension(nnz), depend(nnz), intent(in) :: a
+            double precision dimension(m), depend(m), intent(out) :: d
+            double precision dimension(n),depend(n), intent(out) :: e
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(m),depend(m), intent(out) :: iw
+            integer dimension(n),depend(n), intent(out) :: jw
+            double precision dimension(m),depend(m), intent(out) :: dw
+            double precision dimension(n),depend(n), intent(out) :: ew
+            integer, intent(out) :: info
+        end subroutine mc77rd
+        subroutine mc77sd(m,n,nnz,jcn,irn,a,d,e,check,thresh,err,maxit,niter,iw,jw,dw,ew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(nnz), depend(nnz), intent(in) :: jcn
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            double precision dimension(m), depend(m), intent(out) :: d
+            double precision dimension(n),depend(n), intent(out) :: e
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(m),depend(m), intent(out) :: iw
+            integer dimension(n),depend(n), intent(out) :: jw
+            double precision dimension(m),depend(m), intent(out) :: dw
+            double precision dimension(n),depend(n), intent(out) :: ew
+            integer, intent(out) :: info
+        end subroutine mc77sd
+        subroutine mc77td(n,nnz,jcn,irn,a,de,check,thresh,err,maxit,niter,ijw,dew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(nnz), depend(nnz), intent(in) :: jcn
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            double precision dimension(n),depend(n), intent(out) :: de
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(n),depend(n), intent(out) :: ijw
+            double precision dimension(n),depend(n), intent(out) :: dew
+            integer, intent(out) :: info
+        end subroutine mc77td
+        subroutine mc77ud(n,nnz,jcn,irn,a,de,check,thresh,err,maxit,niter,ijw,dew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: n
+            integer, intent(in) :: nnz
+            integer dimension(nnz), depend(nnz), intent(in) :: jcn
+            integer dimension(nnz), depend(nnz), intent(in) :: irn
+            double precision dimension(nnz),depend(nnz), intent(in) :: a
+            double precision dimension(n),depend(n), intent(out) :: de
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(n),depend(n), intent(out) :: ijw
+            double precision dimension(n),depend(n), intent(out) :: dew
+            integer, intent(out) :: info
+        end subroutine mc77ud
+        subroutine mc77cd(job,m,n,a,lda,iw,liw,dw,ldw,icntl,cntl,info,rinfo) ! in :MC77D:mc77d.f
+            integer, intent(in) :: job
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+			double precision dimension(lda,n),depend(lda,n), intent(in) :: a
+			integer, intent(in) :: lda
+            integer dimension(liw), depend(liw), intent(hide) :: iw
+            integer, intent(in) :: liw
+            double precision dimension(ldw), intent(out) :: dw
+            integer, intent(in) :: ldw
+            integer dimension(10), intent(in) :: icntl
+            double precision dimension(10), intent(in) :: cntl
+            integer dimension(10), intent(out) :: info
+            double precision dimension(10), intent(out) :: rinfo
+        end subroutine mc77cd
+        subroutine mc77jd(m,n,a,lda,d,e,check,thresh,err,maxit,niter,iw,jw,dw,ew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            double precision dimension(lda,n), depend(lda,n), intent(in) :: a
+            integer, intent(in) :: lda
+            double precision dimension(m), depend(m), intent(out) :: d
+            double precision dimension(n),depend(n), intent(out) :: e
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(m),depend(m), intent(out) :: iw
+            integer dimension(n),depend(n), intent(out) :: jw
+            double precision dimension(m),depend(m), intent(out) :: dw
+            double precision dimension(n),depend(n), intent(out) :: ew
+            integer, intent(out) :: info
+        end subroutine mc77jd
+        subroutine mc77kd(m,n,a,lda,d,e,check,thresh,err,maxit,niter,iw,jw,dw,ew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            double precision dimension(lda,n), depend(lda,n), intent(in) :: a
+            integer, intent(in) :: lda
+            double precision dimension(m), depend(m), intent(out) :: d
+            double precision dimension(n),depend(n), intent(out) :: e
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(m),depend(m), intent(out) :: iw
+            integer dimension(n),depend(n), intent(out) :: jw
+            double precision dimension(m),depend(m), intent(out) :: dw
+            double precision dimension(n),depend(n), intent(out) :: ew
+            integer, intent(out) :: info
+        end subroutine mc77kd
+        subroutine mc77ld(m,a,de,check,thresh,err,maxit,niter,ijw,dew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            double precision dimension(*), intent(in) :: a
+            double precision dimension(m), depend(m), intent(out) :: de
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(m),depend(m), intent(out) :: ijw
+            double precision dimension(m),depend(m), intent(out) :: dew
+            integer, intent(out) :: info
+		end subroutine mc77ld
+        subroutine mc77md(m,a,de,check,thresh,err,maxit,niter,ijw,dew,info) ! in :MC77D:mc77d.f
+            integer, intent(in) :: m
+            double precision dimension(*), intent(in) :: a
+            double precision dimension(m), depend(m), intent(out) :: de
+            integer, intent(in) :: check
+            double precision, intent(in) :: thresh
+            double precision dimension(2), intent(out) :: err
+            integer, intent(in) :: maxit
+            integer, intent(out) :: niter
+            integer dimension(m),depend(m), intent(out) :: ijw
+            double precision dimension(m),depend(m), intent(out) :: dew
+            integer, intent(out) :: info
+        end subroutine mc77md
+    end interface 
+end python module MC77D
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/
