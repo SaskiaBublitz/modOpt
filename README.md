@@ -16,8 +16,8 @@ Following subpackages are included:
 * Python 3.7 with pip installed 
 
 
-## Instructions
-### Installation of modOpt
+## Instructions for Installation of
+### ModOpt
 
 1. Open the terminal and type in following command:
 
@@ -28,7 +28,7 @@ Following subpackages are included:
         python
         import modOpt
 
-## Installation of dynamic linked libraries from HSL
+### Dynamic linked libraries from HSL
 You will probably get an "*ImportError: DLL load failed"* when you try to import modOpt because the provided **.pyd** and **.so** files might not
 be compatible to your operating system and python version. In this case:
 1. Get acess and download the fortran routines: MC29, MC33 and MC77 from the HSL website https://www.hsl.rl.ac.uk/
