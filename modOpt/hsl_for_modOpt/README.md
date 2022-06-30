@@ -1,6 +1,13 @@
-This directory contains all signature files to generate dynamic libraries executable in python from HSL fortran routines. To get them working in Python you need to:
+# Instructions to generate dynamic link libraries in Python from fortran routines
 
-1. Get all associated fortran files from the HSL library TODOlink:
+## Prerequisities
+* Python package f2py needs to be installed
+* Having a fortran compiler installed
+
+## Generation of .pyd-files (Windows) and .so-files (Linux/iOS) for modOpt
+
+This directory contains all signature files to generate the dynamic link libraries
+1. Get the following associated fortran files from the HSL library:
 
 MC33AD.f
 mc29d.f
