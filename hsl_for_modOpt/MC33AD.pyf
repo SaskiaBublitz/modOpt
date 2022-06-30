@@ -1,0 +1,180 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module MC33AD ! in 
+    interface  ! in :MC33AD
+        subroutine mc33ad(m,n,nzi,a,irn,jcn,nzo,itype,ip,iq,iprof,iflag,iw,iw1,ierr) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nzi
+			double precision dimension(nzi), intent(in), depend(nzi) :: a			
+            integer dimension(nzi), depend(nzi), intent(in) :: irn
+            integer dimension(nzi), depend(nzi), intent(in) :: jcn
+            integer, intent(out) :: nzo
+            integer, intent(in) :: itype
+            integer dimension(m), depend(m), intent(out) :: ip
+            integer dimension(n), depend(n), intent(out) :: iq
+            integer dimension(n), depend(n), intent(out) :: iprof
+            integer dimension(3), intent(out) :: iflag
+            integer dimension(m+n), depend(m,n), intent(hide) :: iw
+            integer dimension(9*n+3*m), depend(m,n), intent(hide) :: iw1
+            integer, intent(out) :: ierr
+        end subroutine mc33ad
+        subroutine mc33bd(m,n,nz,irn,lencol,iprof,jcsbnd,jbend,irsbnd,ip,iq,jcolst,jcn,irowst,lenrow,ipinv,iqinv,minr,tally,head,flm,flt,blm,jflag,irow,jtype) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nz
+            integer dimension(nz), depend(nz), intent(in) :: irn
+            integer dimension(n), depend(n), intent(in) :: lencol
+            integer dimension(n), depend(n), intent(out) :: iprof
+            integer, intent(in,out) :: jcsbnd
+            integer, intent(in,out) :: jbend
+            integer, intent(out) :: irsbnd
+            integer dimension(m), depend(m), intent(out) :: ip
+            integer dimension(n), depend(n), intent(out) :: iq
+            integer dimension(nz), depend(nz), intent(in,out) :: jcolst
+            integer dimension(nz), depend(nz), intent(in,out) :: jcn
+            integer dimension(nz), depend(nz), intent(in,out) :: irowst
+            integer dimension(m), depend(m), intent(in,out) :: lenrow
+            integer dimension(m), depend(m), intent(in,out) :: ipinv
+            integer dimension(n), depend(n), intent(in,out) :: iqinv
+            integer dimension(n), depend(n), intent(in,out) :: minr
+            integer dimension(n), depend(n), intent(in,out) :: tally
+            integer dimension(n), depend(n), intent(in,out) :: head
+            integer dimension(n), depend(n), intent(in,out) :: flm
+            integer dimension(n), depend(n), intent(in,out) :: flt
+            integer dimension(n), depend(n), intent(in,out) :: blm
+            integer dimension(n), depend(n), intent(in,out) :: jflag
+            integer dimension(m), depend(m), intent(in,out) :: irow
+            integer, intent(in), intent(in,out)  :: jtype
+        end subroutine mc33bd
+        subroutine mc33cd(m,n,nz,irow,jts,mconst,ipinv,jcsbnd,irn,jcolst,lencol,jcsbst,irsbst,loop,ip,iq,iqinv,iprof,nblk) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nz
+            integer dimension(m), depend(m), intent(in) :: irow
+            integer, intent(in,out) :: jts
+            integer , intent(in,out):: mconst
+            integer dimension(m), depend(m), intent(in,out) :: ipinv
+            integer, intent(in,out) :: jcsbnd
+            integer dimension(nz), depend(nz), intent(in) :: irn
+            integer dimension(nz), depend(nz), intent(in,out) :: jcolst
+            integer dimension(n), depend(n), intent(in) :: lencol
+            integer, intent(in,out) :: jcsbst
+            integer, intent(in,out) :: irsbst
+            integer, intent(in,out) :: loop
+            integer dimension(m), depend(m), intent(out) :: ip
+            integer dimension(n), depend(n), intent(out) :: iq
+            integer dimension(n), depend(n), intent(in,out) :: iqinv
+            integer dimension(n), depend(n), intent(out) :: iprof
+            integer, intent(in,out) :: nblk
+        end subroutine mc33cd
+        subroutine mc33dd(m,n,nz,irow,jts,ipinv,jcsbnd,jcsbst,jbend,jcolst,lencol,irn,irsbst,loop,ip,iq,iqinv,iprof,nblk) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: m
+            integer, intent(in) :: n
+            integer, intent(in) :: nz
+            integer dimension(m), depend(m), intent(in,out) :: irow
+            integer, intent(in,out) :: jts
+            integer dimension(m), depend(m), intent(in,out) :: ipinv
+            integer, intent(in,out) :: jcsbnd
+            integer, intent(in,out) :: jcsbst
+            integer, intent(in,out) :: jbend
+            integer dimension(nz), depend(nz), intent(in,out) :: jcolst
+            integer dimension(n), depend(n), intent(in)  :: lencol
+            integer dimension(nz), depend(nz), intent(in) :: irn
+            integer, intent(in,out) :: irsbst
+            integer, intent(in,out) :: loop
+            integer dimension(m), depend(m), intent(out) :: ip
+            integer dimension(n), depend(n), intent(out) :: iq
+            integer dimension(n), depend(n), intent(in,out) :: iqinv
+            integer dimension(n),  depend(n), intent(out) :: iprof
+            integer, intent(in,out) :: nblk
+        end subroutine mc33dd
+        subroutine mc59ad(icntl,nc,nr,ne,irn,ljcn,jcn,la,a,lip,ip,liw,iw,info) ! in :MC33AD:MC33AD.f
+            integer dimension(10), intent(in) :: icntl
+            integer, intent(in) :: nc
+            integer, intent(in) :: nr
+            integer, intent(in) :: ne
+            integer dimension(ne), depend(ne), intent(in,out) :: irn
+            integer, intent(in) :: ljcn
+            integer dimension(ljcn), depend(ljcn), intent(in,out) :: jcn
+            integer, intent(in) :: la
+            double precision dimension(la), depend(la), intent(in,out) :: a
+            integer, intent(in) :: lip
+            integer dimension(lip), depend(lip), intent(in,out) :: ip
+            integer,  intent(in) :: liw
+            integer dimension(liw), depend(liw), intent(out) :: iw
+            integer dimension(10), intent(out) :: info
+        end subroutine mc59ad
+        subroutine mc59bd(lcheck,part,nc,nr,ne,irn,jcn,la,a,ip,iw,iout,jout,kne) ! in :MC33AD:MC33AD.f
+            logical, intent(in) :: lcheck
+            integer, intent(in) :: part
+            integer,intent(in) :: nc
+            integer, intent(in) :: nr
+            integer, intent(in) :: ne
+            integer dimension(ne), depend(ne), intent(in,out) :: irn
+            integer dimension(ne),depend(ne), intent(in,out) :: jcn
+            integer, intent(in) :: la
+            double precision dimension(la), depend(la), intent(in,out) :: a
+            integer dimension(nc+1), depend(nc), intent(in,out) :: ip
+            integer dimension(nr+1),depend(nr), intent(in,out) :: iw
+            integer, intent(out) :: iout
+            integer, intent(out) :: jout
+            integer, intent(out) :: kne
+        end subroutine mc59bd
+        subroutine mc59cd(nc,nr,ne,irn,jcn,la,a,ip,iw) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: nc
+            integer, intent(in) :: nr
+            integer, intent(in) :: ne
+            integer dimension(ne), depend(ne), intent(out) :: irn
+            integer, intent(in,out) :: jcn
+            integer,  intent(in) :: la
+            double precision dimension(la), depend(la), intent(in,out) :: a
+            integer dimension(nc+1), depend(nc), intent(in,out) :: ip
+            integer dimension(nr+1), depend(nr), intent(in) :: iw
+        end subroutine mc59cd
+        subroutine mc59dd(nc,ne,irn,ip,la,a) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: nc
+            integer, intent(in) :: ne
+            integer dimension(ne), depend(ne), intent(in,out) :: irn
+            integer dimension(nc), depend(nc), intent(in) :: ip
+            integer, intent(in) :: la
+            double precision dimension(la), depend(la), intent(in,out) :: a
+        end subroutine mc59dd
+        subroutine mc59ed(nc,nr,ne,irn,lip,ip,la,a,iw,idup,kne,icntl6) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: nc
+            integer,  intent(in) :: nr
+            integer, intent(in) :: ne
+            integer dimension(ne), intent(in,out), depend(ne) :: irn
+            integer, intent(in) :: lip
+            integer dimension(lip), intent(in), depend(lip) :: ip
+            integer, intent(in) :: la
+            double precision dimension(la), intent(in,out), depend(la) :: a
+            integer dimension(nr), intent(in), depend(nr) :: iw
+            integer, intent(in,out) :: idup
+            integer, intent(out) :: kne
+            integer, intent(in) :: icntl6
+        end subroutine mc59ed
+        subroutine mc59fd(nc,nr,ne,irn,lip,ip,la,a,liw,iw,idup,iout,iup,kne,icntl6,info) ! in :MC33AD:MC33AD.f
+            integer, intent(in) :: nc
+            integer, intent(in) :: nr
+            integer, intent(in)  :: ne
+            integer dimension(ne), intent(in,out), depend(ne) :: irn
+            integer, intent(in) :: lip
+            integer dimension(lip), intent(in), depend(lip) :: ip
+            integer, intent(in) :: la
+            double precision dimension(la), intent(in,out), depend(la) :: a
+            integer, intent(in) :: liw
+            integer dimension(liw), intent(in), depend(liw) :: iw
+            integer, intent(in,out) :: idup
+            integer, intent(in,out) :: iout
+            integer, intent(in,out) :: iup
+            integer, intent(out) :: kne
+            integer, intent(in) :: icntl6
+            integer dimension(2), intent(out) :: info
+        end subroutine mc59fd
+    end interface 
+end python module MC33AD
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/

@@ -8,7 +8,7 @@ Import packages
 import copy
 import time
 import numpy
-from modOpt.initialization import parallelization, VarListType, Sampling, arithmeticMean, axOptimization
+from modOpt.initialization import parallelization, VarListType, Sampling, arithmeticMean #,axOptimization
 import modOpt.storage as mostge
 
 """
@@ -17,35 +17,34 @@ All methods to specify a specific sample point selection
 ********************************************************
 """
 __all__ = ['get_samples_with_n_lowest_residuals', 'doSampling', 'sample_box',
-           'sample_box_in_block', 'do_ax_optimization_in_block', 'do_tear_sampling',
-           'do_optuna_optimization_in_block', 'func_optuna_timeout']
+           'sample_box_in_block', 'func_optuna_timeout']
 
-def do_ax_optimization(model, bxrd_options, smpl_options):
-    smpl_options["max_iter"] = 1000
-    axObj = axOptimization.AxOptimization(model)
-    axObj.tune_model_ax(smpl_options["max_iter"])
+#def do_ax_optimization(model, bxrd_options, smpl_options):
+#    smpl_options["max_iter"] = 1000
+#    axObj = axOptimization.AxOptimization(model)
+#    axObj.tune_model_ax(smpl_options["max_iter"])
 
 
-def do_tear_sampling(model, cur_block, box_id, smpl_options, bxrd_options,functions,solv_options):
-    from modOpt.decomposition import MC33
-    import modOpt.solver as mos
-    samples = {}
-    if (len(cur_block.colPerm) <= 1.0):      
-        return sample_box_in_block(cur_block, box_id, smpl_options, bxrd_options, samples)
-    else:
-        block_model = copy.deepcopy(model)
-        res_permutation = MC33.doMC33(cur_block.getPermutedJacobian())
-        block_model.blocks = cur_block.createBlocks(res_permutation["Number of Row Blocks"])
+#def do_tear_sampling(model, cur_block, box_id, smpl_options, bxrd_options,functions,solv_options):
+#    from modOpt.decomposition import MC33
+#    import modOpt.solver as mos
+#    samples = {}
+#    if (len(cur_block.colPerm) <= 1.0):      
+#        return sample_box_in_block(cur_block, box_id, smpl_options, bxrd_options, samples)
+#    else:
+#        block_model = copy.deepcopy(model)
+#        res_permutation = MC33.doMC33(cur_block.getPermutedJacobian())
+#        block_model.blocks = cur_block.createBlocks(res_permutation["Number of Row Blocks"])
                 
-        org_fun_id_resorted = [cur_block.rowPerm[i] for i in res_permutation["Row Permutation"] ]
-        org_var_id_resorted = [cur_block.colPerm[i] for i in res_permutation["Column Permutation"]]
-        id_tear_fun = [org_fun_id_resorted[i] for i in block_model.blocks[-1]]
-        id_tear_var = [org_var_id_resorted[i] for i in block_model.blocks[-1]]
-        block_model.rowPerm = org_fun_id_resorted
-        block_model.colPerm = org_var_id_resorted       
-        fun_tear = [functions[i] for i in id_tear_fun]
-        smpl_options["smplBest"]=1
-        tear_block = create_tear_block(fun_tear, id_tear_fun, cur_block)
+#        org_fun_id_resorted = [cur_block.rowPerm[i] for i in res_permutation["Row Permutation"] ]
+#        org_var_id_resorted = [cur_block.colPerm[i] for i in res_permutation["Column Permutation"]]
+#        id_tear_fun = [org_fun_id_resorted[i] for i in block_model.blocks[-1]]
+#        id_tear_var = [org_var_id_resorted[i] for i in block_model.blocks[-1]]
+#        block_model.rowPerm = org_fun_id_resorted
+#        block_model.colPerm = org_var_id_resorted       
+#        fun_tear = [functions[i] for i in id_tear_fun]
+#        smpl_options["smplBest"]=1
+#        tear_block = create_tear_block(fun_tear, id_tear_fun, cur_block)
         #samples = sample_box_in_block(cur_block, box_id, smpl_options, bxrd_options, samples)
         #samples = sample_box_in_block(tear_block, box_id, smpl_options, bxrd_options, samples)
         #tear_block.x_tot[tear_block.colPerm]=samples[0][0]
@@ -56,37 +55,37 @@ def do_tear_sampling(model, cur_block, box_id, smpl_options, bxrd_options,functi
         #print ("This is the residual after sampling of the whole system: ", 
         #       numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
         #tear_block.colPerm = id_tear_var
-        sample = do_ax_optimization_in_block(cur_block, 0, smpl_options, bxrd_options)
+#        sample = do_ax_optimization_in_block(cur_block, 0, smpl_options, bxrd_options)
         #tear_block.x_tot[tear_block.colPerm]=sample
-        cur_block.x_tot[cur_block.colPerm] =sample
-        print ("This is the residual after using ax on the tear variables of the block: ", 
-               numpy.linalg.norm(cur_block.getFunctionValues()))
-        block_model.stateVarValues[0][cur_block.colPerm]=sample
-        print ("This is the residual after sampling and using ax of the whole system: ", 
-               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
-        del bxrd_options["sampling"]
-        res_solver = mos.solveBlocksSequence(block_model, solv_options, bxrd_options) 
-        block_model = res_solver["Model"] 
-        print ("This is the residual of the block after sampling, using ax and solving all block functions", 0," :", 
-               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())[block_model.rowPerm])) 
-        print ("This is the residual after sampling, using ax and solving all block functions of the whole system: ", 
-               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
+#        cur_block.x_tot[cur_block.colPerm] =sample
+#        print ("This is the residual after using ax on the tear variables of the block: ", 
+#               numpy.linalg.norm(cur_block.getFunctionValues()))
+#        block_model.stateVarValues[0][cur_block.colPerm]=sample
+#        print ("This is the residual after sampling and using ax of the whole system: ", 
+#               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
+#        del bxrd_options["sampling"]
+#        res_solver = mos.solveBlocksSequence(block_model, solv_options, bxrd_options) 
+#        block_model = res_solver["Model"] 
+#        print ("This is the residual of the block after sampling, using ax and solving all block functions", 0," :", 
+#               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())[block_model.rowPerm])) 
+#        print ("This is the residual after sampling, using ax and solving all block functions of the whole system: ", 
+#               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
         
-        cur_block.x_tot =block_model.stateVarValues
-        tear_block.x_tot=block_model.stateVarValues
-        sample = do_ax_optimization_in_block(tear_block, 0, smpl_options, bxrd_options)
+#        cur_block.x_tot =block_model.stateVarValues
+#        tear_block.x_tot=block_model.stateVarValues
+#        sample = do_ax_optimization_in_block(tear_block, 0, smpl_options, bxrd_options)
         
-        tear_block.x_tot[tear_block.colPerm]=sample
-        cur_block.x_tot[tear_block.colPerm]=sample
-        block_model.stateVarValues[0][cur_block.colPerm]=sample
+#        tear_block.x_tot[tear_block.colPerm]=sample
+#        cur_block.x_tot[tear_block.colPerm]=sample
+#        block_model.stateVarValues[0][cur_block.colPerm]=sample
         
-        print ("This is the residual of the block after sampling, using ax and solving all block functions", 0," :", 
-               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())[block_model.rowPerm])) 
-        print ("This is the residual after sampling, using ax and solving all block functions of the whole system: ", 
-               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
+#        print ("This is the residual of the block after sampling, using ax and solving all block functions", 0," :", 
+#               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())[block_model.rowPerm])) 
+#        print ("This is the residual after sampling, using ax and solving all block functions of the whole system: ", 
+#               numpy.linalg.norm(numpy.array(block_model.getFunctionValues())))
         
-        bxrd_options["sampling"] = True
-        return [[block_model.stateVarValues[0][cur_block.colPerm]]]
+#        bxrd_options["sampling"] = True
+#        return [[block_model.stateVarValues[0][cur_block.colPerm]]]
 
 def create_tear_block(fun_tear, id_tear_fun, block):
     var_ID_in_tear_fun = []
@@ -185,19 +184,19 @@ def sample_box(model, boxID, smpl_options, bxrd_options, res):
     return res
     
 
-def do_ax_optimization_in_block(block, boxID, smpl_options, bxrd_options):
-    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, bxrd_options)
-    residual =  numpy.linalg.norm(block.getFunctionValues())
-    if not residual == 0:
-        #smpl_options["max_iter"] = 10
-        axObj = axOptimization.AxOptimization(block)
-        smpl_options["max_iter"] = len(block.colPerm)*3
-        sample = axObj.tune_model_ax(smpl_options["max_iter"])
-        block.x_tot[block.colPerm] = sample
-    else:
-        sample = block.x_tot[block.colPerm]
-    print("The residual of the sample point is: ", numpy.linalg.norm(block.getFunctionValues()))
-    return sample
+#def do_ax_optimization_in_block(block, boxID, smpl_options, bxrd_options):
+#    arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": block}, bxrd_options)
+#    residual =  numpy.linalg.norm(block.getFunctionValues())
+#    if not residual == 0:
+#        #smpl_options["max_iter"] = 10
+#        axObj = axOptimization.AxOptimization(block)
+#        smpl_options["max_iter"] = len(block.colPerm)*3
+#        sample = axObj.tune_model_ax(smpl_options["max_iter"])
+#        block.x_tot[block.colPerm] = sample
+#    else:
+#        sample = block.x_tot[block.colPerm]
+#    print("The residual of the sample point is: ", numpy.linalg.norm(block.getFunctionValues()))
+#    return sample
     
 
 def do_optuna_optimization_in_block(block, boxID, smpl_options, bxrd_options):
