@@ -3,7 +3,6 @@ sympy
 mpmath
 casadi
 matplotlib
-ipopt
 pyibex
 scipy
 affapy
