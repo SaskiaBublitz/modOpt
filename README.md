@@ -1,4 +1,5 @@
 
+
 # Introduction
 
 modOpt is a python package for solving nonlinear algebraic systems
@@ -19,9 +20,9 @@ Following subpackages are included:
 ## Instructions for Installation of
 ### ModOpt
 
-1. Open the terminal and type in following command:
+1. Open the terminal and type in following command (replace branch_name by the branch name of interest):
 
-        pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@modOpt_v_X.Y
+        pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@branch_name
 
 2. Open python in terminal and check if package is imported:
 
@@ -55,6 +56,21 @@ Current **UDLS-ID's** for public use:
 | ID   |      Name      | Description |
 |----------|:-------------:|:------:|
 | 167855 | UDLS_modOpt_constraints_V2.9.lsp  | Box Redcution + Sampling + Solver |
+
+## Tests to check modOpt is working as expected (MOSAICmodeling is not required)
+To check wether modOpt is working correctly, there is a test package included with some examples from chemical engineering. Different settings in the bxrd_options dictionaries are sequentially checked. If no error has occured in a test run an "OK" is written into the *status* cell of the corresponding test case row of the tests' output file. The latter ends on "*test_all.txt". If an error occured the *status* of the associated test run is "Failed". This is exemplary explainded for the VanDerWaals.py example but works the same way for the other larger examples in the tests/constraints directory.
+
+1. In the modOpt package go to 
+
+	`modOpt/tests/constraints/VanDerWaals`
+
+2. Run the python file main.py
+
+        python main.py
+
+3. Open the output textfile ending with test_all.text and check the each test run's status
+
+You can also use the .py files of the test examples as a template for writing your own scripts apart from MOSAICmodeling. Simply replace the system arguments by an argument of the required type such as string, integer, boolean, float. Discrete settings from a set of valid options for example strings with numerical solver names you find in the comments behind the assignment starting with #
 
 # Installation Guide for Developers
 
