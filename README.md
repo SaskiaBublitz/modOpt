@@ -21,7 +21,7 @@ Following subpackages are included:
 
 1. Open the terminal and type in following command:
 
-        pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@modOpt_v_X.Y
+        pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@Dissertation
 
 2. Open python in terminal and check if package is imported:
 
