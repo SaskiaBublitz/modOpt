@@ -5,4 +5,5 @@ casadi
 matplotlib
 pyibex
 scipy
+scipy
 affapy

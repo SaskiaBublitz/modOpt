@@ -259,8 +259,8 @@ class Function:
             fvar = sympy.Add(*allArgumentsWithVariable)
             fWithoutVar = sympy.Add(*allArgumentsWithoutVariable)
             return fvar, -fWithoutVar
-
-    	elif f.func.class_key()[2]=='Symbol': return f, 0.0
+        
+        elif f.func.class_key()[2]=='Symbol': return f, 0.0
         else: 
             print("Problems occured during function parsing")
             return 0, 0
