@@ -696,7 +696,7 @@ def trackErrors(res_solver, bxrd_options):
         var_crit = failed_sys.critVar 
         init_box = moc.analysis.convert_mpi_box_float(res_solver["init_box"][0])
         init_failed_box = numpy.array([list(init_box[glb_id]) for glb_id in f_crit.glb_ID])
-        if hasattr(failed_sys, "critBox"): failed_box = failed_sys.critBox
+        if (hasattr(failed_sys, "critBox")) : failed_box = failed_sys.critBox
         else: 
             failed_box = failed_mod.getXBoundsOfCertainVariablesFromIntervalSet(f_crit.x_sym, 0)
         
@@ -704,7 +704,7 @@ def trackErrors(res_solver, bxrd_options):
                            init_failed_box, failed_box)
 
 
-def writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBoundsFailed) :
+def writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBoundsFailed=None) :
     res_file = open(fileName, "w") 
     res_file.write("***** Error Analysis *****\n\n")    
 
@@ -712,10 +712,15 @@ def writeErrorAnalysis(fileName, fCrit, varCrit, varsInF, xBoundsInitial, xBound
      
     res_file.write("The following table shows the initial and final bounds of all variables in this equation before termination:\n\n")
                     
-    res_file.write("VARNAME \t INITBOUNDS \t FINALBOUNDS \n" )
-     
-    for i in range(0, len(varsInF)):
-        res_file.write("%s \t %s \t %s \n"%(varsInF[i],  str(xBoundsInitial[i]), str(xBoundsFailed[i])))
+    
+    if not xBoundsFailed:
+        for i in range(0, len(varsInF)):
+            res_file.write("VARNAME \t INITBOUNDS \n" )
+            res_file.write("%s \t %s \n"%(varsInF[i],  str(xBoundsInitial[i])))
+    else:
+        res_file.write("VARNAME \t INITBOUNDS \t FINALBOUNDS \n" )
+        for i in range(0, len(varsInF)):
+            res_file.write("%s \t %s \t %s \n"%(varsInF[i],  str(xBoundsInitial[i]), str(xBoundsFailed[i])))
      
     res_file.close()
 
