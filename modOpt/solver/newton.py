@@ -28,7 +28,7 @@ def doNewton(curBlock, solv_options, num_options):
     iterMax = solv_options["iterMax"]
     tol = numpy.linalg.norm(curBlock.getScaledFunctionValues())
     if numpy.isnan(tol): return -1, iterNo # nan
-
+    print("Squared function residuals of Newton:")
     while not tol <= FTOL and iterNo < iterMax:
         J, x, F = getLinearSystem(num_options, curBlock)
         #dx = - numpy.dot(numpy.linalg.inv(J), F)
@@ -43,9 +43,13 @@ def doNewton(curBlock, solv_options, num_options):
         print(tol)
         if numpy.isnan(tol): return -1, iterNo
         
-    if iterNo == iterMax and tol > FTOL: return 0, iterNo
+    if iterNo == iterMax and tol > FTOL: 
+        print("Maximum number of iteration steps reached.")
+        return 0, iterNo
 
-    else: return 1, iterNo
+    else: 
+        print("Required tolerance is satisfied.")
+        return 1, iterNo
 
  
 def getLinearSystem(num_options, curBlock):
