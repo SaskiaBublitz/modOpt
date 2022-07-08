@@ -1357,7 +1357,7 @@ def reduceBox(xBounds, model, boxNo, bxrd_options):
         subBoxNo = 1  
         # update current old x to see progress in each contraction method
         bxrd_options_temp["x_old"]=list(xBounds) 
-                                       
+                              
         for i in model.colPerm:
             y = [xBounds[i]] # currently reduced variable
             if bxrd_options["debugMode"]: print(i)
@@ -1368,12 +1368,16 @@ def reduceBox(xBounds, model, boxNo, bxrd_options):
             # if any newton method is active       
             if (not variableSolved(y, bxrd_options_temp) and nwt_enabled): 
                 # Iv Newton step:
-                y = iv_newton(model, xBounds, i, bxrd_options_temp)
-                if y == [] or y ==[[]]: 
-                    saveFailedSystem(output, model.functions[0], model, i)
+                y_new = iv_newton(model, xBounds, i, bxrd_options_temp)
+                if y_new == [] or y_new ==[[]]: 
+                    subBox_failed = [xBounds[xid] for xid in 
+                                     model.functions[i].glb_ID]
+                    saveFailedSystem(output, model.functions[i], model, i,
+                                     subBox_failed)
                     return output
-                y = check_contracted_set(model, y, i, xBounds, bxrd_options)
-                
+                else: 
+                    y = check_contracted_set(model, y_new, i, xBounds, bxrd_options)
+   
             # if bnormal is active
             if (not variableSolved(y, bxrd_options_temp) and bc_enabled):                
                 if bxrd_options_temp["unique_bc"]: unique_test_bc = True
@@ -1383,7 +1387,7 @@ def reduceBox(xBounds, model, boxNo, bxrd_options):
                 # Bnormal step:
                 for j in model.dict_varId_fIds[i]:   
                     
-                    y = do_bnormal(model.functions[j], xBounds, y, i, 
+                    y_new = do_bnormal(model.functions[j], xBounds, y, i, 
                                        bxrd_options_temp)  
                     if unique_test_bc: # unique solution test
                         (fbc, ubc) = update_for_unique_test(j, 
@@ -1398,10 +1402,14 @@ def reduceBox(xBounds, model, boxNo, bxrd_options):
                         bxrd_options["considerDisconti"]):
                         output["disconti"] = [True]
                         del bxrd_options_temp["disconti_iv"]  
-                    if y == [] or y ==[[]]: 
-                        saveFailedSystem(output, model.functions[j], model, i)
+                    if y_new == [] or y_new ==[[]]: 
+                        subBox_failed = [xBounds[xid] for xid in 
+                                         model.functions[j].glb_ID]
+                        saveFailedSystem(output, model.functions[j], model, i, 
+                                         subBox_failed)
                         return output
-                    y = check_contracted_set(model, y, i, xBounds, 
+                    else: 
+                        y = check_contracted_set(model, y_new, i, xBounds, 
                                              bxrd_options)
                     if variableSolved(y, bxrd_options_temp): 
                         if f_for_unique_test_bc: 
@@ -1411,7 +1419,7 @@ def reduceBox(xBounds, model, boxNo, bxrd_options):
                 # criterion in interval has been found:
                 if f_for_unique_test_bc: 
                     bxrd_options_temp["unique_bc"] = True
-                    
+  
             # Update quantities:
             if ((boxNo-1) + subBoxNo * len(y)) > bxrd_options["maxBoxNo"]:  
                 y = [mpmath.mpi(min([yi.a for yi in y]),max([yi.b for yi in y]))]
