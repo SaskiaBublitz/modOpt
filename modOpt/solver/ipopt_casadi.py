@@ -98,16 +98,16 @@ def minimize(curBlock, solv_options, num_options):
     nlp = {'x':casadi.vertcat(*x_casadi), 'f':obj_casadi(*x_casadi)}
     #options={"max_iter": 50000};
     S = casadi.nlpsol('S', 'ipopt', nlp, {"ipopt":{'max_iter':solv_options["iterMax"],
-                                                   'linear_solver': 'ma27',
+                                                   'linear_solver': 'ma57',
                                                    'tol': solv_options["FTOL"],
-                                                   'linear_system_scaling': 'mc19',
+                                                   #'linear_system_scaling': 'mc19',
                                                    'warm_start_init_point':'yes',
                                                    #'mu_strategy': 'adaptive',
                                                    'mu_max': 1e-1,
                                                    'mu_min': 1e-10,
                                                    'mu_init': 1e-1,
                                                    'warm_start_mult_bound_push': 1e-10,
-                                                   #'ma57_automatic_scaling': 'yes',
+                                                   'ma57_automatic_scaling': 'yes',
                                                    #'mu_oracle': 'logo',
                                                    #'max_cpu_time':100,
                                                    #'ma57_pivot_order': 4,
@@ -117,9 +117,14 @@ def minimize(curBlock, solv_options, num_options):
     r = S(x0=x_0, lbx=x_L, ubx=x_U, lbg=0, ubg=0)
     curBlock.x_tot[glb_ID] = r['x'].T
     fresidual = numpy.linalg.norm(curBlock.getFunctionValues())
-    if solv_options["FTOL"] < fresidual:        
+    if solv_options["FTOL"] < fresidual:  
+        fTOL = solv_options["FTOL"]
+        solv_options["FTOL"] *= 0.001
+        exitflag, iterNo = newton.doNewton(curBlock, solv_options, num_options)
+        solv_options["FTOL"] = fTOL
         #return modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, num_options)
-        return newton.doNewton(curBlock, solv_options, num_options)
+        return exitflag, iterNo 
+    
     #elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]
     
     else: return 1, solv_options["iterMax"]
