@@ -57,10 +57,13 @@ def reduceBoxes(model, bxrd_options, sampling_options=None, solv_options=None):
                                                                            bxrd_options["cut"], 
                                                                            bxrd_options["maxBoxNo"]  )
     for k in range(len(model.xBounds)):
+        boxNo = len(allBoxes)
+        
         emptyBoxes = reduce_box(model, allBoxes, emptyBoxes, k, results, 
                                 bxrd_options, sampling_options, solv_options)
+        
     check_results_reduction_step(model, allBoxes, emptyBoxes, results)      
-      
+
     return results
 
 def reduce_box(model, allBoxes, emptyBoxes, k, results, bxrd_options,
@@ -129,6 +132,8 @@ def reduce_box(model, allBoxes, emptyBoxes, k, results, bxrd_options,
         if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
             and not solv_options == None and len(output["xNewBounds"])==1):  
             model.xBounds[k] = output["xNewBounds"][0]
+            bxrd_options["parent_box_r"] = model.complete_parent_boxes[k][0]
+            bxrd_options["parent_box_ID"] = model.complete_parent_boxes[k][1]
             results["num_solved"] = lookForSolutionInBox(model, k, 
                                                          bxrd_options, 
                                                          sampling_options, 
@@ -4623,17 +4628,6 @@ def split_least_changed_variable(box_new, model, k, bxrd_options):
     w_ratio = analysis.identify_interval_reduction(box_new_float, box_old)
     w_max_ids = [i for i, j in enumerate(w_ratio) if j == max(w_ratio)]
     
-    #if model.fCounts == []: model.fCounts = [len(model.dict_varId_fIds[i]) 
-    #                                         for i in range(0, len(box_new[0]))]
-    #if len(w_max_ids) > 3:
-    #    splitVar = []
-    #    least_changed_intervals = [ model.fCounts[i] for i in w_max_ids]
-    #    for i in range(3):
-    #        splitVar.append(w_max_ids.pop(
-    #            least_changed_intervals.index(max(least_changed_intervals))))
-    #        least_changed_intervals.pop(
-    #            least_changed_intervals.index(max(least_changed_intervals)))
-    #    w_max_ids = splitVar
     return w_max_ids
 
 
@@ -4751,5 +4745,5 @@ def check_box_for_disconti_iv(model, new_x, bxrd_options):
         else: continue
     return new_x
     
-    
-    
+
+        

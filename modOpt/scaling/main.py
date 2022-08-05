@@ -8,6 +8,7 @@ Import packages
 from modOpt.scaling import MC29, MC77
 import numpy
 import casadi
+import sympy
 
 """
 ***************************************************
@@ -15,9 +16,39 @@ Main that invokes scaling methods
 ***************************************************
 """
 
-__all__ = ['scaleSystem']
+__all__ = ['scaleSystem', 'rescale_variables']
+
+def scale_variables(x, box, scaling):
+    x = numpy.array([x / scaling[i] for i,x in enumerate(x)])
+    box = numpy.array([iv / scaling[i] for i,iv in enumerate(box)])    
+    return x, box
+       
+    
+def rescale_variables(model, scaling):
+    for k, box in enumerate(model.xBounds):    
+        model.xBounds[k] = [x * scaling[i] for i,x in 
+                            enumerate(model.xBounds[k])]
+        return model
 
 
+def scale_functions(fSymbolic, xSymbolic, scaling, omgn=None):
+    SCA = []
+    if not omgn: omgn = 1.0
+    for j,f in enumerate(fSymbolic):
+        x_sym = list(f.free_symbols)
+        glb_ID = [xSymbolic.index(x) for x in x_sym]
+        for i in glb_ID: 
+            fSymbolic[j] = fSymbolic[j].subs(xSymbolic[i], 
+                                             xSymbolic[i] * scaling[i])
+        f_num=sympy.lambdify(x_sym, f, "numpy")
+        sca = f_num(*[omgn]*len(glb_ID))
+        if sca in [numpy.inf, -numpy.inf, 0.0] or numpy.isnan(sca):
+            SCA +=[1.0]
+        else:
+            fSymbolic[j] /= sca
+            SCA +=[sca]
+    return fSymbolic
+    
 def scaleSystem(model, num_options):
     """ equation system is scaled by user-defined input
     

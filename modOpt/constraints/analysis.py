@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+***************************************************
+analysis tools
+***************************************************
+
+This module contains all methods to calculate analysis parameters to 
+characterize the performance of the hybrid approach. It also includes
+methods to ouput the analysis data graphically or as text file.
+
+"""
+
 """
 ***************************************************
 Import packages
@@ -13,7 +25,7 @@ import modOpt.constraints as moc
 
 """
 ***************************************************
-analysis tools
+Methods
 ***************************************************
 """
 
@@ -22,18 +34,15 @@ __all__ = ['analyseResults', 'trackErrors', 'get_hypercubic_length',
            'identify_average_box_reduction','initialize_with_boxFile',
            'initialize_with_boxFiles']
 
-
 def analyseResults(bxrd_options, res_solver):
-    """ volume fractions of resulting soltuion area(s) to initial volume are
-    calculated and stored in a textfile <fileName>_analysis.txt
+    """ main function to analyse results from hybrid approach and store output
+    to text file.
     
     Args:
-        :bxrd_options:     dictionary with user settings
-        :res_solver:       dictionary with resulting model after variable bounds 
-                           reduction 
-        
-    """
+        bxrd_options (dict) :   contains user settings
+        res_solver (dict) :     contains model and results from hybrid approach 
     
+    """    
     modelWithReducedBounds = res_solver["Model"]
     varSymbolic = res_solver["Model"].xSymbolic
     tol = bxrd_options["absTol"]
@@ -44,12 +53,12 @@ def analyseResults(bxrd_options, res_solver):
     if modelWithReducedBounds != []:
         reduced_boxes = modelWithReducedBounds.xBounds
         solvedVarsID, solvedVarsNo = getSolvedVars(reduced_boxes)
-        dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
-        initLengths = calcInitLengths(init_box, tol)
+        #dim_reduced = getReducedDimensions(solvedVarsNo, len(varSymbolic))
+        #initLengths = calcInitLengths(init_box, tol)
         
         boundsRatios = getVarBoundsRatios(init_box[0], reduced_boxes)
 
-        lengths = calcHypercubicLength(reduced_boxes, tol)        
+        #lengths = calcHypercubicLength(reduced_boxes, tol)        
         boundRatiosOfVars = getBoundRatiosOfVars(boundsRatios)
 
         lengthFractions = 0#getLengthFractions(initLengths, lengths)
@@ -61,45 +70,61 @@ def analyseResults(bxrd_options, res_solver):
         density = getDensityOfJacoboan(modelWithReducedBounds)
         nonLinRatio = getNonLinearityRatio(modelWithReducedBounds)
         
-        block_dim_max = max([len(block) for block in modelWithReducedBounds.blocks])
+        block_dim_max = max([len(block) for block in 
+                             modelWithReducedBounds.blocks])
         
         if "largest_block_analysis" in bxrd_options.keys():
-            nonzero_ratio, nonlin_ratio = get_largest_block_analytics(modelWithReducedBounds, 
-                                                                      block_dim_max)
+            (nonzero_ratio, 
+             nonlin_ratio) = get_largest_block_analytics(modelWithReducedBounds, 
+                                                         block_dim_max)
             write_analysis_largestBlock(bxrd_options["fileName"], nonzero_ratio, 
                                         nonlin_ratio, block_dim_max)
 
             
-            
-            
-            
-        writeAnalysisResults(bxrd_options["fileName"], varSymbolic, boundsRatios, 
-                             boundRatiosOfVars, initLength, lengthFractions, 
-                             abl, solvedVarsID, density, nonLinRatio,block_dim_max)
+        writeAnalysisResults(bxrd_options["fileName"], varSymbolic, 
+                             boundsRatios, boundRatiosOfVars, initLength, 
+                             lengthFractions, abl, solvedVarsID, density, 
+                             nonLinRatio,block_dim_max)
+
 
 def get_largest_block_analytics(model, block_dim_max):
+    """Get nonzero and nonlinearity ratio of the largest block(s)
+    
+    Args:
+        model (modOpt.model.Model) :   instance of class Model
+        block_dim_max (int) :          largest block(s) dimension
+        
+    Returns:
+        nonzero_ratio (float) :         ratio of nonzeros (nnz) to n x n 
+                                        entries of largest block
+        nonlinearity_ratio (float) :    ratio of nonlinear entries to nnz of
+                                        largest block
+    
+    """ 
     block_dim_max_id =  [model.blocks.index(block) for block in 
                          model.blocks if len(block) == block_dim_max]
     complex_grade = 0
     for block_id in block_dim_max_id:
         cur_block = model.all_blocks[block_id]
-        cur_nonzero_ratio = cur_block.get_nonzeros_of_jacobian()/block_dim_max**2
+        cur_nonzero_ratio = (cur_block.get_nonzeros_of_jacobian() / 
+                             block_dim_max**2)
         cur_nonlinearity_ratio = getNonLinearityRatio_block(cur_block)
     
         if (cur_nonzero_ratio + cur_nonlinearity_ratio) > complex_grade: 
             complex_grade = cur_nonzero_ratio + cur_nonlinearity_ratio
             nonzero_ratio = cur_nonzero_ratio
             nonlinearity_ratio = cur_nonlinearity_ratio
+    
     return nonzero_ratio, nonlinearity_ratio
 
 
 def initialize_with_boxFile(model, textFile_name):
-    """reads out bounds and initial values from text file and assigns them
+    """Read out bounds and initial values from text file and assigns them
     to model object
     
     Args:
-        :model:               instance of type Model
-        :textFile_name:       string with text file name
+        model (modOpt.model.Model) :    instance of class Model
+        textFile_name (str) :           text file name
 
     """   
     box_to_init = open(textFile_name,'r').readlines()
@@ -112,6 +137,13 @@ def initialize_with_boxFile(model, textFile_name):
 
 
 def initialize_with_boxFiles(model, textFile_names):
+    """Initialize model from text file wit variable bounds
+    
+    Args:
+        model (modOpt.model.Model) :    instance of class Model
+        textFile_name (str) :           text file name
+
+    """
     x_init = model.stateVarValues[0]
     box_init = model.xBounds[0]
     model.stateVarValues = []
@@ -129,91 +161,39 @@ def initialize_with_boxFiles(model, textFile_names):
         model.xBounds.append(box)    
         model.stateVarValues.append(x)
 
+
 def get_hypercubic_length(bxrd_options, init_box, reduced_boxes):
+    """Calcuate hypercubic length ratio of reduced boxes
+    
+    Args:
+        bxrd_options (dict) :   contains user settings
+        init_box (list) :       contains list with initial variable bounds
+        reduced_boxes (list) :  contains lists with reduced variable bounds
+    
+    Returns:
+        hypercubic length (float)
+        
+    """
     tol = bxrd_options["absTol"]
     initLength = calc_length(init_box, tol)
     length = calc_length(reduced_boxes, tol)
+    
     return length / initLength
 
 
-def calcInitLengths(initVarBounds, tol):#dim_reduced):
-    """calculates initial edge lengths for each box (neglecting solved variables)
-    
-    Args:
-        :initVarBounds:     numpy array with initial bounds
-        :tol:       float with tolerance for interval width
-    
-    Returns:
-        :initLengths:       list with floats of individual boxes initial lengths 
-
-    """
-    initLengths = []
-        
-    #for k in range(0, len(initVarBounds)):
-        #notSolvedVarBounds = initVarBounds
-        #curBoxsolvedVarsNo = solvedVarsNo[k]
-        #if curBoxsolvedVarsNo !=0:
-        #    for curSolvedVarId in solvedVarsID:
-        #        if curSolvedVarId[0] == k: 
-                    #notSolvedVarBounds = numpy.delete(notSolvedVarBounds,k)
-        #            initVarBounds[k] = tol
-                    
-                    
-            #initLengths.append(calcVolumeLength(notSolvedVarBounds, dim_reduced[k]))       
-            #initLengths.append(calcVolumeLength(initVarBounds, len(initVarBounds)), tol)   
-        #else:
-    initLengths.append(calcVolumeLength(initVarBounds, len(initVarBounds), tol))
-            
-    return initLengths
-
-
-def calcVolumeLength(box, dim, tol):
-    """ calculates box edge length assuming it as a hypercube
-    
-    Args:
-        :box:       list with variable bounds in mpmath.mpi logic
-        :dim:       box dimension as integer
-        :tol:       float with tolerance for interval width
-    
-    Returns:
-        :length:   box edge length as float
-    
-    """
-    
-    length = 1.0
-    
-    #solvedID, solvedVarsNo = getSolvedVars([box])
-    #dim =dim - solvedVarsNo[0]
-    
-    for interval in box:
-        if isinstance(interval, mpmath.iv.mpf):
-            width = float(mpmath.mpf(interval.delta))
-        else:
-            width = interval[1] - interval[0]
-        if width >= tol:
-            length*=(width)**(1.0/dim)
-        else:
-            length*=(tol)**(1.0/dim)
-    return length
-
-
 def calc_vol_fraction(box, init_box, tol):
-    """ calculates box edge length assuming it as a hypercube
+    """Calculate box edge length assuming it as a hypercube
     
     Args:
-        :box:       list with variable bounds in mpmath.mpi logic
-        :dim:       box dimension as integer
-        :tol:       float with tolerance for interval width
+        box (list) :       list with variable bounds in mpmath.mpi formate
+        dim (int) :        box dimension
+        tol (float):       tolerance for interval width consideration 
     
     Returns:
-        :length:   box edge length as float
+        vol_frac (float) :   box edge length
     
-    """
-    
+    """    
     vol_frac = 1.0
-    
-    #solvedID, solvedVarsNo = getSolvedVars([box])
-    #dim =dim - solvedVarsNo[0]
     
     for i, iv in enumerate(box):
         if isinstance(iv, mpmath.iv.mpf):
@@ -229,33 +209,60 @@ def calc_vol_fraction(box, init_box, tol):
             vol_frac*=(width/width_0)
         else:
             vol_frac*=(tol/width_0)
+            
     return vol_frac
 
+
 def calc_residual(model, solv_options=None): 
+    """Calculate residuals of current boxes contained in model
+    
+    Args:
+        model (modOpt.model.Model) :    instance of class Model
+        solv_options (dict) :           contains numerical solver settings
+    
+    Returns:
+        residual (list) :     contains float values of boxes' residuals
+    
+    """   
     residual = []
-    
-    
+     
     if model.xBounds != []:
         x_old = model.stateVarValues[0]
         for i,box in  enumerate(model.xBounds):
-            model.stateVarValues[0] =  numpy.array([float(mpmath.mpf(iv.mid)) for iv in box])
+            model.stateVarValues[0] =  numpy.array([float(mpmath.mpf(iv.mid)) 
+                                                    for iv in box])
             if solv_options:
                 if "scaling" in solv_options.keys():
                     if solv_options["scaling"] != "None":
                         mosca.main.scaleSystem(model, solv_options)
-            #for j, iv in enumerate(box): x.append(float(mpmath.mpf(iv.mid)))
             try: 
-                fsum = sum([abs(fi)/model.rowSca[j] for j, fi 
-                                     in enumerate(model.fLamb(*model.stateVarValues[0]))])
+                fsum = sum([abs(fi)/model.rowSca[j] for j, fi in 
+                            enumerate(model.fLamb(*model.stateVarValues[0]))])
             except: 
                 fsum = numpy.inf
+                
             if numpy.isnan(fsum): fsum = numpy.inf
             residual.append(fsum)
+            
         model.stateVarValues[0] = x_old
+        
     return residual
 
 
 def calc_iv_residual(model): 
+    """Check for degenerate, discontinuous intervals with undefined or 
+    infinite function values. They get a large resiudal value.
+    
+    Args:
+        model (modOpt.model.Model) :    instance of class Model
+        solv_options (dict) :           contains numerical solver settings
+    
+    Returns:
+        residual (list) :     contains float values of boxes' residuals
+    
+    """     
+    
+    
     residual = []
     if model.xBounds != []:
 
@@ -275,6 +282,25 @@ def calc_iv_residual(model):
     else: return residual        
         
 def calc_average_length(bxrd_options, init_box, boxes):
+    """ Sum up interval widths of each current box and divide it by the number
+    of variables nvar to get the average interval width of th box. All average
+    interval widths of the boxes are then sumed up and divided by the current
+    number of boxes to get an overall average value. Similarly the average 
+    interval width is determined for th initial box and the average
+    value with respect to all current boxes is divided by the latter to get
+    the so-caled average box length.
+    
+
+    
+    Args:
+        bxrd_options (dict) :   contains user settings
+        init_box (list) :       contains numpy.array with initial box
+        boxes (list) :          contains numpy.arrays with current boxes
+        
+    Returns:
+        average box length (float)
+        
+    """
     avLength = 0
     avLength_0 = 0
     
@@ -283,6 +309,7 @@ def calc_average_length(bxrd_options, init_box, boxes):
     for j, box in enumerate(all_boxes):
         nvar = len(box)
         al_box = 0
+        
         if isinstance(box[0], mpmath.iv.mpf):
             box = [[float(mpmath.mpf(iv.a)), float(mpmath.mpf(iv.b))] 
                   for iv in list(box)]
@@ -303,6 +330,19 @@ def calc_average_length(bxrd_options, init_box, boxes):
     
 
 def calc_hypercubic_length(bxrd_options, init_box, boxes):
+    """ Firstly, the volume fractions of all current boxes with respect to 
+    the initial box are determined. Secondly, the geometric mean is calculated
+    over the number of variables. 
+        
+    Args:
+        bxrd_options (dict) :   contains user settings
+        init_box (list) :       contains numpy.array with initial box
+        boxes (list) :          contains numpy.arrays with current boxes
+        
+    Returns:
+        hybpercubic box length (float)
+        
+    """
     tol = bxrd_options["absTol"]
     tot_vol_fraction = 0
     
@@ -313,8 +353,21 @@ def calc_hypercubic_length(bxrd_options, init_box, boxes):
 
 
 def calcVolume(box, tol):
-    volume = 1.0
+    """ The absolute volume of the box is calculated
+        
+    Args:
+        box (list) :        contains box with intervals in mpmath.mpi or as
+                            list
+        tol (float) :       dimensions with interval widths lower than tol
+                            are ignored as these variables are solved and 
+                            therefore constant
+        
+    Returns:
+        box volume (float)
     
+    """
+    volume = 1.0
+      
     for interval in box:
         if isinstance(interval, mpmath.iv.mpf):
             width = float(mpmath.mpf(interval.delta))
@@ -324,30 +377,45 @@ def calcVolume(box, tol):
             volume*=width
         else:
             volume*=tol
+            
     return volume    
 
 
 def calc_length(boxes, tol):
+    """ calculate hypercubic length which is the geometric mean of the sum of
+    all current box volumes over all variables
+        
+    Args:
+        boxes (list) :     contains current boxes as list
+        tol (float) :      dimensions with interval widths lower than tol
+                           are ignored as these variables are solved and 
+                           therefore constant
+        
+    Returns:
+        hypercubic length
+    
+    """
     dim = len(boxes[0])
     volume = 0.0
     for box in boxes:
         volume += calcVolume(box, tol)
+        
     return volume**(1.0/dim)
     
     
 def getSolvedVars(boxes):
-    """ filters out variable intervals with zero width (solved)
+    """ filter out variable intervals with zero width (solved)
     
     Args:
-        :boxes:     list with reduced boxes (numpy.array)
+        boxes (list) :          contains numpy.arrays with current boxes
     
     Returns:
-    :solvedVarsID:      Nested list [[i,j],...] with i box-ID and j variable-ID 
-                        of solved interval as integer
-    solvedVarsNo :      List with numbers of solved intervals in the boxes (int)
+        solvedVarsID (list) :   nested list [[i,j],...] with i box-ID and j 
+                                variable-ID of solved interval as integer
+        solvedVarsNo (list) :   contains numbers of solved intervals in the 
+                                boxes as integer
 
     """
-    
     solvedVarsID =[]
     solvedVarsNo =[]
     
@@ -358,25 +426,25 @@ def getSolvedVars(boxes):
             width = float(mpmath.mpf(curBox[j].delta))
             if width == 0.0:
                 solvedVarsID.append([i,j])
-                soledVarsNoBox += 1
-                
+                soledVarsNoBox += 1              
         solvedVarsNo.append(soledVarsNoBox) 
+        
     return solvedVarsID, solvedVarsNo
 
 
 def getReducedDimensions(solvedVarsNo, dim):
-    """ determines the dimension of the reduced boxes where solvedVarsNo variables
-    have been solved.
+    """ determine the dimension of the reduced boxes where solvedVarsNo 
+    variables have been solved.
     
     Args:
-        :solvedVarsNo:      list with number of solved variables per box 
-        :dim:               integer with dimension of initial box
+        solvedVarsNo (list) :   contains numbers of solved intervals in the 
+                                boxes as int
+        dim (int) :             integer with dimension of initial box
     
     Returns:
-        :dim_reduced:       list with dimension of reduced boxes as integer
+        dim_reduced (list):     contains dimension of reduced boxes as integer
 
     """
-    
     if solvedVarsNo == []: return [dim]
     
     dim_reduced = []
@@ -385,65 +453,47 @@ def getReducedDimensions(solvedVarsNo, dim):
     return dim_reduced
             
     
-def getVarBoundsRatios(initBox, reducedVarBounds):
-    """ calculates ratios of reduced variable bounds to initial variable bounds
+def getVarBoundsRatios(init_box, boxes):
+    """ calculate ratios of reduced variable bounds to initial variable bounds
     
     Args:
-        :initBox:             list with initial variable bounds
-        :reducedVarBounds:    list with reduced variable bound sets
+        init_box (list) :       contains numpy.array with initial box
+        boxes (list) :          contains numpy.arrays with current boxes
     
-    Returns:                   list with variable bounds ratios
+    Returns:                    
+        boxes_ratio :           list with ratio of reduced variable bounds
         
-    """
+    """    
+    boxes_ratio = []
     
-    varBoundsRatios = []
-    
-    for curBox in reducedVarBounds:
-        varBoundsRatios.append(calcBoxRatios(initBox, curBox))
-    return varBoundsRatios
+    for cur_box in boxes:
+        boxes_ratio.append(calcBoxRatios(init_box, cur_box))
+
+    return boxes_ratio
 
 
-def calcHypercubicLength(boxes, tol):
-    """ calculates hypercubic lengths of boxes
-    
-    Args:
-        :boxes:     list with boxes and that contain intervals in mpmath.mpi formate
-        :tol:       float with tolerance for interval width
-        
-    Returns:
-        :lengths:   list with hypercubic lengths as floats
-
-    """
-    
-    lengths = []
-    for box in boxes:
-        lengths.append(calcVolumeLength(box, len(box), tol))
-    return lengths
-
-
-def getBoundRatiosOfVars(boundsRatios):
+def getBoundRatiosOfVars(bound_ratios):
     """ calculates total variable bound ratios through summing up all different
     variable intervals of the boxes.
     
     Args:
-        :boundsRatios:         nested list with bound ratios as float values in 
-                               reduced boxes
+        bound_ratios (list):   contains lists with bound ratios as float values 
+                               for all variables in all reduced boxes 
 
     Returns:
         :boundRatiosOfVars:   list with sums of unique variable bound ratios
 
     """
-    boundRatiosOfVars = []
-    
-    boxNo = len(boundsRatios)
-    dim = len(boundsRatios[0])
+    boundRatiosOfVars = []   
+    boxNo = len(bound_ratios)
+    dim = len(bound_ratios[0])
     
     for i in range(0, dim):
         varBoundRatios = []
         ratioOfVar = 0.0
         for j in range(0, boxNo):
-            if not boundsRatios[j][i] in varBoundRatios:
-                varBoundRatios.append(boundsRatios[j][i])
+            if not bound_ratios[j][i] in varBoundRatios:
+                varBoundRatios.append(bound_ratios[j][i])
              
         for ratio in varBoundRatios:
             if isinstance(ratio, float): ratioOfVar += ratio
@@ -499,9 +549,9 @@ def getDensityOfJacoboan(model):
     """ returns nonzero density of jacobian matrix from equation system
     
     Args:
-        :model:         instance of class Model
+        model (modOpt.model.Model) :         instance of class Model
         
-    Return:     ratio of nonzero entries to total number of entries in jacobian (mxm)
+    Returns:     ratio of nonzero entries to total number of entries in jacobian (mxm)
     
     """
     
@@ -515,9 +565,9 @@ def getNonLinearityRatio(model):
     of nonlinear entries to total number of entries in jacobian.
     
     Args:
-        :model:     istance of class Model
+        model (modOpt.model.Model) :     istance of class Model
     
-    Return:         float of ratio: nonlinear entries / total entries
+    Returns:         float of ratio: nonlinear entries / total entries
         
     """
 
@@ -538,9 +588,9 @@ def getNonLinearityRatio_block(block):
     of nonlinear entries to total number of entries in jacobian.
     
     Args:
-        :model:     istance of class Model
+        model (modOpt.model.Model) :     istance of class Model
     
-    Return:         float of ratio: nonlinear entries / total entries
+    Returns:         float of ratio: nonlinear entries / total entries
         
     """
 
@@ -572,17 +622,17 @@ def writeAnalysisResults(fileName, varSymbolic, boundRatios, boundRatioOfVars, i
     Args:
         :fileName:                    string with file name
         :varSymbolic:                 list with symbolic variables in sympy logic
-        :boundRatios:                 list with reduced variable bound tp initial 
+        boundRatios (list) :                 list with reduced variable bound tp initial 
                                       variable bound ratio (has only one entry if 
                                       one set of variable bounds remains)
-        :boundRatioOfVars:            sum of the unique bound ratios of one variable
-        :initVolume:                  volume of initial variable bound set
-        :hypercubicLFractions:        list with fractional length of each sub-hypercube
-        :hypercubicLFraction:         If the volumes were hypercubic, the hypercubicLFraction
+        boundRatioOfVars (list) :            sum of the unique bound ratios of one variable
+        initVolume (float) :                  volume of initial variable bound set
+        hypercubicLFractions (list) :        list with fractional length of each sub-hypercube
+        hypercubicLFraction (float) :         If the volumes were hypercubic, the hypercubicLFraction
                                       equals their edge length reduction
-        :solvedVars:                  list with indices of solved variables
-        :density:                     float with nonzero density of jacobian
-        :nonLinRatio:                 float with nonlinear entries / total entries of jacobian
+        solvedVars (list) :                  list with indices of solved variables
+        density (float) :                     float with nonzero density of jacobian
+        nonLinRatio (float) :                 float with nonlinear entries / total entries of jacobian
         
     """
     
@@ -621,9 +671,9 @@ def getBoundRatioOfVarBoundSet(boundRatios):
     bound sets in order to calculate their volume specific volume frations.
     
     Args:
-        :boundRatios:       list with bound ratios
+        boundRatios (list) :       list with bound ratios
     
-    Return:                 list with volume fractions all variable bound sets
+    Returns:                 list with volume fractions all variable bound sets
     
     """
     
@@ -647,9 +697,9 @@ def calcBoxRatios(initVarBounds, box):
     """ calculates interval set bound ratio to initial box
   
     Args:
-        :initVarBounds:       list with initial variable bounds
-        :box:           current box as a list with mpmath.mpi values
-    Return:
+        initVarBounds (list) :       list with initial variable bounds
+        box (list) :           current box as a list with mpmath.mpi values
+    Returns:
 
         :boxRatios:         list with reduced variable bounds ratios                          
     """  
@@ -666,7 +716,7 @@ def calcBoundFraction(initVarBound, curVarBound):
         :initVarBounds:       list with initial variable bounds
         :curVarBound:         current variable bound in mpmath.mpi formate
         
-    Return:                   current variable bound ratio as float value
+    Returns:                   current variable bound ratio as float value
     
     """
     if float(mpmath.mpf(initVarBound.delta)) != 0.0:
@@ -682,9 +732,9 @@ def trackErrors(res_solver, bxrd_options):
     occured in case the model failed to an error text file.
     
     Args:
-        :initialModel:      instance of type Model at initial point
-        :res_solver:        dictionary with solver output
-        :bxrd_options:      dictionary with user specified settings
+        :initialModel:      instance of class Model at initial point
+        res_solver (dict) :        dictionary with solver output
+        bxrd_options (dict) :   dictionary with user specified settings
         
     """
     if res_solver["Model"].failed:
@@ -733,7 +783,7 @@ def identify_interval_reduction(box_new,box_old):
         :box_new:        new variable bounds of class momath.iv
         :box_old:        old variable bounds of class momath.iv
         
-    Return:
+    Returns:
         :w_ratio:    list with side length ratio for all interval
         
     '''
@@ -765,7 +815,7 @@ def identify_box_reduction(box_new,box_old):
         :box_new:        new variable bounds of class momath.iv
         :box_old:        old variable bounds of class momath.iv
         
-    Return:
+    Returns:
         :av_w_ratio:    average sidelength reduction
         
     '''

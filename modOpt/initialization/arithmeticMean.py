@@ -12,9 +12,9 @@ sets initials to arithemtic mean value of an interval
 ***************************************************
 """
 
-__all__ = ['setStateVarValuesToMidPointOfIntervals']
+__all__ = ['set_to_midPoint']
 
-def setStateVarValuesToMidPointOfIntervals(res_solver, bxrd_options):
+def set_to_midPoint(res_solver, bxrd_options):
     """ Set all state variable values of a model to the midpoint of their related
     interval
     
