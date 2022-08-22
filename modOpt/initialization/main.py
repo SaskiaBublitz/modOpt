@@ -55,7 +55,7 @@ def doSampling(model, bxrd_options, smpl_options):
             +"_r"+str(bxrd_options["redStep"])\
             +"_s"+str(smpl_options["smplNo"])\
             +".npz"
-        onePointInit.set_to_midPoint({"Model": model}, bxrd_options)
+        onePointInit.setStateVarValuesToMidPointOfIntervals({"Model": model}, bxrd_options)
         allx = copy.deepcopy(model.stateVarValues)
         for boxID in range(0, len(model.xBounds)):
             model.stateVarValues = numpy.array([allx[boxID]])
@@ -119,7 +119,7 @@ def sample_box(model, boxID, smpl_options, bxrd_options, res):
 
 def do_optuna_optimization_in_block(block, boxID, smpl_options, bxrd_options):
     import optuna
-    onePointInit.set_to_midPoint({"Block": block}, bxrd_options) 
+    onePointInit.setStateVarValuesToMidPointOfIntervals({"Block": block}, bxrd_options) 
     residual =  numpy.linalg.norm(block.getFunctionValues())
     if residual > bxrd_options["absTol"]:  
         optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -198,7 +198,7 @@ def sample_box_in_block(block, boxID, smpl_options, bxrd_options, res):
     Returns:                updated dictionary res by samples of current box
 
     """
-    onePointInit.set_to_midPoint({"Block": block}, bxrd_options)
+    onePointInit.setStateVarValuesToMidPointOfIntervals({"Block": block}, bxrd_options)
     residual =  numpy.linalg.norm(block.getFunctionValues())
     if smpl_options["smplNo"] == 0 or residual < 1e-6:
         

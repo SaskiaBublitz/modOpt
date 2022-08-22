@@ -56,9 +56,7 @@ def reduceBoxes(model, bxrd_options, sampling_options=None, solv_options=None):
     bxrd_options["ready_for_reduction"] = get_index_of_boxes_for_reduction(bxrd_options["xSolved"], 
                                                                            bxrd_options["cut"], 
                                                                            bxrd_options["maxBoxNo"]  )
-    for k in range(len(model.xBounds)):
-        boxNo = len(allBoxes)
-        
+    for k in range(len(model.xBounds)):       
         emptyBoxes = reduce_box(model, allBoxes, emptyBoxes, k, results, 
                                 bxrd_options, sampling_options, solv_options)
         
