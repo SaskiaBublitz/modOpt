@@ -107,7 +107,7 @@ def minimize(curBlock, solv_options, num_options):
                                                    'mu_min': 1e-10,
                                                    'mu_init': 1e-1,
                                                    'warm_start_mult_bound_push': 1e-10,
-                                                   #'ma57_automatic_scaling': 'yes',
+                                                   'ma57_automatic_scaling': 'yes',
                                                    #'mu_oracle': 'logo',
                                                    #'max_cpu_time':100,
                                                    #'ma57_pivot_order': 4,
