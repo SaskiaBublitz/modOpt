@@ -1,5 +1,6 @@
 """
-This module can create affine forms and perform operations.
+This module can create affine forms and perform operations. It is the modified
+version of the package affapy
 
 Affine Arithmetic (AA) has been developed to overcome the error explosion
 problem of standard Interval Arithmetic (IA).

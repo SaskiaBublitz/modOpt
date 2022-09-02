@@ -1,7 +1,7 @@
 """
 public functions and classes
 """
-from .arithmeticMean import setStateVarValuesToMidPointOfIntervals
+from .onePointInit import (setStateVarValuesToMidPointOfIntervals, set_close_to_bound)
 from .main import (get_samples_with_n_lowest_residuals, doSampling, sample_box, 
                    sample_box_in_block,func_optuna_timeout)
 from .VarListType import VariableList
