@@ -3260,9 +3260,11 @@ def getMonotoneFunctionSections(f, i, xBounds, bxrd_options):
             curIntervals += newIntervals
 
         #if checkIntervalWidth(curIntervals, absEpsX, 0.1*relEpsX) == interval:
-        if joinIntervalSet(curIntervals, relEpsX, absEpsX) == interval:
-            interval = joinIntervalSet(interval, relEpsX, absEpsX)
-            break            
+        joined_interval = joinIntervalSet(curIntervals, relEpsX, absEpsX)     
+        if (joined_interval == interval or 
+            checkWidths(joined_interval, relEpsX, absEpsX)):
+            interval = joined_interval
+            break    
         interval = curIntervals#checkIntervalWidth(curIntervals, absEpsX, 0.1*relEpsX)
 
     if not len(interval) <= maxIvNo:

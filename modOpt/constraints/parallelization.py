@@ -126,6 +126,9 @@ def reduce_boxes_worker(k, model, bxrd_options, results_tot, sampling_options=No
                       range(solNo, len(bxrd_options["FoundSolutions"]))]     
 
     if emptyboxes:
+        if (emptyboxes.critBox and isinstance(emptyboxes.critBox[0], 
+                                             mpmath.ctx_iv.ivmpf)): 
+            emptyboxes.critBox = convertMpiToList(emptyboxes.critBox)
         results_tot['%d' %k] = ([], emptyboxes,[],[],[],[],[], False, [],[])
     else:
         list_box = [convertMpiToList(numpy.array(box, dtype=object)) for box in 
@@ -224,7 +227,7 @@ def getReducedXBoundsResults(results, model, maxBoxNo, bxrd_options):
              
         else:
             noOfxBounds -= 1
-    print(output["xSolved"])
+    #print(output["xSolved"])
     if output["cut"]: 
         model.cut = any(output["cut"])
 
