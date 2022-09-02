@@ -67,6 +67,7 @@ class Function:
         self.dgdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dgdx_sym)
         self.dbdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dbdx_sym)
         self.f_pibex = self.get_pybex_function(self.x_sym, self.f_sym)
+        self.sca = 1.0
         if casadi:
             self.f_casadi = self.lambdify_to_casadi(self.x_sym, self.f_sym)
         if numpy:
@@ -87,6 +88,49 @@ class Function:
             
     def get_var_occurences(self, f_sym):      
         return [f_sym.count(x) for x in self.f_sym.free_symbols]
+    
+    def update_function_properties(self):
+        self.g_sym, self.b_sym = self.get_g_b_functions()
+        self.dgdx_sym, self.dbdx_sym = self.get_deriv_functions()
+        self.vars_of_deriv = self.get_vars_of_deriv()
+        self.deriv_is_constant = self.is_deriv_constant()
+        self.f_mpmath = self.get_mpmath_functions(self.x_sym, [self.f_sym])
+        self.g_mpmath = self.get_mpmath_functions(self.x_sym, self.g_sym)
+        self.b_mpmath = self.get_mpmath_functions(self.x_sym, self.b_sym)
+        self.dgdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dgdx_sym)
+        self.dbdx_mpmath = self.get_mpmath_functions(self.x_sym, self.dbdx_sym)
+        self.f_pibex = self.get_pybex_function(self.x_sym, self.f_sym)
+    
+    def scale_convert_function(self, box, conv):
+        self.convert_function_by_var(conv)
+        self.update_function_properties()
+        #self.scale_function(box)
+        #self.update_function_properties()
+ 
+    def rescale_reconvert_function(self, conv):
+        self.reconvert_function_by_var(conv)
+        self.update_function_properties()
+        #self.f_sym *= self.sca
+        #self.update_function_properties()
+    
+    def scale_function(self, box):
+        x_mid = [float(mpmath.mpf(box[i].mid)) for i in self.glb_ID]
+        try: 
+            self.sca = self.f_sym(*x_mid)
+            if self.sca==numpy.inf or self.sca==0.0: self.sca = 1.0
+            else:
+                self.f_sym = self.f_sym / self.sca
+        except:
+            self.sca = 1.0
+              
+    def convert_function_by_var(self, conv):  
+        for i, x in enumerate(self.x_sym):
+            self.f_sym = self.f_sym.subs(x, conv[self.glb_ID[i]] * x)
+        self.update_function_properties()
+        
+    def reconvert_function_by_var(self, conv):  
+        for i, x in enumerate(self.x_sym):
+            self.f_sym = self.f_sym.subs(x, x /conv[self.glb_ID[i]])
     
     def lambdify_to_casadi(self, x_sym, f_sym):
         """Converting operations of symoblic equation system f (simpy) to 

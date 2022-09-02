@@ -11,7 +11,7 @@ parallelization, block, matlabSolver, ipopt_casadi)
 import modOpt.storage as mostg
 import modOpt.scaling as mos
 import modOpt.initialization as moi
-from modOpt.initialization import arithmeticMean
+from modOpt.initialization import onePointInit
 from modOpt.constraints.function import Function
 import mpmath
 
@@ -160,8 +160,7 @@ def sample_and_solve_one_block(model, b, smpl_options,
                             )
  
     if smpl_options["smplNo"] != -1: 
-        arithmeticMean.setStateVarValuesToMidPointOfIntervals({"Block": cur_block}, 
-                                                          bxrd_options)
+        onePointInit.setStateVarValuesToMidPointOfIntervals({"Block": cur_block}, bxrd_options)
     res_blocks, cur_block = solve_block(model, cur_block, b, solv_options, 
                                         bxrd_options, res_blocks)
     res_blocks, solved, model = check_num_solution(model, cur_block, b, res_blocks)

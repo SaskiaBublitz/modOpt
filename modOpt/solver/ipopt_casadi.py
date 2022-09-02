@@ -117,18 +117,14 @@ def minimize(curBlock, solv_options, num_options):
     r = S(x0=x_0, lbx=x_L, ubx=x_U, lbg=0, ubg=0)
     curBlock.x_tot[glb_ID] = r['x'].T
     fresidual = numpy.linalg.norm(curBlock.getFunctionValues())
-    if solv_options["FTOL"] < fresidual:  
-        fTOL = solv_options["FTOL"]
-        solv_options["FTOL"] *= 0.001
-        exitflag, iterNo = newton.doNewton(curBlock, solv_options, num_options)
-        solv_options["FTOL"] = fTOL
+
+    if solv_options["FTOL"] < fresidual:    
+        solv_options["FTOL"] *= 0.01
+        exitFlag, iterNo = newton.doNewton(curBlock, solv_options, num_options)
+        solv_options["FTOL"] *= 100.0
         #return modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, num_options)
-        return exitflag, iterNo 
-    
-    #elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]
-    
+        return exitFlag, iterNo
+    elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]   
     else: return 1, solv_options["iterMax"]
-    
-    
-    
-    
+    #return 1, solv_options["iterMax"]
+ 
