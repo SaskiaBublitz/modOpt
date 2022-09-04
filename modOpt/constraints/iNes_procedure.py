@@ -2597,10 +2597,11 @@ def getReducedIntervalOfNonlinearFunction(f, dgdXInterval, i, xBounds, bi, bxrd_
            
     if curXiBounds != []:
         for curInterval in curXiBounds:
+            
             xBounds[i] = curInterval
             iz, dz, nmz = getMonotoneFunctionSections(f, i, xBounds, bxrd_options)
-            if iz != []: increasingZones += iz
-            if dz != []: decreasingZones += dz
+            if iz != []:  increasingZones += iz
+            if dz != []:  decreasingZones += dz
             if nmz !=[]: nonMonotoneZones += nmz 
 
         if len(nonMonotoneZones)>1: 
@@ -2707,12 +2708,24 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, f,
         :reducedIntervals:  list with reduced intervals
         
     """  
+    old_x = list(xBounds)
     for curMonZone in monotoneZone: #TODO: Parallelizing
         xBounds[i] = curMonZone
+        dgdXInterval = eval_fInterval(f, f.dgdx_mpmath[i], xBounds)
+        non_mon = (dgdXInterval.a < 0 and dgdXInterval.b > 0 
+                   and old_x[i] == curMonZone)
+        if increasing and non_mon:
+            curReducedInterval = bisect_mon_inc_interval(f, xBounds, i, bi, bxrd_options)
+        
 
-        if increasing: curReducedInterval = reduce_mon_inc_newton(f, xBounds, i, 
+        elif increasing and not non_mon: 
+            curReducedInterval = reduce_mon_inc_newton(f, xBounds, i, 
                                                                   bi, bxrd_options)
-        else: curReducedInterval = reduce_mon_dec_newton(f, xBounds, i, bi, 
+        else:
+            if non_mon:
+                curReducedInterval = bisect_mon_dec_interval(f, xBounds, i, bi, bxrd_options)  
+            else:    
+                curReducedInterval = reduce_mon_dec_newton(f, xBounds, i, bi, 
                                                          bxrd_options)
         if curReducedInterval !=[] and reducedIntervals != []:
             reducedIntervals.append(curReducedInterval)
@@ -2722,6 +2735,109 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, f,
         elif curReducedInterval !=[]: reducedIntervals.append(curReducedInterval)
 
     return reducedIntervals
+
+
+def bisect_mon_dec_interval(f, xBounds, i, bi, bxrd_options):
+    tb = bxrd_options["tightBounds"]
+    reso = bxrd_options["resolution"]
+
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
+    # first check if xBounds can be further reduced:
+    if fxInterval in bi: return xBounds[i]
+    if ivIntersection(fxInterval, bi)==[]: return []
+    x_old = list(xBounds)
+    xBounds[i] = xBounds[i].a
+    xBounds_1 = list(xBounds)
+    cur_iv = x_old[i]
+    
+    # Iteration of lower bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).a-bi.b,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).a-bi.b)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    x_low = cur_iv.a
+    xBounds[i] = x_old[i].b
+
+    cur_iv = x_old[i]
+    
+    # Iteration of upper bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).b-bi.a,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).b-bi.a)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    xBounds[i] = x_old[i]
+    return mpmath.mpi(x_low.a, cur_iv.b)
+
+
+def bisect_mon_inc_interval(f, xBounds, i, bi, bxrd_options):
+    tb = bxrd_options["tightBounds"]
+    reso = bxrd_options["resolution"]
+
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
+    # first check if xBounds can be further reduced:
+    if fxInterval in bi: return xBounds[i]
+    if ivIntersection(fxInterval, bi)==[]: return []
+    x_old = list(xBounds)
+    xBounds[i] = xBounds[i].a
+    xBounds_1 = list(xBounds)
+    cur_iv = x_old[i]
+    
+    # Iteration of lower bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).b-bi.a,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).b-bi.a)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    x_low = cur_iv.a
+    xBounds[i] = x_old[i].b
+
+    cur_iv = x_old[i]
+    
+    # Iteration of upper bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).a-bi.b,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).a-bi.b)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    xBounds[i] = x_old[i]
+    return mpmath.mpi(x_low.a, cur_iv.b)
+   
 
 
 def reduce_mon_inc_newton(f, xBounds, i, bi, bxrd_options):
@@ -2807,7 +2923,6 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, bxrd_options):
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
                                                         xBounds))   
-             
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
                 #intersection = ivIntersection(curInterval, newInterval)
@@ -3363,7 +3478,7 @@ def testIntervalOnMonotony(f, interval, xBounds, i):
     if isinstance(f.dgdx_mpmath[i], mpmath.ctx_iv.ivmpf): 
         dgdxLow =f.dgdx_mpmath[i]
         if bool(dgdxLow >= 0): monotoneIncreasingZone.append(interval)
-        elif bool(dgdxLow <= 0): monotoneIncreasingZone.append(interval)
+        elif bool(dgdxLow <= 0): monotoneDecreasingZone.append(interval)
         else: monotoneIncreasingZone.append(interval)
         return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone 
     else: dgdxLow = f.dgdx_mpmath[i](*xBounds)
