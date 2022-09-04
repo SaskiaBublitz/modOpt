@@ -2872,7 +2872,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, bxrd_options):
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds, False, tb, reso))
+                                                        xBounds))  
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
                 #intersection = ivIntersection(curInterval, newInterval)
@@ -2911,7 +2911,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, bxrd_options):
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds,tb,reso))
+                                                        xBounds))  
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
                 #intersection = ivIntersection(curInterval, newInterval)
@@ -3250,7 +3250,7 @@ def getMonotoneFunctionSections(f, i, xBounds, bxrd_options):
 
         for xc in interval:
             (newIntervals, newMonIncreasingZone, 
-             newMonDecreasingZone) = testIntervalOnMonotony(f, xc, xBounds, i)
+             newMonDecreasingZone) = testIntervalOnMonotony(f, xc, list(xBounds), i)
             monIncreasingZone = addIntervaltoZone(newMonIncreasingZone,
                                                           monIncreasingZone, 
                                                           bxrd_options)
