@@ -410,8 +410,12 @@ def reduceConsistentBox(model, bxrd_options, k, boxNo):
                                         boxNo_split)
         if output["xNewBounds"] == []:
             saveFailedSystem(output, model.functions[0], model, 0)
+        box = [convert_mpi_iv_float(iv) for iv in output["xNewBounds"][0]]
+        if len( output["xNewBounds"]) == 1 and solved(box , bxrd_options):
+            output["xSolved"] = [True]
+        else:
+            output["xSolved"] = [False] * len(output["xNewBounds"]) 
         output["xAlmostEqual"] = [False] * len(output["xNewBounds"])   
-        output["xSolved"] = [False] * len(output["xNewBounds"]) 
         output["cut"] = [True] * len(output["xNewBounds"])
         output["disconti"] = [False] * len(output["xNewBounds"]) 
     else:
@@ -613,7 +617,8 @@ def cut_off_box(model, box, bxrd_options, cut_var_id=None):
             while(rstep <= 1.0):
                 edge_box = list(new_box)
                 xi = float(mpmath.mpf(edge_box[i].b)) - step[cut_id]
-                edge_box[i] = mpmath.mpi(xi, edge_box[i].b)   
+                edge_box[i] = mpmath.mpi(xi, edge_box[i].b)  
+                if edge_box[i].delta == 0: break
                            
                 (has_solution, 
                  rstep) = check_solution_in_edge_box(model, i, cut_id, 
@@ -635,6 +640,7 @@ def cut_off_box(model, box, bxrd_options, cut_var_id=None):
                 edge_box = list(new_box)
                 xi = float(mpmath.mpf(edge_box[i].a)) + step[cut_id]
                 edge_box[i] = mpmath.mpi(edge_box[i].a, xi)   
+                if edge_box[i].delta == 0: break
                            
                 (has_solution, 
                  rstep) = check_solution_in_edge_box(model, i, cut_id, xi, 
@@ -4741,6 +4747,12 @@ def split_least_changed_variable(box_new, model, k, bxrd_options):
                                             r, allow_pickle=True)[box_ID]
     
     w_ratio = analysis.identify_interval_reduction(box_new_float, box_old)
+    w_remove = [ i for i, j in enumerate(w_ratio) if(j == 1
+                                                     and variableSolved([box_new[0][i]],
+                                                                            bxrd_options
+                                                                            )
+                                                     )]
+    w_ratio = [i for i,j in enumerate(w_ratio) if not i in w_remove]
     w_max_ids = [i for i, j in enumerate(w_ratio) if j == max(w_ratio)]
     
     return w_max_ids
