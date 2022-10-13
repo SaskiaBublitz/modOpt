@@ -952,8 +952,8 @@ def get_best_split_new(box, model, boxNo, bxrd_options, split_var_id=None):
         if not split_var_id:
             return [old_box]
         two_boxes = True  
-        split_var_id = [i for i in split_var_id 
-                        if not checkVariableBound(old_box[i], bxrd_options)]        
+        #split_var_id = [i for i in split_var_id 
+        #                if not checkVariableBound(old_box[i], bxrd_options)]        
         for i, t in enumerate(split_var_id): 
             box = list(old_box)
             splitBox = bisect_box_adv(model, box, t, bxrd_options)
