@@ -127,16 +127,28 @@ def reduce_box(model, allBoxes, emptyBoxes, k, results, bxrd_options,
         prepare_results_inconsistent_x(model, k, results, output, 
                                        bxrd_options)    
                                                                                                                         
+        # if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
+        #     and not solv_options == None and len(output["xNewBounds"])==1):  
+        #     model.xBounds[k] = output["xNewBounds"][0]
+        #     bxrd_options["parent_box_r"] = model.complete_parent_boxes[k][0]
+        #     bxrd_options["parent_box_ID"] = model.complete_parent_boxes[k][1]
+        #     results["num_solved"] = lookForSolutionInBox(model, k, 
+        #                                                  bxrd_options, 
+        #                                                  sampling_options, 
+        #                                                  solv_options)
         if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
-            and not solv_options == None and len(output["xNewBounds"])==1):  
-            model.xBounds[k] = output["xNewBounds"][0]
+              and not solv_options == None ):
             bxrd_options["parent_box_r"] = model.complete_parent_boxes[k][0]
             bxrd_options["parent_box_ID"] = model.complete_parent_boxes[k][1]
-            results["num_solved"] = lookForSolutionInBox(model, k, 
-                                                         bxrd_options, 
-                                                         sampling_options, 
-                                                         solv_options)
-                          
+            solved = []
+            for box in output["xNewBounds"]:
+                model.xBounds[k] = box
+                solved.append(lookForSolutionInBox(model, k, bxrd_options, 
+                                                          sampling_options, 
+                                                          solv_options))
+            results["num_solved"] = any(solved)
+            
+
     emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
                                          output, bxrd_options)
     return emptyBoxes
@@ -359,7 +371,7 @@ def reduceConsistentBox(model, bxrd_options, k, boxNo):
     possibleCutOffs = False
     # if cutBox is chosen,parts of the box are now tried to cut off 
     if bxrd_options["cutBox"] in {"tear", "all", True} and bxrd_options["cut"][k]:
-        if bxrd_options["debugMode"]: print("Now box ", k, "is cutted")
+        print("Now box ", k, "is cutted")
         if bxrd_options["cutBox"] == "tear": 
             if model.tearVarsID == []: getTearVariables(model)
             newBox, possibleCutOffs = cut_off_box(model, newBox, bxrd_options,
@@ -410,8 +422,10 @@ def reduceConsistentBox(model, bxrd_options, k, boxNo):
                                         boxNo_split)
         if output["xNewBounds"] == []:
             saveFailedSystem(output, model.functions[0], model, 0)
+            return output        
         box = [convert_mpi_iv_float(iv) for iv in output["xNewBounds"][0]]
         if len( output["xNewBounds"]) == 1 and solved(box , bxrd_options):
+            
             output["xSolved"] = [True]
         else:
             output["xSolved"] = [False] * len(output["xNewBounds"]) 
@@ -1757,7 +1771,7 @@ def prepare_output(bxrd_options, output, xSolved, xNewBounds, consistent):
         consistent = True 
     output["xNewBounds"] = xNewBounds
     if len(output["xNewBounds"])>1: 
-        output["xAlmostEqual"] = [False] * len(output["xNewBounds"])
+        output["xAlmostEqual"] = [True] * len(output["xNewBounds"])
         output["xSolved"] = [xSolved] * len(output["xNewBounds"])   
         output["disconti"] = output["disconti"] * len(output["xNewBounds"]) 
     else: 
@@ -2763,10 +2777,10 @@ def bisect_mon_dec_interval(f, xBounds, i, bi, bxrd_options):
             xBounds[i]= cur_iv.a
             xBounds_1[i]= cur_iv.mid
             if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
-                                                     xBounds, f.g_aff[i], 
+                                                     xBounds_1, f.g_aff[i], 
                                                      tb, reso).a-bi.b,
                                       eval_fInterval(f, f.g_mpmath[i], 
-                                                     xBounds_1, f.g_aff[i], 
+                                                     xBounds, f.g_aff[i], 
                                                      tb, reso).a-bi.b)):
                 cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
             else: 
@@ -2782,10 +2796,10 @@ def bisect_mon_dec_interval(f, xBounds, i, bi, bxrd_options):
             xBounds[i]= cur_iv.a
             xBounds_1[i]= cur_iv.mid
             if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
-                                                     xBounds, f.g_aff[i], 
+                                                     xBounds_1, f.g_aff[i], 
                                                      tb, reso).b-bi.a,
                                       eval_fInterval(f, f.g_mpmath[i], 
-                                                     xBounds_1, f.g_aff[i], 
+                                                     xBounds, f.g_aff[i], 
                                                      tb, reso).b-bi.a)):
                 cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
             else: 
@@ -4602,8 +4616,8 @@ def lookForSolutionInBox(model, boxID, bxrd_options, sampling_options, solv_opti
     
     results = mos.solveBlocksSequence(model, solv_options, bxrd_options, 
                                       sampling_options)
-    if (results != {} and not results["Model"].failed and 
-        solution_solved_in_tolerance(results["Model"],solv_options) !=[]):
+   #print("Condition met:",results != {} and not results["Model"].failed)
+    if (results != {} and not results["Model"].failed):# and solution_solved_in_tolerance(results["Model"],solv_options) !=[]):
         solved = True 
         if not "FoundSolutions" in bxrd_options.keys():  
             bxrd_options["FoundSolutions"] = copy.deepcopy(results["Model"].stateVarValues)

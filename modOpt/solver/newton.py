@@ -32,7 +32,11 @@ def doNewton(curBlock, solv_options, num_options):
     while not tol <= FTOL and iterNo < iterMax:
         J, x, F = getLinearSystem(num_options, curBlock)
         #dx = - numpy.dot(numpy.linalg.inv(J), F)
-        dx = - numpy.linalg.solve(J,F)
+        try:
+            dx = - numpy.linalg.solve(J,F)
+        except: 
+            print("Could not compute Newton step")
+            return -1, iterNo
         x = x + dx
         
         updateIterVars(num_options, curBlock, x)

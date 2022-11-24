@@ -8,7 +8,7 @@ import casadi
 import numpy
 import sympy
 from modOpt.solver import newton
-#import modOpt.solver.scipyMinimization
+import modOpt.solver.scipyMinimization
 """
 ****************************************************
 Minimization Procedures from scipy.optimization
@@ -96,7 +96,6 @@ def minimize(curBlock, solv_options, num_options):
             
     obj_casadi= lambdifyToCasadi(x_sympy, objective(functions, 1.0/solv_options["FTOL"]))#1.0/solv_options["FTOL"]))
     nlp = {'x':casadi.vertcat(*x_casadi), 'f':obj_casadi(*x_casadi)}
-    #options={"max_iter": 50000};
     S = casadi.nlpsol('S', 'ipopt', nlp, {"ipopt":{'max_iter':solv_options["iterMax"],
                                                    'linear_solver': 'ma57',
                                                    'tol': solv_options["FTOL"],
@@ -117,12 +116,20 @@ def minimize(curBlock, solv_options, num_options):
     r = S(x0=x_0, lbx=x_L, ubx=x_U, lbg=0, ubg=0)
     curBlock.x_tot[glb_ID] = r['x'].T
     fresidual = numpy.linalg.norm(curBlock.getFunctionValues())
-
+    #for i in glb_ID:
+    #    print(curBlock.x_sym_tot[i], " ", curBlock.x_tot[i])
     if solv_options["FTOL"] < fresidual:    
         solv_options["FTOL"] *= 0.01
         exitFlag, iterNo = newton.doNewton(curBlock, solv_options, num_options)
+        if not exitFlag == 1:
+            curBlock.x_tot[glb_ID] = r['x'].T
+            exitFlag, iterNo = modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, num_options)
+            
         solv_options["FTOL"] *= 100.0
-        #return modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, num_options)
+        for i in glb_ID:
+            print(curBlock.x_sym_tot[i], " ", curBlock.x_tot[i])
+        #print(curBlock.x_sym_tot)
+        
         return exitFlag, iterNo
     elif numpy.isnan(fresidual): return -1, solv_options["iterMax"]   
     else: return 1, solv_options["iterMax"]
