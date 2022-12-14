@@ -1541,9 +1541,11 @@ def check_contracted_set(model, y, i, box, bxrd_options):
                                           bxrd_options)
         if len(y)>1:
             y_float = [[convert_mpi_float(iv.a),convert_mpi_float(iv.b)] for iv in y]
+            if not isinstance(box, list): box = list(box)
             box[i] = mpmath.mpi(min(min(y_float)), max(max(y_float)))
     if len(y)==1 and y[0]!=box[i]: 
         #box = list(box)
+        if not isinstance(box, list): box = list(box)
         box[i] = y[0]
     return y
 
@@ -4210,9 +4212,11 @@ def newton_step(r_i, G_i, x_c, box, i, bxrd_options):
         bxrd_options["unique_nwt"] = False
         return [box[i]]
     try:
+        if abs(x_c[i]) > 1.0e8: tol = r_i/x_c[i] * mpmath.mpi(-1,1)
+        else: tol = 0.0
         quotient = ivDivision(mpmath.mpi(r_i + iv_sum), G_i[i])
         #N = [x_c[i] - l for l in quotient] 
-        N = [x_c[i]*(1 - l/x_c[i]) for l in quotient] # because of round off errors
+        N = [(x_c[i]* (1 - l/x_c[i])+tol)for l in quotient] # because of round off errors
         if bxrd_options["unique_nwt"]:
             bxrd_options["unique_nwt"] = checkUniqueness(N, 
                                                          bxrd_options["x_old"][i], 

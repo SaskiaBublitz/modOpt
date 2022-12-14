@@ -126,8 +126,8 @@ def minimize(curBlock, solv_options, num_options):
             exitFlag, iterNo = modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, num_options)
             
         solv_options["FTOL"] *= 100.0
-        for i in glb_ID:
-            print(curBlock.x_sym_tot[i], " ", curBlock.x_tot[i])
+        #for i in glb_ID:
+            #print(curBlock.x_sym_tot[i], " ", curBlock.x_tot[i])
         #print(curBlock.x_sym_tot)
         
         return exitFlag, iterNo
