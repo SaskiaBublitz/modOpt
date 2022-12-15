@@ -119,13 +119,13 @@ def minimize(curBlock, solv_options, num_options):
     #for i in glb_ID:
     #    print(curBlock.x_sym_tot[i], " ", curBlock.x_tot[i])
     if solv_options["FTOL"] < fresidual:    
-        solv_options["FTOL"] *= 0.01
+        #solv_options["FTOL"] *= 0.01
         exitFlag, iterNo = newton.doNewton(curBlock, solv_options, num_options)
         #if not exitFlag == 1:
         #    curBlock.x_tot[glb_ID] = r['x'].T
         #    exitFlag, iterNo = modOpt.solver.scipyMinimization.fsolve(curBlock, solv_options, num_options)
             
-        solv_options["FTOL"] *= 100.0
+        #solv_options["FTOL"] *= 100.0
         #for i in glb_ID:
             #print(curBlock.x_sym_tot[i], " ", curBlock.x_tot[i])
         #print(curBlock.x_sym_tot)
