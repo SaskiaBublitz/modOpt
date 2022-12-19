@@ -14,7 +14,7 @@ Following subpackages are included:
 # Installation Guide for Users
 
 ##  Prerequisites
-* Python 3.7 with pip installed 
+* Python 3.9 with pip installed 
 
 
 ## Instructions for Installation of
