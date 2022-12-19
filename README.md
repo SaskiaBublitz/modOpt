@@ -205,7 +205,7 @@ Below is a legend for all methodsApplied, which are separated by _ :
     
 If the initial box does not contain any solution, there is an additional text file besides the files just listed:
     
-your_fileName_methodsApplied_error.txt
-    
+        your_fileName_methodsApplied_error.txt
+
 This shows the equation including the variable intervals, in which no solution could be found as well as their initial intervals. This should help the user to quickly find errors in the implementation of the equations or initialization of the variables, which caused the empty box.
 
