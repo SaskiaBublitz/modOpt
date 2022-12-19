@@ -4682,7 +4682,7 @@ def ConvertMpiBoundsToList(xBounds, boxID):
         xBoxBounds[x][0] = float(mpmath.convert(xBounds[boxID][x].a))
         xBoxBounds[x][1] = float(mpmath.convert(xBounds[boxID][x].b))
             
-    return [xBoxBounds.astype(numpy.float)]
+    return [xBoxBounds.astype(numpy.float64)]
 
 
 def remove_zero_and_max_value_bounds(x):
