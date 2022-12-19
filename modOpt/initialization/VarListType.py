@@ -3,7 +3,7 @@ Created on Aug 17, 2018
 
 @author: e.esche + j.weigert
 '''
-from numpy import float
+from numpy import float64
 import numpy as np
 import mpmath
 
