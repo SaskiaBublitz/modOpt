@@ -127,16 +127,28 @@ def reduce_box(model, allBoxes, emptyBoxes, k, results, bxrd_options,
         prepare_results_inconsistent_x(model, k, results, output, 
                                        bxrd_options)    
                                                                                                                         
+        # if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
+        #     and not solv_options == None and len(output["xNewBounds"])==1):  
+        #     model.xBounds[k] = output["xNewBounds"][0]
+        #     bxrd_options["parent_box_r"] = model.complete_parent_boxes[k][0]
+        #     bxrd_options["parent_box_ID"] = model.complete_parent_boxes[k][1]
+        #     results["num_solved"] = lookForSolutionInBox(model, k, 
+        #                                                  bxrd_options, 
+        #                                                  sampling_options, 
+        #                                                  solv_options)
         if (all(output["xAlmostEqual"]) and not all(output["xSolved"]) 
-            and not solv_options == None and len(output["xNewBounds"])==1):  
-            model.xBounds[k] = output["xNewBounds"][0]
+              and not solv_options == None ):
             bxrd_options["parent_box_r"] = model.complete_parent_boxes[k][0]
             bxrd_options["parent_box_ID"] = model.complete_parent_boxes[k][1]
-            results["num_solved"] = lookForSolutionInBox(model, k, 
-                                                         bxrd_options, 
-                                                         sampling_options, 
-                                                         solv_options)
-                          
+            solved = []
+            for box in output["xNewBounds"]:
+                model.xBounds[k] = box
+                solved.append(lookForSolutionInBox(model, k, bxrd_options, 
+                                                          sampling_options, 
+                                                          solv_options))
+            results["num_solved"] = any(solved)
+            
+
     emptyBoxes = prepare_general_resluts(model, k, allBoxes, results, 
                                          output, bxrd_options)
     return emptyBoxes
@@ -359,7 +371,7 @@ def reduceConsistentBox(model, bxrd_options, k, boxNo):
     possibleCutOffs = False
     # if cutBox is chosen,parts of the box are now tried to cut off 
     if bxrd_options["cutBox"] in {"tear", "all", True} and bxrd_options["cut"][k]:
-        if bxrd_options["debugMode"]: print("Now box ", k, "is cutted")
+        print("Now box ", k, "is cutted")
         if bxrd_options["cutBox"] == "tear": 
             if model.tearVarsID == []: getTearVariables(model)
             newBox, possibleCutOffs = cut_off_box(model, newBox, bxrd_options,
@@ -410,8 +422,14 @@ def reduceConsistentBox(model, bxrd_options, k, boxNo):
                                         boxNo_split)
         if output["xNewBounds"] == []:
             saveFailedSystem(output, model.functions[0], model, 0)
+            return output        
+        box = [convert_mpi_iv_float(iv) for iv in output["xNewBounds"][0]]
+        if len( output["xNewBounds"]) == 1 and solved(box , bxrd_options):
+            
+            output["xSolved"] = [True]
+        else:
+            output["xSolved"] = [False] * len(output["xNewBounds"]) 
         output["xAlmostEqual"] = [False] * len(output["xNewBounds"])   
-        output["xSolved"] = [False] * len(output["xNewBounds"]) 
         output["cut"] = [True] * len(output["xNewBounds"])
         output["disconti"] = [False] * len(output["xNewBounds"]) 
     else:
@@ -613,7 +631,8 @@ def cut_off_box(model, box, bxrd_options, cut_var_id=None):
             while(rstep <= 1.0):
                 edge_box = list(new_box)
                 xi = float(mpmath.mpf(edge_box[i].b)) - step[cut_id]
-                edge_box[i] = mpmath.mpi(xi, edge_box[i].b)   
+                edge_box[i] = mpmath.mpi(xi, edge_box[i].b)  
+                if edge_box[i].delta == 0: break
                            
                 (has_solution, 
                  rstep) = check_solution_in_edge_box(model, i, cut_id, 
@@ -635,6 +654,7 @@ def cut_off_box(model, box, bxrd_options, cut_var_id=None):
                 edge_box = list(new_box)
                 xi = float(mpmath.mpf(edge_box[i].a)) + step[cut_id]
                 edge_box[i] = mpmath.mpi(edge_box[i].a, xi)   
+                if edge_box[i].delta == 0: break
                            
                 (has_solution, 
                  rstep) = check_solution_in_edge_box(model, i, cut_id, xi, 
@@ -952,8 +972,8 @@ def get_best_split_new(box, model, boxNo, bxrd_options, split_var_id=None):
         if not split_var_id:
             return [old_box]
         two_boxes = True  
-        split_var_id = [i for i in split_var_id 
-                        if not checkVariableBound(old_box[i], bxrd_options)]        
+        #split_var_id = [i for i in split_var_id 
+        #                if not checkVariableBound(old_box[i], bxrd_options)]        
         for i, t in enumerate(split_var_id): 
             box = list(old_box)
             splitBox = bisect_box_adv(model, box, t, bxrd_options)
@@ -1521,9 +1541,11 @@ def check_contracted_set(model, y, i, box, bxrd_options):
                                           bxrd_options)
         if len(y)>1:
             y_float = [[convert_mpi_float(iv.a),convert_mpi_float(iv.b)] for iv in y]
+            if not isinstance(box, list): box = list(box)
             box[i] = mpmath.mpi(min(min(y_float)), max(max(y_float)))
     if len(y)==1 and y[0]!=box[i]: 
         #box = list(box)
+        if not isinstance(box, list): box = list(box)
         box[i] = y[0]
     return y
 
@@ -1751,7 +1773,7 @@ def prepare_output(bxrd_options, output, xSolved, xNewBounds, consistent):
         consistent = True 
     output["xNewBounds"] = xNewBounds
     if len(output["xNewBounds"])>1: 
-        output["xAlmostEqual"] = [False] * len(output["xNewBounds"])
+        output["xAlmostEqual"] = [True] * len(output["xNewBounds"])
         output["xSolved"] = [xSolved] * len(output["xNewBounds"])   
         output["disconti"] = output["disconti"] * len(output["xNewBounds"]) 
     else: 
@@ -2597,10 +2619,11 @@ def getReducedIntervalOfNonlinearFunction(f, dgdXInterval, i, xBounds, bi, bxrd_
            
     if curXiBounds != []:
         for curInterval in curXiBounds:
+            
             xBounds[i] = curInterval
             iz, dz, nmz = getMonotoneFunctionSections(f, i, xBounds, bxrd_options)
-            if iz != []: increasingZones += iz
-            if dz != []: decreasingZones += dz
+            if iz != []:  increasingZones += iz
+            if dz != []:  decreasingZones += dz
             if nmz !=[]: nonMonotoneZones += nmz 
 
         if len(nonMonotoneZones)>1: 
@@ -2707,12 +2730,24 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, f,
         :reducedIntervals:  list with reduced intervals
         
     """  
+    old_x = list(xBounds)
     for curMonZone in monotoneZone: #TODO: Parallelizing
         xBounds[i] = curMonZone
+        dgdXInterval = eval_fInterval(f, f.dgdx_mpmath[i], xBounds)
+        non_mon = (dgdXInterval.a < 0 and dgdXInterval.b > 0 
+                   and old_x[i] == curMonZone)
+        if increasing and non_mon:
+            curReducedInterval = bisect_mon_inc_interval(f, xBounds, i, bi, bxrd_options)
+        
 
-        if increasing: curReducedInterval = reduce_mon_inc_newton(f, xBounds, i, 
+        elif increasing and not non_mon: 
+            curReducedInterval = reduce_mon_inc_newton(f, xBounds, i, 
                                                                   bi, bxrd_options)
-        else: curReducedInterval = reduce_mon_dec_newton(f, xBounds, i, bi, 
+        else:
+            if non_mon:
+                curReducedInterval = bisect_mon_dec_interval(f, xBounds, i, bi, bxrd_options)  
+            else:    
+                curReducedInterval = reduce_mon_dec_newton(f, xBounds, i, bi, 
                                                          bxrd_options)
         if curReducedInterval !=[] and reducedIntervals != []:
             reducedIntervals.append(curReducedInterval)
@@ -2722,6 +2757,109 @@ def reduceMonotoneIntervals(monotoneZone, reducedIntervals, f,
         elif curReducedInterval !=[]: reducedIntervals.append(curReducedInterval)
 
     return reducedIntervals
+
+
+def bisect_mon_dec_interval(f, xBounds, i, bi, bxrd_options):
+    tb = bxrd_options["tightBounds"]
+    reso = bxrd_options["resolution"]
+
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
+    # first check if xBounds can be further reduced:
+    if fxInterval in bi: return xBounds[i]
+    if ivIntersection(fxInterval, bi)==[]: return []
+    x_old = list(xBounds)
+    xBounds[i] = xBounds[i].a
+    xBounds_1 = list(xBounds)
+    cur_iv = x_old[i]
+    
+    # Iteration of lower bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).a-bi.b,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).a-bi.b)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    x_low = cur_iv.a
+    xBounds[i] = x_old[i].b
+
+    cur_iv = x_old[i]
+    
+    # Iteration of upper bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).b-bi.a,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).b-bi.a)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    xBounds[i] = x_old[i]
+    return mpmath.mpi(x_low.a, cur_iv.b)
+
+
+def bisect_mon_inc_interval(f, xBounds, i, bi, bxrd_options):
+    tb = bxrd_options["tightBounds"]
+    reso = bxrd_options["resolution"]
+
+    fxInterval = eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)
+    # first check if xBounds can be further reduced:
+    if fxInterval in bi: return xBounds[i]
+    if ivIntersection(fxInterval, bi)==[]: return []
+    x_old = list(xBounds)
+    xBounds[i] = xBounds[i].a
+    xBounds_1 = list(xBounds)
+    cur_iv = x_old[i]
+    
+    # Iteration of lower bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).b-bi.a,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).b-bi.a)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    x_low = cur_iv.a
+    xBounds[i] = x_old[i].b
+
+    cur_iv = x_old[i]
+    
+    # Iteration of upper bound:
+    if not 0.0 in eval_fInterval(f, f.g_mpmath[i], xBounds, f.g_aff[i], tb, reso)-bi:
+        while(cur_iv.delta > bxrd_options["absTol"]):
+            xBounds[i]= cur_iv.a
+            xBounds_1[i]= cur_iv.mid
+            if (not 0.0 in mpmath.mpi(eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds, f.g_aff[i], 
+                                                     tb, reso).a-bi.b,
+                                      eval_fInterval(f, f.g_mpmath[i], 
+                                                     xBounds_1, f.g_aff[i], 
+                                                     tb, reso).a-bi.b)):
+                cur_iv=mpmath.mpi(cur_iv.mid, cur_iv.b)
+            else: 
+                cur_iv=mpmath.mpi(cur_iv.a, cur_iv.mid)
+    xBounds[i] = x_old[i]
+    return mpmath.mpi(x_low.a, cur_iv.b)
+   
 
 
 def reduce_mon_inc_newton(f, xBounds, i, bi, bxrd_options):
@@ -2807,7 +2945,6 @@ def reduce_mon_inc_newton(f, xBounds, i, bi, bxrd_options):
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
                                                         xBounds))   
-             
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
                 #intersection = ivIntersection(curInterval, newInterval)
@@ -2872,7 +3009,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, bxrd_options):
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds, False, tb, reso))
+                                                        xBounds))  
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
                 #intersection = ivIntersection(curInterval, newInterval)
@@ -2911,7 +3048,7 @@ def reduce_mon_dec_newton(f, xBounds, i, bi, bxrd_options):
             xBounds[i] = curInterval
             quotient = ivDivision(fxInterval, 
                                          eval_fInterval(f, f.dgdx_mpmath[i], 
-                                                        xBounds,tb,reso))
+                                                        xBounds))  
             if len(quotient)==1: 
                 newInterval = x - quotient[0]
                 #intersection = ivIntersection(curInterval, newInterval)
@@ -3250,7 +3387,7 @@ def getMonotoneFunctionSections(f, i, xBounds, bxrd_options):
 
         for xc in interval:
             (newIntervals, newMonIncreasingZone, 
-             newMonDecreasingZone) = testIntervalOnMonotony(f, xc, xBounds, i)
+             newMonDecreasingZone) = testIntervalOnMonotony(f, xc, list(xBounds), i)
             monIncreasingZone = addIntervaltoZone(newMonIncreasingZone,
                                                           monIncreasingZone, 
                                                           bxrd_options)
@@ -3363,7 +3500,7 @@ def testIntervalOnMonotony(f, interval, xBounds, i):
     if isinstance(f.dgdx_mpmath[i], mpmath.ctx_iv.ivmpf): 
         dgdxLow =f.dgdx_mpmath[i]
         if bool(dgdxLow >= 0): monotoneIncreasingZone.append(interval)
-        elif bool(dgdxLow <= 0): monotoneIncreasingZone.append(interval)
+        elif bool(dgdxLow <= 0): monotoneDecreasingZone.append(interval)
         else: monotoneIncreasingZone.append(interval)
         return nonMonotoneZone, monotoneIncreasingZone, monotoneDecreasingZone 
     else: dgdxLow = f.dgdx_mpmath[i](*xBounds)
@@ -4075,9 +4212,11 @@ def newton_step(r_i, G_i, x_c, box, i, bxrd_options):
         bxrd_options["unique_nwt"] = False
         return [box[i]]
     try:
+        if abs(x_c[i]) > 1.0e8: tol = r_i/x_c[i] * mpmath.mpi(-1,1)
+        else: tol = 0.0
         quotient = ivDivision(mpmath.mpi(r_i + iv_sum), G_i[i])
         #N = [x_c[i] - l for l in quotient] 
-        N = [x_c[i]*(1 - l/x_c[i]) for l in quotient] # because of round off errors
+        N = [(x_c[i]* (1 - l/x_c[i])+tol)for l in quotient] # because of round off errors
         if bxrd_options["unique_nwt"]:
             bxrd_options["unique_nwt"] = checkUniqueness(N, 
                                                          bxrd_options["x_old"][i], 
@@ -4481,8 +4620,8 @@ def lookForSolutionInBox(model, boxID, bxrd_options, sampling_options, solv_opti
     
     results = mos.solveBlocksSequence(model, solv_options, bxrd_options, 
                                       sampling_options)
-    if (results != {} and not results["Model"].failed and 
-        solution_solved_in_tolerance(results["Model"],solv_options) !=[]):
+   #print("Condition met:",results != {} and not results["Model"].failed)
+    if (results != {} and not results["Model"].failed):# and solution_solved_in_tolerance(results["Model"],solv_options) !=[]):
         solved = True 
         if not "FoundSolutions" in bxrd_options.keys():  
             bxrd_options["FoundSolutions"] = copy.deepcopy(results["Model"].stateVarValues)
@@ -4626,6 +4765,12 @@ def split_least_changed_variable(box_new, model, k, bxrd_options):
                                             r, allow_pickle=True)[box_ID]
     
     w_ratio = analysis.identify_interval_reduction(box_new_float, box_old)
+    w_remove = [ i for i, j in enumerate(w_ratio) if(j == 1
+                                                     and variableSolved([box_new[0][i]],
+                                                                            bxrd_options
+                                                                            )
+                                                     )]
+    w_ratio = [i for i,j in enumerate(w_ratio) if not i in w_remove]
     w_max_ids = [i for i, j in enumerate(w_ratio) if j == max(w_ratio)]
     
     return w_max_ids

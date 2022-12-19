@@ -162,7 +162,8 @@ class Function:
         deriv_is_constant = []
 
         for i, x in enumerate(self.x_sym):
-            if not x in self.vars_of_deriv[i] and self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
+            if (not x in self.vars_of_deriv[i] and (self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i] or
+                self.dgdx_sym[i] * self.x_sym[i] == 1.0 * self.g_sym[i])):
                 #and self.dgdx_sym[i] * self.x_sym[i] == self.g_sym[i]:
                 # TODO: One could include the case self.dgdx_sym[i] * self.x_sym[i] != self.g_sym[i] 
                 # but then had to add the constant bit dgdx*x - dgdx to bInterval
