@@ -1,5 +1,3 @@
-
-
 # Introduction
 
 modOpt is a python package for solving nonlinear algebraic systems
@@ -171,43 +169,43 @@ The program will then generate at least two output files:
     
 Below is a legend for all methodsApplied, which are separated by _ :
     
-   |Shortcut|Description  |
-    |--|--|
-    | hc | HC4 contraction |
-    | nc | Interval Newton with center as point of expansion |
-    | bc | Bnormal applied |
-    | ncaf | All equations used in Interval Newton |
-    | tb | Tight bounds applied |
-    | aff | Affine arithmetic|
-    | dm | Dulmage Mendelsohn applied for system decomposition |
-    | gap |Priority given to discontinuities for splitting |
-    | cba | Cutting all variables |
-    | cbtv | Cutting tearing variables |
-    | tv | Split tearing variables |
-    | lc | Split least changed variables |
-    | ftv | Split forecast tearing variables |
-    | fcs | Split forecast all variables |
-    | rsX | Resolution X |
-    | rX | X box redcution steps |
-    | pbX | X number of parallel boxes|
-    | sb | Sobol sampling|
-    | hs | Hammersley sampling|
-    | lhc | Latin hypercube sampling|
-    | sX | X numer of samples|
-    | sminX | X numer of best samples tested in root-finding|
-    | nwt | Root-finder newton|
-    | casipopt | Root-finder casadi ipopt|
-    | slsqp | Root-finder slsqp|
-    | tnc | Root-finder TNC solver|
-    | fslv | Root-finder fsolve|
-    | mfslv | Root-finder matlab fsolve|
-    | mfslvscrpt | Root-finder matlab fsolve|
-    | mc29 | Scaling method MC29 (HSL) for root-finder newton|
-    | mc77 | Scaling method MC77 (HSL) for root-finder newton|
+|Shortcut|Description  |
+|--|--|
+| hc | HC4 contraction |
+| nc | Interval Newton with center as point of expansion |
+| bc | Bnormal applied |
+| ncaf | All equations used in Interval Newton |
+| tb | Tight bounds applied |
+| aff | Affine arithmetic|
+| dm | Dulmage Mendelsohn applied for system decomposition |
+| gap |Priority given to discontinuities for splitting |
+| cba | Cutting all variables |
+| cbtv | Cutting tearing variables |
+| tv | Split tearing variables |
+| lc | Split least changed variables |
+| ftv | Split forecast tearing variables |
+| fcs | Split forecast all variables |
+| rsX | Resolution X |
+| rX | X box redcution steps |
+| pbX | X number of parallel boxes|
+| sb | Sobol sampling|
+| hs | Hammersley sampling|
+| lhc | Latin hypercube sampling|
+| sX | X numer of samples|
+| sminX | X numer of best samples tested in root-finding|
+| nwt | Root-finder newton|
+| casipopt | Root-finder casadi ipopt|
+| slsqp | Root-finder slsqp|
+| tnc | Root-finder TNC solver|
+| fslv | Root-finder fsolve|
+| mfslv | Root-finder matlab fsolve|
+| mfslvscrpt | Root-finder matlab fsolve|
+| mc29 | Scaling method MC29 (HSL) for root-finder newton|
+| mc77 | Scaling method MC77 (HSL) for root-finder newton|
     
 If the initial box does not contain any solution, there is an additional text file besides the files just listed:
     
-   your_fileName_methodsApplied_error.txt
+your_fileName_methodsApplied_error.txt
     
 This shows the equation including the variable intervals, in which no solution could be found as well as their initial intervals. This should help the user to quickly find errors in the implementation of the equations or initialization of the variables, which caused the empty box.
 
