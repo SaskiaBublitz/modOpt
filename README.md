@@ -302,7 +302,16 @@ Before making changes to the source code of modOpt, the [Instructions](##Instruc
                 try: 
                         exitflag, iterNo = mysolver.doMySolver(...)
 
-9. Adjust the dictionary *num_options* in the Python script with the NLE, you want to solve, to your new solver:
+9. Navigate to 
+
+        modOpt/constraints/results.py
+   
+   and add another case and shortcut in the function *get_file_name* for your solver so that the output files can be tagged accordingly, for example:
+   
+        	if solv_options["solver"] == "my-solver": 
+            		filename += "_msolv"
+   	
+10. Adjust the dictionary *num_options* in the Python script with the NLE, you want to solve, to your new solver:
 
 
                 num_options = {"solver": 'my-solver', ...
@@ -383,6 +392,15 @@ Before making changes to the source code of modOpt, the [Instructions](##Instruc
 
         modOpt/initialization/main.py
    which needs to return a list of samples. The samples' type is a list as well. It is only sampled in the current block if the decomposition is used. The current bounds of block variables and the block equations can be accessed via the object *cur_block*. The number of samples to be generated and the number of the best ones measured by their function residuals to be used for the mulit-start solving procedure can be accessed from the dictionary *smpl_options* by the keys "smplNo" and "smplBest" to connect and use them in the new sampling method.
+
+5. Navigate to 
+
+        modOpt/constraints/results.py
+   
+   and add another case and shortcut in the function *get_file_name* for your sampling so that the output files can be tagged accordingly, for example:
+   
+        	if sampling_options["smplMethod"] == "my-sampling": 
+            		filename += "_msmpl"
 
 5. Adjust the dictionary *smpl_options* in the Python script with the NLE, you want to sample, to your sampling method and the desired settings:
 
