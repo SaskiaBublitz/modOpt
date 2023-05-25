@@ -53,7 +53,7 @@ def get_file_name(dict_options, sampling_options=None, solv_options=None):
         
         # splitting methods:
         if "splitBox" in dict_options.keys(): 
-            if dict_options["splitBox"] == "TearVar": filename += "_tv"
+            if dict_options["splitBox"] == "tearVar": filename += "_tv"
             if dict_options["splitBox"] == "largestDer": filename += "_ld"
             if dict_options["splitBox"] == "forecastSplit": filename += "_fcs"
             if dict_options["splitBox"] == "leastChanged": filename += "_lc"
