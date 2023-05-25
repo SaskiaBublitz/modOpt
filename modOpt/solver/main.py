@@ -288,8 +288,8 @@ def sort_results_from_solver_to_block(block, b, res_solver, res_blocks, bxrd_opt
         :bxrd_options:  user-specified dictionary with absolute tolerance value
 
     """
-    
-    if res_solver["Exitflag"]==1 and solutionInBounds(block):
+   
+    if res_solver["Exitflag"]==1 and solutionInBounds(block): # DEBUG: if solution found but not in bounds simply comment last argument out 
         solution_id = update_block_solutions(block, bxrd_options)
         
         if len(block.FoundSolutions) == solution_id + 1: # condition that new solution for block was found

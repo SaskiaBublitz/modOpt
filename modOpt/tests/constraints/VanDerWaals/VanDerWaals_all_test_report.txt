@@ -3,12 +3,12 @@ Test report from module: VanDerWaals
 Tolerance:	 1e-09
 
 Case	 Status	 CPU in s	 Hypercubic Length
-VanDerWaals_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.24106574058532715	 4.455197391626607e-13
-VanDerWaals_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100	 Ok	 0.2225489616394043	 Identical to reference
-VanDerWaals_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.16419172286987305	 4.401021554726716e-13
-VanDerWaals_bc_hc4_ncaf_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.19808459281921387	 4.455197391626607e-13
-VanDerWaals_bc_hc4_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.23828792572021484	 4.984479494667019e-13
-VanDerWaals_bc_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 1.4955475330352783	 5.598048853766245e-12
-VanDerWaals_bc_hc4_ncaf_tb_cbtv_dm_rs8_r100_pb2	 Ok	 0.23976659774780273	 4.455197391626607e-13
-VanDerWaals_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r100_pb2	 Ok	 0.24185705184936523	 4.455197391626607e-13
-VanDerWaals_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r100_pb2	 Ok	 0.24146699905395508	 4.455197391626607e-13
+VanDerWaals_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.3095862865447998	 4.4552259915023195e-13
+VanDerWaals_bc_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100	 Ok	 0.27182602882385254	 Identical to reference
+VanDerWaals_hc4_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.23623943328857422	 4.401021528235573e-13
+VanDerWaals_bc_hc4_ncaf_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.2679426670074463	 4.4552267883736385e-13
+VanDerWaals_bc_hc4_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.307603120803833	 4.984508094542731e-13
+VanDerWaals_bc_ncaf_tb_lc_cbtv_dm_rs8_r100_pb2	 Ok	 0.6098735332489014	 5.748422915682911e-13
+VanDerWaals_bc_hc4_ncaf_tb_tv_cbtv_dm_rs8_r100_pb2	 Ok	 0.30823230743408203	 4.4552259915023195e-13
+VanDerWaals_bc_hc4_ncaf_tb_fcs_cbtv_dm_rs8_r100_pb2	 Ok	 0.3130364418029785	 4.4552259915023195e-13
+VanDerWaals_bc_hc4_ncaf_tb_lc_cba_dm_rs8_r100_pb2	 Ok	 0.35715627670288086	 1.139655636151258e-12
