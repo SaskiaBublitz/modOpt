@@ -16,7 +16,7 @@ Following subpackages are included:
 
 
 ## Instructions for Installation of
-### ModOpt
+### modOpt
 
 1. Open the terminal and type in following command (replace branch_name by the branch name of interest):
 
@@ -56,7 +56,7 @@ Current **UDLS-ID's** for public use:
 | 167855 | UDLS_modOpt_constraints_V2.9.lsp  | Box Redcution + Sampling + Solver |
 
 ## Tests to check modOpt is working as expected (MOSAICmodeling is not required)
-To check wether modOpt is working correctly, there is a test package included with some examples from chemical engineering. Different settings in the bxrd_options dictionaries are sequentially checked. If no error has occured in a test run an "OK" is written into the *status* cell of the corresponding test case row of the tests' output file. The latter ends on "*test_all.txt". If an error occured the *status* of the associated test run is "Failed". This is exemplary explainded for the VanDerWaals.py example but works the same way for the other larger examples in the tests/constraints directory.
+To check whether modOpt is working correctly, there is a test package included with some examples from chemical engineering. Different settings in the bxrd_options dictionaries are sequentially checked. If no error has occured in a test run an "OK" is written into the *status* cell of the corresponding test case row of the tests' output file. The latter ends on "*test_all.txt". If an error occured the *status* of the associated test run is "Failed". This is exemplary explainded for the VanDerWaals.py example but works the same way for the other larger examples in the tests/constraints directory.
 
 1. In the modOpt package go to 
 
@@ -66,7 +66,7 @@ To check wether modOpt is working correctly, there is a test package included wi
 
         python main.py
 
-3. Open the output textfile ending with test_all.text and check the each test run's status
+3. Open the output textfile ending with "*test_all.txt" and check each test run's status
 
 You can also use the .py files of the test examples as a template for writing your own scripts apart from MOSAICmodeling. Simply replace the system arguments by an argument of the required type such as string, integer, boolean, float. Discrete settings from a set of valid options for example strings with numerical solver names you find in the comments behind the assignment starting with #
 
@@ -209,3 +209,186 @@ If the initial box does not contain any solution, there is an additional text fi
 
 This shows the equation including the variable intervals, in which no solution could be found as well as their initial intervals. This should help the user to quickly find errors in the implementation of the equations or initialization of the variables, which caused the empty box.
 
+# Further development of modOpt
+
+Before making changes to the source code of modOpt, the [Instructions](##Instructions) in the chapter *Installation Guide for Developers* should be followed to work in a separate branch. This only applies if these changes shall later be available to everyone and not only for your own use on your own computer. After completion of the developments, they can be transferred to the master on request. *Note:* It should be ensured before each development that an already existing branch is up to date with the current master branch.
+
+## Connecting a New Root-Finder
+
+1. Open the file
+
+        modOpt/solver/main.py
+
+2. Navigate to the definition of the function *startSolver*, which looks as follows when these instructions where written:
+
+        def startSolver(curBlock, b, solv_options, bxrd_options):
+                res_solver = {}
+        
+                if solv_options["solver"] == 'newton': 
+                        doNewton(curBlock, b, solv_options, bxrd_options, res_solver)
+    
+                if solv_options["solver"] == "fsolve":
+                        doScipyFsolve(curBlock, b, solv_options, bxrd_options, res_solver)
+                        
+                if (solv_options["solver"] in ['hybr', 
+                                                'lm', 
+                                                'broyden1', 
+                                                'broyden2', 
+                                                'anderson', 
+                                                'linearmixing',
+                                                'diagbroyden', 
+                                                'excitingmixing', 
+                                                'krylov', 
+                                                'df-sane']):
+                        doScipyRoot(curBlock, b, solv_options, bxrd_options, res_solver)
+        
+                if (solv_options["solver"] in ['SLSQP',
+                                                'trust-constr', 
+                                                'TNC']):
+                        doScipyOptiMinimize(curBlock, b, solv_options, bxrd_options, res_solver)
+        
+                if solv_options["solver"] == 'ipopt':
+                        doipoptMinimize(curBlock, b, solv_options, bxrd_options, res_solver)
+
+                if solv_options["solver"] == 'matlab-fsolve':
+                        doMatlabSolver(curBlock, b, solv_options, bxrd_options, res_solver)
+
+                if solv_options["solver"] == 'matlab-fsolve-mscript':
+                        doMatlabSolver_mscript(curBlock, b, solv_options, bxrd_options, res_solver) 
+                if solv_options["solver"] == 'casadi-ipopt':
+                        do_casadi_ipopt_minimize(curBlock, b, solv_options, bxrd_options, res_solver) 
+        
+    return res_solver  
+
+3. According to the scheme, add a new section for the solver with a corresponding user-definable tag 'my-solver':
+
+                if solv_options["solver"] == 'my-solver':
+                        doMySolver(curBlock, b, solv_options, bxrd_options, res_solver) 
+
+
+4. Create a new method with a user-defined name, e.g. *doMySolver* in the current file. This method should be structured analogously, e.g. to the Newton specific method shown here. All arguments returned by the algorithm are stored here in the dictionary *res_solver* and the returned values are defined in case of an exception.
+
+        def doNewton(curBlock, b, solv_options, bxrd_options, res_solver):
+    
+                try: 
+                        exitflag, iterNo = newton.doNewton(curBlock, solv_options, 
+                        bxrd_options)
+                        res_solver["IterNo"] = iterNo
+                        res_solver["Exitflag"] = exitflag
+                        res_solver["CondNo"] = numpy.linalg.cond
+                        (curBlock.getScaledJacobian())
+                        res_solver["FRES"] = curBlock.getFunctionValues()    
+        
+                except: 
+                        print ("Error in Block ", b)
+                        res_solver["IterNo"] = 0
+                        res_solver["Exitflag"] = -1 
+                        res_solver["CondNo"] = 'nan'
+                        res_solver["FRES"] = 'nan' 
+
+
+5. Create analog to the Newton method a new file with the name of your solver:
+
+        modOpt/solver/mysolver.py
+
+6. Open the empty file *mysolver.py* and create here a method *doMySolver(curBlock, solv_options, bxrd_options)*. Especially the argument *curBlock* is important, because the solver should also be applicable to the decomposed system, i.e. the single blocks are solved one after the other. In addition, the object *curBlock* contains the current variable intervals, their initial points, the symbolic equations and variables of the block as well as their global IDs, their scaling factors, their permuted IDs after decompostion, the symbolic Jacobian matrix and much more. User settings are stored in the dictionaries *solv_options* and *bxrd_options*. To get an idea of how the information is accessed you should have a look at the function *minimize* in the file modOpt/solver/ipopt_casadi.py or in any other python-file in this directory that is associated to the solvers already availabe in modOpt. It also helps to have a look at the class modOpt/solver/block.py. *Note:* The result vector should be stored in *curBlock*.
+
+7. Now import the new module in modOpt/solver/main.py by adding the line in the *Import packages section* at the top of the file:
+
+        import mysolver
+
+8. Adjust in the method *doMySolver* in main.py the link to your new module and also, if differing to the Newton method, the desired return values: 
+
+                try: 
+                        exitflag, iterNo = mysolver.doMySolver(...)
+
+9. Adjust the dictionary *num_options* in the Python script with the NLE, you want to solve, to your new solver:
+
+
+                num_options = {"solver": 'my-solver', ...
+
+
+   and check the functionality of the solver call by running the program.
+
+## Connecting a Sampling Method
+
+1. Open the file
+
+        modOpt/solver/main.py
+2. Navigate to the function *sample_and_solve_one_block*, which currently looks like this
+
+        def sample_and_solve_one_block(model, b, smpl_options, 
+                               bxrd_options, solv_options, res_blocks):
+                samples = {}    
+                cur_block = block.Block(model.all_blocks[b].rowPerm,   
+                                model.all_blocks[b].colPerm, 
+                                model.xInF, 
+                                model.jacobian, 
+                                model.fSymCasadi, 
+                                model.stateVarValues[0], 
+                                model.xBounds[0], 
+                                model.parameter,
+                                model.constraints, 
+                                model.xSymbolic, model.jacobianSympy, 
+                                model.functions,
+                                model.jacobianLambNumpy
+                            )
+ 
+                if smpl_options["smplNo"] != -1: 
+                        onePointInit.setStateVarValuesToMidPointOfIntervals(
+                        {"Block": cur_block}, bxrd_options
+                        )
+                        res_blocks, cur_block = solve_block(model, 
+                                        cur_block, b  
+                                        solv_options, 
+                                        bxrd_options, 
+                                        res_blocks
+                                        )
+                        res_blocks, solved, model = check_num_solution(model, 
+                                        cur_block, b, 
+                                        res_blocks
+                                        )
+
+                if solved or smpl_options["smplNo"] in [-1, 0]: 
+                        return res_blocks, solved, model
+
+                if smpl_options["smplMethod"]== "optuna":
+                        samples = [[moi.do_optuna_optimization_in_block (cur_block, 0, 
+                                        smpl_options, 
+                                        bxrd_options
+                                        )]]
+
+                else: 
+                        moi.sample_box_in_block(cur_block, 0, 
+                                        smpl_options, 
+                                        bxrd_options, 
+                                        samples)
+                        model.stateVarValues[0][cur_block.colPerm]=samples[0][0]
+ 
+                return solve_samples_block(model, cur_block, 
+                                        b, samples[0], 
+                                        solv_options, 
+                                        bxrd_options,
+                                        res_blocks
+                                        ) 
+
+3. According to the scheme of *sample_and_solve_one_block*, add a new section for the sampling with a corresponding user-definable tag 'my-sampling':
+
+                if smpl_options["smplMethod"]== 'my-sampling':
+                        samples = moi.doMySamplingInBlock (cur_block,
+                                        smpl_options, 
+                                        bxrd_options
+                                        )
+4. Create a new method *doMySamplingInBlock(cur_block, smpl_options, bxrd_options)* in the python file
+
+        modOpt/initialization/main.py
+   which needs to return a list of samples. The samples' type is a list as well. It is only sampled in the current block if the decomposition is used. The current bounds of block variables and the block equations can be accessed via the object *cur_block*. The number of samples to be generated and the number of the best ones measured by their function residuals to be used for the mulit-start solving procedure can be accessed from the dictionary *smpl_options* by the keys "smplNo" and "smplBest" to connect and use them in the new sampling method.
+
+5. Adjust the dictionary *smpl_options* in the Python script with the NLE, you want to sample, to your sampling method and the desired settings:
+
+        smpl_options = {"smplNo": 0,
+                    "smplBest": 1,
+                    "smplMethod": 'my-sampling'
+                    }
+
+   and check the functionality of the sampling by running the program. 
