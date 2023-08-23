@@ -1,9 +1,0 @@
-numpy
-sympy
-mpmath
-casadi
-matplotlib
-pyibex
-scipy
-scipy
-affapy

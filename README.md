@@ -14,10 +14,17 @@ Following subpackages are included:
 # Installation Guide for Users
 
 ##  Prerequisites
-* Python 3.9 with pip installed 
+* Python 3.9 with pip installed  (python 3.7) also works
 
+## Windows
+
+- Create conda environment and activate it
+- Run: conda install -c msys2 m2w64-gcc-fortran (fortran library is needed to compile HSL solvers)
+- Run: conda install "numpy<=1.23.4" mpmath==1.2.1 matplotlib scipy
+- Continue with next steps
 
 ## Instructions for Installation of
+
 ### ModOpt
 
 1. Open the terminal and type in following command (replace branch_name by the branch name of interest):
@@ -42,6 +49,16 @@ Note: you also get the path to the modOpt package from the ImportError
 3. Open the README.md in the hsl_for_modOpt directory and follow the installation instructions to create **.pyd**-files for Windows and **.so**-files for Linux and iOS.
 They are automatically moved to the required position in modOpt
 4. Check if ImportError is fixed by repeating step 2 from the "Installation of modOpt section"
+
+### Test installation
+
+Run test file from package: modOpt\tests\constraints\VanDerWaals\main.py (for Windows use main_multiprocessing.py)
+
+### Development
+
+- Numpy 1.23.4 is the last numpy version, with which MC77D can be compiled
+- Multiprocessing is not supported for windows machines use 'parallelBoxes': 0,
+- Python 3.9 is partially supported, because sympy1.5.1 is supported only by 3.9.0alpha
  
 ## Create scripts for your MOSAICmodeling evaluations  
 1. Open, initialize and save your model as an evaluation in MOSAICmodeling > Simulation
