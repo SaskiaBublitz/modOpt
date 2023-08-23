@@ -50,6 +50,10 @@ Note: you also get the path to the modOpt package from the ImportError
 They are automatically moved to the required position in modOpt
 4. Check if ImportError is fixed by repeating step 2 from the "Installation of modOpt section"
 
+### Test installation
+
+Run test file from package: modOpt\tests\constraints\VanDerWaals\main.py (for Windows use main_multiprocessing.py)
+
 ### Development
 
 - Numpy 1.23.4 is the last numpy version, with which MC77D can be compiled
