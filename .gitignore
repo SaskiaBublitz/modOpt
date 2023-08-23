@@ -1,10 +1,4 @@
 *.egg-info
-MC33AD.pyd
-MC33AD.so
-MC29AD.pyd
-MC29AD.so
-MC77D.pyd
-MC77D.so
 
 # Compiled source #
 ###################
@@ -13,7 +7,8 @@ MC77D.so
 #*.dll
 *.exe
 *.o
-#*.so
+*.so
+*.pyd
 
 # Packages #
 ############
