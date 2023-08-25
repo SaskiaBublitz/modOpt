@@ -39,7 +39,7 @@ def doSampling(model, bxrd_options, smpl_options):
         :bxrd_options:      dictionary with user-settings regarding parallelization
                             and box reduction steps applied before
         :smpl_options:  dictionary with number of samples to generate and 
-                            sampleNo_min_residual which is the number of candidates
+                            smplBest which is the number of candidates
                             with lowest residuals that are stored
 
     Returns:                None
@@ -89,7 +89,7 @@ def sample_box(model, boxID, smpl_options, bxrd_options, res):
         :model:             instance of class model
         :boxID:             ID of current box as integer
         :smpl_options:  dictionary with number of samples to generate and 
-                            sampleNo_min_residual which is the number of candidates
+                            smplBest which is the number of candidates
                             with lowest residuals that are stored
         :bxrd_options:      dictionary with user-settings regarding parallelization
                             and box reduction steps applied before
@@ -188,7 +188,7 @@ def sample_box_in_block(block, boxID, smpl_options, bxrd_options, res):
         :model:             instance of class model
         :boxID:             ID of current box as integer
         :smpl_options:  dictionary with number of samples to generate and 
-                            sampleNo_min_residual which is the number of candidates
+                            smplBest which is the number of candidates
                             with lowest residuals that are stored
         :bxrd_options:      dictionary with user-settings regarding parallelization
                             and box reduction steps applied before
