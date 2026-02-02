@@ -19,6 +19,7 @@ Following subpackages are included:
 - Create conda environment and activate it
 - Run: conda install -c msys2 m2w64-gcc-fortran (fortran library is needed to compile HSL solvers)
 - Run: conda install "numpy<=1.23.4" mpmath==1.2.1 matplotlib scipy
+- For Python 3.9,Run: pip install "setuptools<65.0" (otherwise numpy.f2py cannot find the fortran compiler)
 - Continue with next steps
 
 ## Instructions for Installation of
@@ -27,7 +28,7 @@ Following subpackages are included:
 
 1. Open the terminal and type in following command (replace branch_name by the branch name of interest):
 
-        pip install git+https://git.tu-berlin.de/dbta/simulation/modOpt@branch_name
+        pip install git+https://github.com/SaskiaBublitz/modOpt
 
 2. Open python in terminal and check if package is imported:
 

@@ -21,6 +21,9 @@ mc77d.f
 3. b) For Windows:  
 make_pyd_files.bat
 
+Tip: If you get an error such as: No module named 'distutils.msvccompiler' please make sure that you use an older Version of setuptools. You can instal it by: pip install "setuptools<65.0"
+
+
 The shell script creates associated .so or .pyd files and move them into the directories in modOpt where they are invoked.
 
 ## Debugging
